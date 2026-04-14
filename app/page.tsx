@@ -10,20 +10,47 @@ type Customer = {
   last_name: string | null;
   address: string | null;
   phone: string | null;
+  email: string | null;
 };
+
+function parseAddress(addr: string | null) {
+  if (!addr) return { street: "", city: "", state: "", zip: "" };
+  const parts = addr.split("|");
+  if (parts.length === 4) {
+    return { street: parts[0], city: parts[1], state: parts[2], zip: parts[3] };
+  }
+  // Legacy single-line address
+  return { street: addr, city: "", state: "", zip: "" };
+}
+
+function composeAddress(street: string, city: string, state: string, zip: string): string | null {
+  if (!street && !city && !state && !zip) return null;
+  return `${street}|${city}|${state}|${zip}`;
+}
+
+function formatAddressDisplay(addr: string | null): string {
+  if (!addr) return "No address";
+  const { street, city, state, zip } = parseAddress(addr);
+  const parts = [street, city, [state, zip].filter(Boolean).join(" ")].filter(Boolean);
+  return parts.join(", ") || "No address";
+}
 
 export default function HomePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [address, setAddress] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [zip, setZip] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function loadCustomers() {
     const { data, error } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, address, phone")
+      .select("id, first_name, last_name, address, phone, email")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -40,13 +67,20 @@ export default function HomePage() {
 
     const first = firstName.trim();
     const last = lastName.trim();
-    const addr = address.trim();
     const ph = phone.trim();
+    const em = email.trim();
 
     if (!first || !last) {
       alert("First name and last name are required.");
       return;
     }
+
+    const composedAddress = composeAddress(
+      street.trim(),
+      city.trim(),
+      addrState.trim(),
+      zip.trim()
+    );
 
     setLoading(true);
 
@@ -57,11 +91,12 @@ export default function HomePage() {
           name: `${first} ${last}`,
           first_name: first,
           last_name: last,
-          address: addr || null,
+          address: composedAddress,
           phone: ph || null,
+          email: em || null,
         },
       ])
-      .select("id, first_name, last_name, address, phone")
+      .select("id, first_name, last_name, address, phone, email")
       .single();
 
     setLoading(false);
@@ -78,8 +113,12 @@ export default function HomePage() {
 
     setFirstName("");
     setLastName("");
-    setAddress("");
+    setStreet("");
+    setCity("");
+    setAddrState("");
+    setZip("");
     setPhone("");
+    setEmail("");
   }
 
   useEffect(() => {
@@ -95,44 +134,89 @@ export default function HomePage() {
         <form onSubmit={addCustomer} className="mb-8 rounded border p-4">
           <h2 className="mb-4 text-xl font-semibold">Add Customer</h2>
 
-          <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium">First Name</label>
-            <input
-              className="w-full rounded border px-3 py-2"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="John"
-            />
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">First Name</label>
+              <input
+                className="w-full rounded border px-3 py-2"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="John"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Last Name</label>
+              <input
+                className="w-full rounded border px-3 py-2"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Johnson"
+              />
+            </div>
           </div>
 
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium">Last Name</label>
+            <label className="mb-1 block text-sm font-medium">Street Address</label>
             <input
               className="w-full rounded border px-3 py-2"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Johnson"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium">Address</label>
-            <input
-              className="w-full rounded border px-3 py-2"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
               placeholder="123 Main St"
             />
           </div>
 
-          <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium">Phone</label>
-            <input
-              className="w-full rounded border px-3 py-2"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="801-555-1234"
-            />
+          <div className="mb-3 grid grid-cols-[1fr_72px_104px] gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">City</label>
+              <input
+                className="w-full rounded border px-3 py-2"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Salt Lake City"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">State</label>
+              <input
+                className="w-full rounded border px-3 py-2 uppercase"
+                value={addrState}
+                onChange={(e) => setAddrState(e.target.value.toUpperCase())}
+                placeholder="UT"
+                maxLength={2}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Zip</label>
+              <input
+                className="w-full rounded border px-3 py-2"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+                placeholder="84101"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Phone</label>
+              <input
+                type="tel"
+                className="w-full rounded border px-3 py-2"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="801-555-1234"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Email</label>
+              <input
+                type="email"
+                className="w-full rounded border px-3 py-2"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="john@example.com"
+              />
+            </div>
           </div>
 
           <button
@@ -161,12 +245,15 @@ export default function HomePage() {
                   </Link>
 
                   <div className="text-sm text-gray-600">
-                    {customer.address || "No address"}
+                    {formatAddressDisplay(customer.address)}
                   </div>
 
-                  <div className="text-sm text-gray-600">
-                    {customer.phone || "No phone"}
-                  </div>
+                  {customer.phone && (
+                    <div className="text-sm text-gray-600">{customer.phone}</div>
+                  )}
+                  {customer.email && (
+                    <div className="text-sm text-gray-600">{customer.email}</div>
+                  )}
                 </li>
               ))}
             </ul>

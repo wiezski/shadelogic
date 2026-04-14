@@ -11,6 +11,7 @@ type Customer = {
   last_name: string | null;
   address: string | null;
   phone: string | null;
+  email: string | null;
 };
 
 type MeasureJob = {
@@ -20,6 +21,20 @@ type MeasureJob = {
   created_at: string;
 };
 
+function parseAddress(addr: string | null) {
+  if (!addr) return { street: "", city: "", state: "", zip: "" };
+  const parts = addr.split("|");
+  if (parts.length === 4) {
+    return { street: parts[0], city: parts[1], state: parts[2], zip: parts[3] };
+  }
+  return { street: addr, city: "", state: "", zip: "" };
+}
+
+function composeAddress(street: string, city: string, state: string, zip: string): string | null {
+  if (!street && !city && !state && !zip) return null;
+  return `${street}|${city}|${state}|${zip}`;
+}
+
 export default function CustomerPage() {
   const params = useParams();
   const customerId = params.id as string;
@@ -28,14 +43,27 @@ export default function CustomerPage() {
   const [jobs, setJobs] = useState<MeasureJob[]>([]);
   const [creating, setCreating] = useState(false);
 
+  // Editable address sub-fields (derived from customer.address)
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [zip, setZip] = useState("");
+
   async function loadCustomer() {
     const { data, error } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, address, phone")
+      .select("id, first_name, last_name, address, phone, email")
       .eq("id", customerId)
       .single();
 
-    if (!error) setCustomer(data);
+    if (!error && data) {
+      setCustomer(data as Customer);
+      const parsed = parseAddress((data as Customer).address);
+      setStreet(parsed.street);
+      setCity(parsed.city);
+      setAddrState(parsed.state);
+      setZip(parsed.zip);
+    }
   }
 
   async function loadJobs() {
@@ -46,6 +74,25 @@ export default function CustomerPage() {
       .order("created_at", { ascending: false });
 
     if (!error) setJobs(data || []);
+  }
+
+  function updateCustomerLocal<K extends keyof Customer>(field: K, value: Customer[K]) {
+    setCustomer((prev) => (prev ? { ...prev, [field]: value } : prev));
+  }
+
+  async function saveCustomerField<K extends keyof Customer>(field: K, value: Customer[K]) {
+    const { error } = await supabase
+      .from("customers")
+      .update({ [field]: value })
+      .eq("id", customerId);
+
+    if (error) alert(`Error saving ${String(field)}`);
+  }
+
+  async function saveAddress() {
+    const composed = composeAddress(street.trim(), city.trim(), addrState.trim(), zip.trim());
+    updateCustomerLocal("address", composed);
+    await saveCustomerField("address", composed);
   }
 
   async function createJob() {
@@ -109,28 +156,101 @@ export default function CustomerPage() {
           ← Back to customers
         </Link>
 
-        <h1 className="mb-2 text-3xl font-bold">
+        <h1 className="mb-6 text-3xl font-bold">
           {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
         </h1>
 
-        <p className="text-gray-600">{customer.address || "No address"}</p>
-        <p className="mb-6 text-gray-600">{customer.phone || "No phone"}</p>
-
         <div className="mb-6 rounded border p-4">
-          <h2 className="mb-3 text-xl font-semibold">Customer Info</h2>
+          <h2 className="mb-4 text-xl font-semibold">Customer Info</h2>
 
-          <div className="space-y-2 text-sm">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <span className="font-medium">Name:</span>{" "}
-              {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
+              <label className="mb-1 block text-xs font-medium text-gray-600">First Name</label>
+              <input
+                className="w-full rounded border px-3 py-2 text-sm"
+                value={customer.first_name || ""}
+                onChange={(e) => updateCustomerLocal("first_name", e.target.value)}
+                onBlur={(e) => saveCustomerField("first_name", e.target.value || null)}
+              />
             </div>
             <div>
-              <span className="font-medium">Address:</span>{" "}
-              {customer.address || "No address"}
+              <label className="mb-1 block text-xs font-medium text-gray-600">Last Name</label>
+              <input
+                className="w-full rounded border px-3 py-2 text-sm"
+                value={customer.last_name || ""}
+                onChange={(e) => updateCustomerLocal("last_name", e.target.value)}
+                onBlur={(e) => saveCustomerField("last_name", e.target.value || null)}
+              />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">Street Address</label>
+            <input
+              className="w-full rounded border px-3 py-2 text-sm"
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
+              onBlur={saveAddress}
+              placeholder="123 Main St"
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-[1fr_72px_104px] gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">City</label>
+              <input
+                className="w-full rounded border px-3 py-2 text-sm"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                onBlur={saveAddress}
+                placeholder="Salt Lake City"
+              />
             </div>
             <div>
-              <span className="font-medium">Phone:</span>{" "}
-              {customer.phone || "No phone"}
+              <label className="mb-1 block text-xs font-medium text-gray-600">State</label>
+              <input
+                className="w-full rounded border px-3 py-2 text-sm uppercase"
+                value={addrState}
+                onChange={(e) => setAddrState(e.target.value.toUpperCase())}
+                onBlur={saveAddress}
+                placeholder="UT"
+                maxLength={2}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Zip</label>
+              <input
+                className="w-full rounded border px-3 py-2 text-sm"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+                onBlur={saveAddress}
+                placeholder="84101"
+              />
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Phone</label>
+              <input
+                type="tel"
+                className="w-full rounded border px-3 py-2 text-sm"
+                value={customer.phone || ""}
+                onChange={(e) => updateCustomerLocal("phone", e.target.value)}
+                onBlur={(e) => saveCustomerField("phone", e.target.value || null)}
+                placeholder="801-555-1234"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Email</label>
+              <input
+                type="email"
+                className="w-full rounded border px-3 py-2 text-sm"
+                value={customer.email || ""}
+                onChange={(e) => updateCustomerLocal("email", e.target.value)}
+                onBlur={(e) => saveCustomerField("email", e.target.value || null)}
+                placeholder="john@example.com"
+              />
             </div>
           </div>
         </div>
@@ -160,6 +280,11 @@ export default function CustomerPage() {
                   >
                     {job.title}
                   </Link>
+                  {job.scheduled_at && (
+                    <div className="text-xs text-gray-500">
+                      {job.scheduled_at.slice(0, 10)}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

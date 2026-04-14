@@ -21,7 +21,24 @@ type Customer = {
   last_name: string | null;
   address: string | null;
   phone: string | null;
+  email: string | null;
 };
+
+function parseAddress(addr: string | null) {
+  if (!addr) return { street: "", city: "", state: "", zip: "" };
+  const parts = addr.split("|");
+  if (parts.length === 4) {
+    return { street: parts[0], city: parts[1], state: parts[2], zip: parts[3] };
+  }
+  return { street: addr, city: "", state: "", zip: "" };
+}
+
+function formatAddressDisplay(addr: string | null): string {
+  if (!addr) return "No address";
+  const { street, city, state, zip } = parseAddress(addr);
+  const parts = [street, city, [state, zip].filter(Boolean).join(" ")].filter(Boolean);
+  return parts.join(", ") || "No address";
+}
 
 type Room = {
   id: string;
@@ -166,8 +183,11 @@ export default function MeasureJobPage() {
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [openWindowPhotos, setOpenWindowPhotos] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const measureInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const tallestWindowRef = useRef<HTMLInputElement | null>(null);
 
   async function loadAll() {
     try {
@@ -190,7 +210,7 @@ export default function MeasureJobPage() {
 
       const { data: customerData, error: customerError } = await supabase
         .from("customers")
-        .select("id, first_name, last_name, address, phone")
+        .select("id, first_name, last_name, address, phone, email")
         .eq("id", jobData.customer_id)
         .single();
 
@@ -341,9 +361,11 @@ export default function MeasureJobPage() {
     const normalized = normalizeMeasurement(value || "");
 
     if (normalized === null) {
+      updateWindowLocal(windowId, field, "");
       alert(
-        `${field.replace("_", " ")} must be a valid measurement.\nExamples: 34, 34.5, 34 1/2, 34 3/16, 34 15/16`
+        `${field.replace("_", " ")} must be a whole number or a fraction in 1/16 increments.\nExamples: 34, 34.5, 34 1/2, 34 3/16, 34 15/16`
       );
+      setTimeout(() => measureInputRefs.current[`${windowId}-${field}`]?.focus(), 0);
       return;
     }
 
@@ -360,9 +382,11 @@ export default function MeasureJobPage() {
     const normalized = normalizeMeasurement(value || "");
 
     if (normalized === null) {
+      updateJobLocal("tallest_window", "");
       alert(
-        `Height of tallest window must be a valid measurement.\nExamples: 120, 120.5, 120 1/2, 120 3/16`
+        `Height of tallest window must be a whole number or a fraction in 1/16 increments.\nExamples: 120, 120.5, 120 1/2, 120 3/16`
       );
+      setTimeout(() => tallestWindowRef.current?.focus(), 0);
       return;
     }
 
@@ -495,8 +519,8 @@ export default function MeasureJobPage() {
 
   const validationMessages: string[] = [];
 
-  if (!normalizeMeasurement(job?.tallest_window || "")) {
-    validationMessages.push("Height of tallest window is missing or invalid.");
+  if (normalizeMeasurement(job?.tallest_window || "") === null) {
+    validationMessages.push("Height of tallest window is invalid.");
   }
 
   rooms.forEach((room, roomIndex) => {
@@ -506,12 +530,12 @@ export default function MeasureJobPage() {
   });
 
   windows.forEach((window, index) => {
-    if (!normalizeMeasurement(window.width || "")) {
-      validationMessages.push(`Window ${index + 1} is missing or has invalid width.`);
+    if (normalizeMeasurement(window.width || "") === null) {
+      validationMessages.push(`Window ${index + 1} has invalid width.`);
     }
 
-    if (!normalizeMeasurement(window.height || "")) {
-      validationMessages.push(`Window ${index + 1} is missing or has invalid height.`);
+    if (normalizeMeasurement(window.height || "") === null) {
+      validationMessages.push(`Window ${index + 1} has invalid height.`);
     }
 
     if (!window.mount_type) {
@@ -584,7 +608,7 @@ export default function MeasureJobPage() {
     const header = [
       `Measure: ${job.title}`,
       `Customer: ${[customer.last_name, customer.first_name].filter(Boolean).join(", ")}`,
-      `Address: ${customer.address || ""}`,
+      `Address: ${formatAddressDisplay(customer.address)}`,
       `Phone: ${customer.phone || ""}`,
       `Date: ${job.scheduled_at ? job.scheduled_at.slice(0, 10) : ""}`,
       `Measured By: ${job.measured_by || ""}`,
@@ -640,7 +664,7 @@ export default function MeasureJobPage() {
         [
           customer.last_name || "",
           customer.first_name || "",
-          customer.address || "",
+          formatAddressDisplay(customer.address),
           customer.phone || "",
           job.title || "",
           job.scheduled_at ? job.scheduled_at.slice(0, 10) : "",
@@ -753,7 +777,7 @@ export default function MeasureJobPage() {
           <h1>${job.title}</h1>
           <div class="meta">
             <div><strong>Customer:</strong> ${customerName}</div>
-            <div><strong>Address:</strong> ${customer.address || ""}</div>
+            <div><strong>Address:</strong> ${formatAddressDisplay(customer.address)}</div>
             <div><strong>Phone:</strong> ${customer.phone || ""}</div>
             <div><strong>Date:</strong> ${job.scheduled_at ? job.scheduled_at.slice(0, 10) : ""}</div>
             <div><strong>Measured By:</strong> ${job.measured_by || ""}</div>
@@ -842,8 +866,9 @@ export default function MeasureJobPage() {
               {[customer?.last_name, customer?.first_name].filter(Boolean).join(", ")}
             </div>
 
-            <div>{customer?.address || "No address"}</div>
-            <div>{customer?.phone || "No phone"}</div>
+            <div>{formatAddressDisplay(customer?.address ?? null)}</div>
+            {customer?.phone && <div>{customer.phone}</div>}
+            {customer?.email && <div>{customer.email}</div>}
 
             <div>
               <label className="mb-1 block text-xs font-medium">Date</label>
@@ -880,6 +905,7 @@ export default function MeasureJobPage() {
             <div>
               <label className="mb-1 block text-xs font-medium">Height of tallest window</label>
               <input
+                ref={tallestWindowRef}
                 className="w-28 rounded border px-2 py-1"
                 value={job.tallest_window || ""}
                 onChange={(e) => handleTallestWindowChange(e.target.value)}
@@ -899,7 +925,8 @@ export default function MeasureJobPage() {
             className="flex-1 rounded border px-2 py-1"
             value={newRoomName}
             onChange={(e) => setNewRoomName(e.target.value)}
-            placeholder="Room name"
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRoom(); } }}
+            placeholder="Room name (press Enter to add)"
           />
         </div>
 
@@ -976,9 +1003,10 @@ export default function MeasureJobPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-[140px_220px_1fr] gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_220px_1fr]">
                     <div className="space-y-1">
-                                       <input
+                      <input
+                        ref={(el) => { measureInputRefs.current[`${w.id}-width`] = el; }}
                         placeholder="Width"
                         className="w-full rounded border px-2 py-1"
                         value={w.width || ""}
@@ -987,6 +1015,7 @@ export default function MeasureJobPage() {
                       />
 
                       <input
+                        ref={(el) => { measureInputRefs.current[`${w.id}-height`] = el; }}
                         placeholder="Height"
                         className="w-full rounded border px-2 py-1"
                         value={w.height || ""}
@@ -1023,6 +1052,7 @@ export default function MeasureJobPage() {
                       </div>
 
                       <input
+                        ref={(el) => { measureInputRefs.current[`${w.id}-casing_depth`] = el; }}
                         placeholder="Casing Depth"
                         className="w-full rounded border px-2 py-1"
                         value={w.casing_depth || ""}
@@ -1084,9 +1114,22 @@ export default function MeasureJobPage() {
                     </div>
 
                     <div>
+                      <button
+                        type="button"
+                        className="mb-1 text-xs text-blue-600 sm:hidden"
+                        onClick={() =>
+                          setExpandedNotes((prev) => ({ ...prev, [w.id]: !prev[w.id] }))
+                        }
+                      >
+                        {expandedNotes[w.id] ? "Hide notes ▴" : "Notes ▾"}
+                      </button>
                       <textarea
                         placeholder="Notes"
-                        className="h-full min-h-[98px] w-full rounded border px-2 py-1"
+                        className={`w-full rounded border px-2 py-1 ${
+                          expandedNotes[w.id]
+                            ? "block min-h-[98px]"
+                            : "hidden min-h-[98px] sm:block"
+                        }`}
                         value={w.notes || ""}
                         onChange={(e) => updateWindowLocal(w.id, "notes", e.target.value)}
                         onBlur={(e) => saveWindowField(w.id, "notes", e.target.value || null)}

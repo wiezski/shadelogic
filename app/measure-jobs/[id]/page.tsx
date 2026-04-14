@@ -871,39 +871,39 @@ export default function MeasureJobPage() {
               {customer?.phone && <div>{customer.phone}</div>}
               {customer?.email && <div>{customer.email}</div>}
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div>
-                  <label className="mb-1 block text-xs font-medium">Date</label>
-                  <input
-                    type="date"
-                    className="w-full rounded border px-2 py-1"
-                    value={job.scheduled_at ? job.scheduled_at.slice(0, 10) : ""}
-                    onChange={(e) => updateJobLocal("scheduled_at", e.target.value)}
-                    onBlur={(e) => saveJobField("scheduled_at", e.target.value || null)}
-                  />
-                </div>
+              <div className="pt-1">
+                <label className="mb-1 block text-xs font-medium">Date</label>
+                <input
+                  type="date"
+                  className="w-full rounded border px-2 py-1"
+                  value={job.scheduled_at ? job.scheduled_at.slice(0, 10) : ""}
+                  onChange={(e) => updateJobLocal("scheduled_at", e.target.value)}
+                  onBlur={(e) => saveJobField("scheduled_at", e.target.value || null)}
+                />
+              </div>
+
+              <div className="flex gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium">Measured By</label>
                   <input
-                    className="w-full rounded border px-2 py-1"
+                    className="w-24 rounded border px-2 py-1"
                     value={job.measured_by || ""}
                     onChange={(e) => updateJobLocal("measured_by", e.target.value)}
                     onBlur={(e) => saveJobField("measured_by", e.target.value || null)}
                     placeholder="Name"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium">Height of tallest window</label>
-                <input
-                  ref={tallestWindowRef}
-                  className="w-36 rounded border px-2 py-1"
-                  value={job.tallest_window || ""}
-                  onChange={(e) => handleTallestWindowChange(e.target.value)}
-                  onBlur={(e) => handleTallestWindowBlur(e.target.value)}
-                  placeholder="e.g. 120 1/2"
-                />
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Tallest window</label>
+                  <input
+                    ref={tallestWindowRef}
+                    className="w-32 rounded border px-2 py-1"
+                    value={job.tallest_window || ""}
+                    onChange={(e) => handleTallestWindowChange(e.target.value)}
+                    onBlur={(e) => handleTallestWindowBlur(e.target.value)}
+                    placeholder="e.g. 120 1/2"
+                  />
+                </div>
               </div>
             </div>
 

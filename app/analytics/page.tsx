@@ -9,12 +9,24 @@ type JobStat = {
   title: string;
   measured_by: string | null;
   scheduled_at: string | null;
+  install_mode: boolean;
   created_at: string;
+};
+
+type IssueDrillJob = {
+  job_id: string;
+  job_title: string;
+  customer_name: string;
+  window_label: string;
+  room_name: string;
+  notes: string | null;
 };
 
 type IssueStat = {
   issue_type: string;
   count: number;
+  jobs: IssueDrillJob[];
+  expanded: boolean;
 };
 
 type MeasurerStat = {
@@ -29,179 +41,206 @@ export default function AnalyticsPage() {
   const [issueStats, setIssueStats] = useState<IssueStat[]>([]);
   const [measurerStats, setMeasurerStats] = useState<MeasurerStat[]>([]);
   const [installComplete, setInstallComplete] = useState(0);
-  const [installIssues, setInstallIssues] = useState(0);
+  const [installIssueCount, setInstallIssueCount] = useState(0);
+  const [installTotal, setInstallTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<"week" | "month" | "all">("month");
 
-  useEffect(() => {
-    loadStats();
-  }, [range]);
+  useEffect(() => { loadStats(); }, [range]);
 
   async function loadStats() {
     setLoading(true);
-
     const now = new Date();
     let since: string | null = null;
-    if (range === "week") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 7);
-      since = d.toISOString();
-    } else if (range === "month") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 30);
-      since = d.toISOString();
-    }
+    if (range === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); since = d.toISOString(); }
+    else if (range === "month") { const d = new Date(now); d.setDate(d.getDate() - 30); since = d.toISOString(); }
 
-    // Jobs
-    let jobQuery = supabase
-      .from("measure_jobs")
-      .select("id, title, measured_by, scheduled_at, created_at")
-      .order("created_at", { ascending: false });
+    let jobQuery = supabase.from("measure_jobs").select("id, title, measured_by, scheduled_at, install_mode, created_at").order("created_at", { ascending: false });
     if (since) jobQuery = jobQuery.gte("created_at", since);
     const { data: jobData } = await jobQuery;
     const loadedJobs = (jobData || []) as JobStat[];
     setJobs(loadedJobs);
 
-    if (loadedJobs.length === 0) {
-      setWindowCount(0);
-      setInstallComplete(0);
-      setInstallIssues(0);
-      setIssueStats([]);
-      setMeasurerStats([]);
-      setLoading(false);
-      return;
-    }
+    if (loadedJobs.length === 0) { setWindowCount(0); setInstallComplete(0); setInstallIssueCount(0); setInstallTotal(0); setIssueStats([]); setMeasurerStats([]); setLoading(false); return; }
 
     const jobIds = loadedJobs.map((j) => j.id);
 
+    // Rooms
+    const { data: roomData } = await supabase.from("rooms").select("id, measure_job_id, name").in("measure_job_id", jobIds);
+    const rooms = (roomData || []) as { id: string; measure_job_id: string; name: string }[];
+    const roomIds = rooms.map((r) => r.id);
+    const roomById: Record<string, { measure_job_id: string; name: string }> = {};
+    rooms.forEach((r) => { roomById[r.id] = { measure_job_id: r.measure_job_id, name: r.name }; });
+
     // Windows
-    const { data: roomData } = await supabase
-      .from("rooms")
-      .select("id")
-      .in("measure_job_id", jobIds);
-    const roomIds = (roomData || []).map((r: { id: string }) => r.id);
-
+    type WinRow = { id: string; room_id: string; install_status: string | null; sort_order: number | null };
+    let wins: WinRow[] = [];
     if (roomIds.length > 0) {
-      const { data: winData } = await supabase
-        .from("windows")
-        .select("id, install_status")
-        .in("room_id", roomIds);
-      const wins = winData || [];
-      setWindowCount(wins.length);
-      setInstallComplete(wins.filter((w: { install_status: string }) => w.install_status === "complete").length);
-      setInstallIssues(wins.filter((w: { install_status: string }) => w.install_status === "issue").length);
-
-      // Issue stats
-      const winIds = wins.map((w: { id: string }) => w.id);
-      if (winIds.length > 0) {
-        const { data: issData } = await supabase
-          .from("install_issues")
-          .select("issue_type")
-          .in("window_id", winIds);
-        const counts: Record<string, number> = {};
-        (issData || []).forEach((i: { issue_type: string }) => {
-          counts[i.issue_type] = (counts[i.issue_type] || 0) + 1;
-        });
-        const sorted = Object.entries(counts)
-          .map(([issue_type, count]) => ({ issue_type, count }))
-          .sort((a, b) => b.count - a.count);
-        setIssueStats(sorted);
-      }
-    } else {
-      setWindowCount(0);
-      setInstallComplete(0);
-      setInstallIssues(0);
-      setIssueStats([]);
+      const { data: winData } = await supabase.from("windows").select("id, room_id, install_status, sort_order").in("room_id", roomIds);
+      wins = (winData || []) as WinRow[];
     }
+    setWindowCount(wins.length);
+    const installWins = wins.filter((w) => {
+      const jobId = roomById[w.room_id]?.measure_job_id;
+      return jobId && loadedJobs.find((j) => j.id === jobId)?.install_mode;
+    });
+    setInstallTotal(installWins.length);
+    setInstallComplete(installWins.filter((w) => w.install_status === "complete").length);
+    setInstallIssueCount(installWins.filter((w) => w.install_status === "issue").length);
+
+    // Issues drill-down
+    const winIds = wins.map((w) => w.id);
+    let issueRows: { id: string; window_id: string; issue_type: string; notes: string | null }[] = [];
+    if (winIds.length > 0) {
+      const { data: issData } = await supabase.from("install_issues").select("id, window_id, issue_type, notes").in("window_id", winIds);
+      issueRows = (issData || []) as typeof issueRows;
+    }
+
+    // Customer names
+    const custIds = [...new Set(loadedJobs.map((j: JobStat & { customer_id?: string }) => (j as unknown as { customer_id: string }).customer_id).filter(Boolean))];
+    const custMap: Record<string, string> = {};
+    if (custIds.length > 0) {
+      const { data: custData } = await supabase.from("customers").select("id, first_name, last_name").in("id", custIds);
+      (custData || []).forEach((c: { id: string; first_name: string | null; last_name: string | null }) => {
+        custMap[c.id] = [c.last_name, c.first_name].filter(Boolean).join(", ");
+      });
+    }
+
+    // Build issue stats with drill-down
+    const counts: Record<string, IssueDrillJob[]> = {};
+    issueRows.forEach((issue) => {
+      if (!counts[issue.issue_type]) counts[issue.issue_type] = [];
+      const win = wins.find((w) => w.id === issue.window_id);
+      if (!win) return;
+      const room = roomById[win.room_id];
+      if (!room) return;
+      const job = loadedJobs.find((j) => j.id === room.measure_job_id);
+      if (!job) return;
+      const jobWithCust = job as JobStat & { customer_id?: string };
+      counts[issue.issue_type].push({
+        job_id: job.id,
+        job_title: job.title,
+        customer_name: custMap[(jobWithCust as unknown as { customer_id: string }).customer_id] || "Unknown",
+        room_name: room.name,
+        window_label: `Window ${(win.sort_order ?? 0) + 1}`,
+        notes: issue.notes,
+      });
+    });
+
+    const sorted = Object.entries(counts)
+      .map(([issue_type, jobs]) => ({ issue_type, count: jobs.length, jobs, expanded: false }))
+      .sort((a, b) => b.count - a.count);
+    setIssueStats(sorted);
 
     // Measurer stats
     const measMap: Record<string, { jobs: number; jobIds: string[] }> = {};
     loadedJobs.forEach((j) => {
       const name = j.measured_by || "Unassigned";
       if (!measMap[name]) measMap[name] = { jobs: 0, jobIds: [] };
-      measMap[name].jobs += 1;
+      measMap[name].jobs++;
       measMap[name].jobIds.push(j.id);
     });
-
     const measStats: MeasurerStat[] = await Promise.all(
       Object.entries(measMap).map(async ([name, { jobs: jobCount, jobIds: mJobIds }]) => {
-        const { data: mRooms } = await supabase
-          .from("rooms")
-          .select("id")
-          .in("measure_job_id", mJobIds);
+        const { data: mRooms } = await supabase.from("rooms").select("id").in("measure_job_id", mJobIds);
         const mRoomIds = (mRooms || []).map((r: { id: string }) => r.id);
         let winCount = 0;
         if (mRoomIds.length > 0) {
-          const { count } = await supabase
-            .from("windows")
-            .select("id", { count: "exact", head: true })
-            .in("room_id", mRoomIds);
+          const { count } = await supabase.from("windows").select("id", { count: "exact", head: true }).in("room_id", mRoomIds);
           winCount = count || 0;
         }
         return { name, jobs: jobCount, windows: winCount };
       })
     );
     setMeasurerStats(measStats.sort((a, b) => b.jobs - a.jobs));
-
     setLoading(false);
   }
 
-  const statCard = (label: string, value: string | number, color = "text-black") => (
-    <div className="rounded border p-4 text-center">
-      <div className={`text-3xl font-bold ${color}`}>{value}</div>
-      <div className="mt-1 text-xs text-gray-500">{label}</div>
-    </div>
-  );
+  function toggleIssueExpand(issueType: string) {
+    setIssueStats((prev) => prev.map((s) => s.issue_type === issueType ? { ...s, expanded: !s.expanded } : s));
+  }
+
+  const installPct = installTotal > 0 ? Math.round((installComplete / installTotal) * 100) : null;
 
   return (
     <main className="min-h-screen bg-white p-6 text-black">
       <div className="mx-auto max-w-3xl">
-        <Link href="/" className="mb-4 inline-block text-blue-600 hover:underline">
-          ← Back
-        </Link>
+        <Link href="/" className="mb-4 inline-block text-blue-600 hover:underline">← Back</Link>
 
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Analytics</h1>
           <div className="flex gap-1 rounded border overflow-hidden">
             {(["week", "month", "all"] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-3 py-1 text-sm ${range === r ? "bg-black text-white" : "bg-white text-black"}`}
-              >
+              <button key={r} onClick={() => setRange(r)} className={`px-3 py-1 text-sm ${range === r ? "bg-black text-white" : "bg-white text-black"}`}>
                 {r === "week" ? "7 days" : r === "month" ? "30 days" : "All time"}
               </button>
             ))}
           </div>
         </div>
 
-        {loading ? (
-          <p className="text-gray-500">Loading...</p>
-        ) : (
+        {loading ? <p className="text-gray-500">Loading...</p> : (
           <>
             {/* Top stats */}
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {statCard("Measure Jobs", jobs.length)}
-              {statCard("Windows Measured", windowCount)}
-              {statCard("Install Complete", installComplete, "text-green-600")}
-              {statCard("Install Issues", installIssues, installIssues > 0 ? "text-red-600" : "text-black")}
+              <div className="rounded border p-4 text-center">
+                <div className="text-3xl font-bold">{jobs.filter((j) => !j.install_mode).length}</div>
+                <div className="mt-1 text-xs text-gray-500">Measure Jobs</div>
+              </div>
+              <div className="rounded border p-4 text-center">
+                <div className="text-3xl font-bold">{jobs.filter((j) => j.install_mode).length}</div>
+                <div className="mt-1 text-xs text-gray-500">Install Jobs</div>
+              </div>
+              <div className="rounded border p-4 text-center">
+                <div className="text-3xl font-bold text-green-600">{installComplete}</div>
+                <div className="mt-1 text-xs text-gray-500">Windows Done</div>
+              </div>
+              <div className="rounded border p-4 text-center">
+                <div className={`text-3xl font-bold ${installIssueCount > 0 ? "text-red-600" : "text-black"}`}>{installIssueCount}</div>
+                <div className="mt-1 text-xs text-gray-500">Install Issues</div>
+              </div>
             </div>
 
-            {/* Issue breakdown */}
+            {/* Install completion % */}
+            {installTotal > 0 && (
+              <div className="mb-6 rounded border p-4">
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="font-semibold">Install Completion</span>
+                  <span className="font-bold text-green-600">{installPct}%</span>
+                </div>
+                <div className="h-3 w-full rounded bg-gray-200">
+                  <div className="h-3 rounded bg-green-500 transition-all" style={{ width: `${installPct}%` }} />
+                </div>
+                <div className="mt-1 text-xs text-gray-500">{installComplete} of {installTotal} windows complete · {installIssueCount} issues</div>
+              </div>
+            )}
+
+            {/* Issue breakdown — clickable drill-down */}
             {issueStats.length > 0 && (
               <div className="mb-6 rounded border p-4">
-                <h2 className="mb-3 font-semibold">Issues by Type</h2>
+                <h2 className="mb-3 font-semibold">Issues by Type <span className="text-xs font-normal text-gray-400">(tap to see jobs)</span></h2>
                 <div className="space-y-2">
                   {issueStats.map((s) => (
-                    <div key={s.issue_type} className="flex items-center gap-2">
-                      <div className="w-32 truncate text-sm">{s.issue_type}</div>
-                      <div className="flex-1 rounded bg-gray-100">
-                        <div
-                          className="h-4 rounded bg-red-400 text-right"
-                          style={{ width: `${Math.min(100, (s.count / issueStats[0].count) * 100)}%` }}
-                        />
-                      </div>
-                      <div className="w-6 text-right text-sm font-medium">{s.count}</div>
+                    <div key={s.issue_type}>
+                      <button type="button" onClick={() => toggleIssueExpand(s.issue_type)} className="flex w-full items-center gap-2 rounded p-1 hover:bg-gray-50">
+                        <div className="w-36 truncate text-left text-sm">{s.issue_type}</div>
+                        <div className="flex-1 rounded bg-gray-100">
+                          <div className="h-4 rounded bg-red-400" style={{ width: `${Math.min(100, (s.count / issueStats[0].count) * 100)}%` }} />
+                        </div>
+                        <div className="w-6 text-right text-sm font-medium">{s.count}</div>
+                        <div className="text-xs text-gray-400">{s.expanded ? "▲" : "▼"}</div>
+                      </button>
+
+                      {s.expanded && (
+                        <div className="ml-2 mt-1 rounded border bg-gray-50 p-2">
+                          {s.jobs.map((j, i) => (
+                            <Link key={i} href={`/measure-jobs/${j.job_id}`} className="block rounded p-2 hover:bg-white">
+                              <div className="text-sm font-medium text-blue-600">{j.job_title}</div>
+                              <div className="text-xs text-gray-500">{j.customer_name} · {j.room_name} · {j.window_label}</div>
+                              {j.notes && <div className="mt-0.5 text-xs text-gray-400 italic">"{j.notes}"</div>}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -213,13 +252,7 @@ export default function AnalyticsPage() {
               <div className="mb-6 rounded border p-4">
                 <h2 className="mb-3 font-semibold">By Measurer</h2>
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-xs text-gray-500">
-                      <th className="pb-2">Name</th>
-                      <th className="pb-2 text-right">Jobs</th>
-                      <th className="pb-2 text-right">Windows</th>
-                    </tr>
-                  </thead>
+                  <thead><tr className="border-b text-left text-xs text-gray-500"><th className="pb-2">Name</th><th className="pb-2 text-right">Jobs</th><th className="pb-2 text-right">Windows</th></tr></thead>
                   <tbody>
                     {measurerStats.map((m) => (
                       <tr key={m.name} className="border-b last:border-0">
@@ -236,18 +269,17 @@ export default function AnalyticsPage() {
             {/* Recent jobs */}
             <div className="rounded border p-4">
               <h2 className="mb-3 font-semibold">Recent Jobs</h2>
-              {jobs.length === 0 ? (
-                <p className="text-sm text-gray-500">No jobs in this period.</p>
-              ) : (
+              {jobs.length === 0 ? <p className="text-sm text-gray-500">No jobs in this period.</p> : (
                 <ul className="space-y-2">
                   {jobs.slice(0, 10).map((j) => (
                     <li key={j.id} className="flex items-center justify-between text-sm">
-                      <Link href={`/measure-jobs/${j.id}`} className="text-blue-600 hover:underline">
-                        {j.title}
-                      </Link>
-                      <span className="text-xs text-gray-400">
-                        {j.measured_by || "—"} · {j.scheduled_at ? j.scheduled_at.slice(0, 10) : j.created_at.slice(0, 10)}
-                      </span>
+                      <div>
+                        <Link href={`/measure-jobs/${j.id}`} className="text-blue-600 hover:underline">{j.title}</Link>
+                        <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${j.install_mode ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+                          {j.install_mode ? "Install" : "Measure"}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">{j.measured_by || "—"} · {(j.scheduled_at || j.created_at).slice(0, 10)}</span>
                     </li>
                   ))}
                 </ul>

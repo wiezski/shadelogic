@@ -64,7 +64,29 @@ type WindowItem = {
   over_10_ft: boolean;
   takedown: boolean;
   notes: string | null;
+  install_status: "not_started" | "complete" | "issue" | null;
 };
+
+type InstallIssue = {
+  id: string;
+  window_id: string;
+  issue_type: string;
+  notes: string | null;
+  photo_path: string | null;
+  created_at: string;
+};
+
+const ISSUE_PRESETS = [
+  "Wrong size",
+  "Missing part",
+  "Damaged",
+  "Obstruction",
+  "Motor issue",
+  "Wrong color",
+  "Hardware missing",
+  "Customer not ready",
+  "Other",
+];
 
 type WindowPhoto = {
   id: string;
@@ -184,10 +206,14 @@ export default function MeasureJobPage() {
   const [openWindowPhotos, setOpenWindowPhotos] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [mode, setMode] = useState<"measure" | "install">("measure");
+  const [installIssues, setInstallIssues] = useState<InstallIssue[]>([]);
+  const [expandedIssueForm, setExpandedIssueForm] = useState<Record<string, boolean>>({});
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const measureInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const tallestWindowRef = useRef<HTMLInputElement | null>(null);
+  const issueFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function loadAll() {
     try {
@@ -243,7 +269,7 @@ export default function MeasureJobPage() {
       const { data: windowData, error: windowError } = await supabase
         .from("windows")
         .select(
-          "id, room_id, sort_order, product, lift_system, width, height, mount_type, casing_depth, control_side, hold_downs, metal_or_concrete, over_10_ft, takedown, notes"
+          "id, room_id, sort_order, product, lift_system, width, height, mount_type, casing_depth, control_side, hold_downs, metal_or_concrete, over_10_ft, takedown, notes, install_status"
         )
         .in("room_id", roomIds)
         .order("sort_order", { ascending: true });
@@ -272,6 +298,13 @@ export default function MeasureJobPage() {
       }
 
       setPhotos((photoData || []) as WindowPhoto[]);
+
+      const { data: issueData } = await supabase
+        .from("install_issues")
+        .select("id, window_id, issue_type, notes, photo_path, created_at")
+        .in("window_id", windowIds);
+
+      setInstallIssues((issueData || []) as InstallIssue[]);
     } catch (err) {
       console.error(err);
       setLoadError("Unexpected load error.");
@@ -515,6 +548,54 @@ export default function MeasureJobPage() {
       ...prev,
       [windowId]: !prev[windowId],
     }));
+  }
+
+  async function setWindowInstallStatus(
+    windowId: string,
+    status: "not_started" | "complete" | "issue"
+  ) {
+    updateWindowLocal(windowId, "install_status", status);
+    await saveWindowField(windowId, "install_status", status);
+    if (status === "issue") {
+      setExpandedIssueForm((prev) => ({ ...prev, [windowId]: true }));
+    }
+  }
+
+  async function logInstallIssue(windowId: string, issueType: string) {
+    const { data, error } = await supabase
+      .from("install_issues")
+      .insert([{ window_id: windowId, issue_type: issueType }])
+      .select()
+      .single();
+    if (!error && data) {
+      setInstallIssues((prev) => [...prev, data as InstallIssue]);
+    }
+  }
+
+  async function updateIssueNotes(issueId: string, notes: string) {
+    setInstallIssues((prev) =>
+      prev.map((i) => (i.id === issueId ? { ...i, notes } : i))
+    );
+    await supabase.from("install_issues").update({ notes }).eq("id", issueId);
+  }
+
+  async function deleteIssue(issueId: string) {
+    await supabase.from("install_issues").delete().eq("id", issueId);
+    setInstallIssues((prev) => prev.filter((i) => i.id !== issueId));
+  }
+
+  async function handleIssuePhotoUpload(issueId: string, file: File | null) {
+    if (!file || !job) return;
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `${job.id}/issues/${issueId}/${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("window-photos")
+      .upload(fileName, file, { upsert: false });
+    if (uploadError) { alert("Error uploading photo"); return; }
+    await supabase.from("install_issues").update({ photo_path: fileName }).eq("id", issueId);
+    setInstallIssues((prev) =>
+      prev.map((i) => (i.id === issueId ? { ...i, photo_path: fileName } : i))
+    );
   }
 
   const validationMessages: string[] = [];
@@ -847,7 +928,7 @@ export default function MeasureJobPage() {
           </div>
         )}
 
-        {validationMessages.length > 0 && (
+        {validationMessages.length > 0 && mode === "measure" && (
           <div className="mb-3 rounded border border-amber-400 bg-amber-50 p-3">
             <div className="mb-1 font-semibold text-amber-900">
               Missing or incomplete measure info
@@ -859,6 +940,22 @@ export default function MeasureJobPage() {
             </ul>
           </div>
         )}
+
+        {/* Mode toggle */}
+        <div className="mb-3 flex rounded border overflow-hidden">
+          <button
+            className={`flex-1 py-2 text-sm font-medium ${mode === "measure" ? "bg-black text-white" : "bg-white text-black"}`}
+            onClick={() => setMode("measure")}
+          >
+            Measure
+          </button>
+          <button
+            className={`flex-1 py-2 text-sm font-medium ${mode === "install" ? "bg-black text-white" : "bg-white text-black"}`}
+            onClick={() => setMode("install")}
+          >
+            Install
+          </button>
+        </div>
 
         <div className="mb-3 rounded border p-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[300px_1fr]">
@@ -919,6 +1016,7 @@ export default function MeasureJobPage() {
           </div>
         </div>
 
+        {mode === "measure" && (
         <div className="mb-3 flex gap-2">
           <button onClick={addRoom} className="rounded bg-black px-3 py-1 text-white">
             Add Room
@@ -932,8 +1030,9 @@ export default function MeasureJobPage() {
             placeholder="Room name (press Enter to add)"
           />
         </div>
+        )}
 
-        {rooms.map((room) => {
+        {mode === "measure" && rooms.map((room) => {
           const roomWindows = windows.filter((w) => w.room_id === room.id);
 
           return (
@@ -1215,7 +1314,7 @@ export default function MeasureJobPage() {
           );
         })}
 
-        <div className="mt-4 rounded border p-3">
+        {mode === "measure" && <div className="mt-4 rounded border p-3">
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowSummary((prev) => !prev)}
@@ -1316,7 +1415,154 @@ export default function MeasureJobPage() {
               )}
             </div>
           )}
-        </div>
+        </div>}
+
+        {/* ── INSTALL MODE ── */}
+        {mode === "install" && (
+          <div>
+            {/* Progress summary */}
+            {(() => {
+              const total = windows.length;
+              const complete = windows.filter((w) => w.install_status === "complete").length;
+              const issues = windows.filter((w) => w.install_status === "issue").length;
+              const pct = total > 0 ? Math.round((complete / total) * 100) : 0;
+              return (
+                <div className="mb-3 rounded border p-3">
+                  <div className="mb-2 flex items-center justify-between text-sm font-semibold">
+                    <span>{complete} of {total} windows complete</span>
+                    {issues > 0 && (
+                      <span className="text-red-600">{issues} issue{issues !== 1 ? "s" : ""}</span>
+                    )}
+                  </div>
+                  <div className="h-2 w-full rounded bg-gray-200">
+                    <div
+                      className="h-2 rounded bg-green-500 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {rooms.map((room) => {
+              const roomWindows = windows.filter((w) => w.room_id === room.id);
+              return (
+                <div key={room.id} className="mb-3 rounded border p-2">
+                  <div className="mb-2 text-base font-semibold">{room.name}</div>
+
+                  {roomWindows.map((w, index) => {
+                    const windowIssues = installIssues.filter((i) => i.window_id === w.id);
+                    return (
+                      <div key={w.id} className="mb-2 rounded border p-2">
+                        {/* Window header */}
+                        <div className="mb-2 flex items-center justify-between">
+                          <div>
+                            <span className="font-medium">Window {index + 1}</span>
+                            {w.product && <span className="ml-2 text-xs text-gray-500">{w.product}</span>}
+                            <div className="text-xs text-gray-500">
+                              {[w.width && `W: ${w.width}`, w.height && `H: ${w.height}`, w.mount_type].filter(Boolean).join(" · ")}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status buttons */}
+                        <div className="mb-2 flex gap-2">
+                          <button
+                            onClick={() => setWindowInstallStatus(w.id, "not_started")}
+                            className={`rounded px-3 py-1 text-xs font-medium border ${w.install_status === "not_started" || !w.install_status ? "bg-gray-200 border-gray-400" : "bg-white border-gray-200 text-gray-400"}`}
+                          >
+                            Not Started
+                          </button>
+                          <button
+                            onClick={() => setWindowInstallStatus(w.id, "complete")}
+                            className={`rounded px-3 py-1 text-xs font-medium border ${w.install_status === "complete" ? "bg-green-500 text-white border-green-600" : "bg-white border-gray-200 text-gray-500"}`}
+                          >
+                            ✓ Complete
+                          </button>
+                          <button
+                            onClick={() => setWindowInstallStatus(w.id, "issue")}
+                            className={`rounded px-3 py-1 text-xs font-medium border ${w.install_status === "issue" ? "bg-red-500 text-white border-red-600" : "bg-white border-gray-200 text-gray-500"}`}
+                          >
+                            ! Issue
+                          </button>
+                        </div>
+
+                        {/* Issue section */}
+                        {w.install_status === "issue" && (
+                          <div className="rounded bg-red-50 p-2">
+                            {/* Existing issues */}
+                            {windowIssues.map((issue) => (
+                              <div key={issue.id} className="mb-2 rounded border border-red-200 bg-white p-2">
+                                <div className="mb-1 flex items-center justify-between">
+                                  <span className="text-xs font-semibold text-red-700">{issue.issue_type}</span>
+                                  <button
+                                    onClick={() => deleteIssue(issue.id)}
+                                    className="text-xs text-gray-400 hover:text-red-500"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                <textarea
+                                  placeholder="Add notes..."
+                                  className="mb-1 h-12 w-full rounded border px-2 py-1 text-xs"
+                                  value={issue.notes || ""}
+                                  onChange={(e) => updateIssueNotes(issue.id, e.target.value)}
+                                />
+                                {issue.photo_path ? (
+                                  <img
+                                    src={publicPhotoUrl(issue.photo_path)}
+                                    className="h-20 w-auto rounded border object-cover"
+                                  />
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => issueFileInputRefs.current[issue.id]?.click()}
+                                      className="text-xs text-blue-600"
+                                    >
+                                      + Add photo
+                                    </button>
+                                    <input
+                                      ref={(el) => { issueFileInputRefs.current[issue.id] = el; }}
+                                      type="file"
+                                      accept="image/*"
+                                      capture="environment"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        if (file) handleIssuePhotoUpload(issue.id, file);
+                                        e.currentTarget.value = "";
+                                      }}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Preset buttons to log new issue */}
+                            <div className="mt-1">
+                              <div className="mb-1 text-xs font-medium text-red-700">Log issue:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {ISSUE_PRESETS.map((preset) => (
+                                  <button
+                                    key={preset}
+                                    onClick={() => logInstallIssue(w.id, preset)}
+                                    className="rounded border border-red-300 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+                                  >
+                                    {preset}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );

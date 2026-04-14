@@ -181,14 +181,10 @@ export default function HomePage() {
         {tab === "dashboard" && (
           <>
             {/* Stats */}
-            <div className="mb-4 grid grid-cols-3 gap-3">
+            <div className="mb-4 grid grid-cols-2 gap-3">
               <div className="rounded border p-3 text-center">
                 <div className="text-2xl font-bold">{statsLoading ? "—" : totalJobs}</div>
                 <div className="text-xs text-gray-500">Total Jobs</div>
-              </div>
-              <div className="rounded border p-3 text-center">
-                <div className="text-2xl font-bold">{statsLoading ? "—" : totalWindows}</div>
-                <div className="text-xs text-gray-500">Windows</div>
               </div>
               <div className="rounded border p-3 text-center">
                 <div className={`text-2xl font-bold ${openIssues > 0 ? "text-red-600" : "text-black"}`}>

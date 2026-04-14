@@ -13,6 +13,7 @@ type MeasureJob = {
   measured_by: string | null;
   overall_notes: string | null;
   tallest_window: string | null;
+  install_mode: boolean;
 };
 
 type Customer = {
@@ -222,7 +223,7 @@ export default function MeasureJobPage() {
 
       const { data: jobData, error: jobError } = await supabase
         .from("measure_jobs")
-        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window")
+        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode")
         .eq("id", measureJobId)
         .single();
 
@@ -318,7 +319,7 @@ export default function MeasureJobPage() {
     loadAll();
   }, [measureJobId]);
 
-  function updateJobLocal(field: keyof MeasureJob, value: string | null) {
+  function updateJobLocal(field: keyof MeasureJob, value: string | boolean | null) {
     setJob((prev) => (prev ? { ...prev, [field]: value } : prev));
   }
 
@@ -548,6 +549,18 @@ export default function MeasureJobPage() {
       ...prev,
       [windowId]: !prev[windowId],
     }));
+  }
+
+  async function startInstall() {
+    if (!job) return;
+    const { error } = await supabase
+      .from("measure_jobs")
+      .update({ install_mode: true })
+      .eq("id", job.id);
+    if (!error) {
+      updateJobLocal("install_mode", true);
+      setMode("install");
+    }
   }
 
   async function setWindowInstallStatus(
@@ -942,20 +955,35 @@ export default function MeasureJobPage() {
         )}
 
         {/* Mode toggle */}
-        <div className="mb-3 flex rounded border overflow-hidden">
-          <button
-            className={`flex-1 py-2 text-sm font-medium ${mode === "measure" ? "bg-black text-white" : "bg-white text-black"}`}
-            onClick={() => setMode("measure")}
-          >
-            Measure
-          </button>
-          <button
-            className={`flex-1 py-2 text-sm font-medium ${mode === "install" ? "bg-black text-white" : "bg-white text-black"}`}
-            onClick={() => setMode("install")}
-          >
-            Install
-          </button>
-        </div>
+        {job.install_mode ? (
+          <div className="mb-3 flex rounded border overflow-hidden">
+            <button
+              type="button"
+              className={`flex-1 py-2 text-sm font-medium ${mode === "measure" ? "bg-black text-white" : "bg-white text-black"}`}
+              onClick={() => setMode("measure")}
+            >
+              Measure
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2 text-sm font-medium ${mode === "install" ? "bg-black text-white" : "bg-white text-black"}`}
+              onClick={() => setMode("install")}
+            >
+              Install
+            </button>
+          </div>
+        ) : (
+          <div className="mb-3 flex items-center justify-between rounded border p-3">
+            <span className="text-sm text-gray-600">Measure only — ready to convert to install?</span>
+            <button
+              type="button"
+              onClick={startInstall}
+              className="rounded bg-black px-3 py-1 text-sm text-white"
+            >
+              Start Install
+            </button>
+          </div>
+        )}
 
         <div className="mb-3 rounded border p-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[300px_1fr]">
@@ -1468,20 +1496,35 @@ export default function MeasureJobPage() {
                         {/* Status buttons */}
                         <div className="mb-2 flex gap-2">
                           <button
+                            type="button"
                             onClick={() => setWindowInstallStatus(w.id, "not_started")}
-                            className={`rounded px-3 py-1 text-xs font-medium border ${w.install_status === "not_started" || !w.install_status ? "bg-gray-200 border-gray-400" : "bg-white border-gray-200 text-gray-400"}`}
+                            className={`rounded border px-3 py-2 text-sm font-medium ${
+                              !w.install_status || w.install_status === "not_started"
+                                ? "bg-gray-800 text-white border-gray-800"
+                                : "bg-white text-gray-600 border-gray-300"
+                            }`}
                           >
-                            Not Started
+                            Pending
                           </button>
                           <button
+                            type="button"
                             onClick={() => setWindowInstallStatus(w.id, "complete")}
-                            className={`rounded px-3 py-1 text-xs font-medium border ${w.install_status === "complete" ? "bg-green-500 text-white border-green-600" : "bg-white border-gray-200 text-gray-500"}`}
+                            className={`rounded border px-3 py-2 text-sm font-medium ${
+                              w.install_status === "complete"
+                                ? "bg-green-600 text-white border-green-600"
+                                : "bg-white text-green-700 border-green-400"
+                            }`}
                           >
-                            ✓ Complete
+                            ✓ Done
                           </button>
                           <button
+                            type="button"
                             onClick={() => setWindowInstallStatus(w.id, "issue")}
-                            className={`rounded px-3 py-1 text-xs font-medium border ${w.install_status === "issue" ? "bg-red-500 text-white border-red-600" : "bg-white border-gray-200 text-gray-500"}`}
+                            className={`rounded border px-3 py-2 text-sm font-medium ${
+                              w.install_status === "issue"
+                                ? "bg-red-600 text-white border-red-600"
+                                : "bg-white text-red-600 border-red-400"
+                            }`}
                           >
                             ! Issue
                           </button>

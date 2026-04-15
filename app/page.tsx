@@ -116,6 +116,7 @@ export default function HomePage() {
   const [todayAppts, setTodayAppts] = useState<TodayAppt[]>([]);
   const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
   const [workQueueLoading, setWorkQueueLoading] = useState(true);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
 
   // Add customer form
   const [showForm, setShowForm] = useState(false);
@@ -398,6 +399,35 @@ export default function HomePage() {
     );
   }
 
+  const STAGE_COLORS: Record<string, string> = {
+    New: "text-gray-700", Contacted: "text-blue-600", Scheduled: "text-purple-600",
+    Measured: "text-amber-700", Quoted: "text-orange-600", Sold: "text-green-600",
+    Installed: "text-emerald-600", Lost: "text-red-600", "On Hold": "text-yellow-700", Waiting: "text-slate-500",
+  };
+  const ALL_STAGES = ["New","Contacted","Scheduled","Measured","Quoted","Sold","Installed","Lost","On Hold","Waiting"];
+  const stageCounts = ALL_STAGES.reduce((acc, s) => {
+    acc[s] = customers.filter(c => c.lead_status === s).length;
+    return acc;
+  }, {} as Record<string, number>);
+  const stageCustomers = selectedStage
+    ? customers.filter(c => c.lead_status === selectedStage)
+    : [];
+
+  function PipelineCard({ stage }: { stage: string }) {
+    const active = selectedStage === stage;
+    const count  = stageCounts[stage] ?? 0;
+    return (
+      <button
+        type="button"
+        onClick={() => setSelectedStage(active ? null : stage)}
+        className={`rounded border p-3 text-center w-full transition-colors ${active ? "bg-black text-white" : "bg-white hover:bg-gray-50"}`}
+      >
+        <div className={`text-2xl font-bold ${active ? "text-white" : STAGE_COLORS[stage] ?? "text-black"}`}>{count}</div>
+        <div className={`text-xs mt-1 ${active ? "text-gray-300" : "text-gray-500"}`}>{stage}</div>
+      </button>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-white p-4 text-black">
       <div className="mx-auto max-w-3xl">
@@ -416,6 +446,59 @@ export default function HomePage() {
 
         {tab === "dashboard" && (
           <>
+            {/* ── Sales Pipeline ── */}
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Sales Pipeline</span>
+              <div className="flex-1 border-t border-gray-100" />
+            </div>
+            <div className="mb-2 grid grid-cols-5 gap-1.5 sm:grid-cols-10">
+              {ALL_STAGES.map(s => <PipelineCard key={s} stage={s} />)}
+            </div>
+
+            {/* Stage drill-down */}
+            {selectedStage && (
+              <div className="mb-4 rounded border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="font-semibold">{selectedStage} <span className="text-gray-400 font-normal text-sm">({stageCustomers.length})</span></h2>
+                  <button type="button" onClick={() => setSelectedStage(null)} className="text-xs text-gray-400">✕ close</button>
+                </div>
+                {stageCustomers.length === 0 ? (
+                  <p className="text-sm text-gray-500">No customers at this stage.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {stageCustomers.map(c => {
+                      const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown";
+                      const inactive = c.last_activity_at ? daysAgo(c.last_activity_at) : null;
+                      return (
+                        <li key={c.id}>
+                          <Link href={`/customers/${c.id}`}
+                            className="flex items-center justify-between rounded border p-2 hover:bg-gray-50 gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-blue-600 truncate">{name}</div>
+                              {c.address && <div className="text-xs text-gray-400 truncate">{formatAddressDisplay(c.address)}</div>}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {c.heat_score && (
+                                <span className={`text-xs rounded px-1.5 py-0.5 ${heatStyle[c.heat_score]}`}>{c.heat_score}</span>
+                              )}
+                              {inactive !== null && (
+                                <span className="text-xs text-gray-400">{inactive}d ago</span>
+                              )}
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* ── Operations ── */}
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Operations</span>
+              <div className="flex-1 border-t border-gray-100" />
+            </div>
             {/* Stats grid */}
             <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
               <StatCard label="Measures to Schedule" count={measuresToSchedule.length} filterKey="measures_to_schedule" />

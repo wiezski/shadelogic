@@ -75,6 +75,10 @@ export default function AnalyticsPage() {
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [soldCount, setSoldCount] = useState(0);
   const [crmLoading, setCrmLoading] = useState(true);
+  const [avgDaysByStage, setAvgDaysByStage] = useState<Record<string, number>>({});
+  const [conversionRates, setConversionRates] = useState<{ from: string; to: string; rate: number }[]>([]);
+  const [analyticsCusts, setAnalyticsCusts] = useState<{ id: string; first_name: string | null; last_name: string | null; lead_status: string | null; heat_score: string | null; last_activity_at: string | null }[]>([]);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
 
   useEffect(() => { loadStats(); loadCrmStats(); }, [range]);
 
@@ -216,9 +220,10 @@ export default function AnalyticsPage() {
     // All customers — pipeline + heat (always all-time, current state)
     const { data: custData } = await supabase
       .from("customers")
-      .select("id, lead_status, heat_score, last_activity_at");
-    const customers = (custData || []) as { id: string; lead_status: string | null; heat_score: string | null; last_activity_at: string | null }[];
+      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, created_at");
+    const customers = (custData || []) as { id: string; first_name: string | null; last_name: string | null; lead_status: string | null; heat_score: string | null; last_activity_at: string | null; created_at: string }[];
     setTotalCustomers(customers.length);
+    setAnalyticsCusts(customers);
 
     // Pipeline funnel
     const STAGES = ["New", "Contacted", "Scheduled", "Measured", "Quoted", "Sold", "Installed", "Lost"];
@@ -227,6 +232,41 @@ export default function AnalyticsPage() {
     customers.forEach((c) => { const s = c.lead_status || "New"; if (stageCounts[s] !== undefined) stageCounts[s]++; });
     setStageStats(STAGES.map((s) => ({ stage: s, count: stageCounts[s] })));
     setSoldCount((stageCounts["Sold"] || 0) + (stageCounts["Installed"] || 0));
+
+    // Average days at current stage (since last activity or creation)
+    const nowMs = Date.now();
+    const avgDays: Record<string, number> = {};
+    STAGES.forEach((s) => {
+      const group = customers.filter(c => (c.lead_status || "New") === s);
+      if (group.length === 0) { avgDays[s] = 0; return; }
+      const total = group.reduce((sum, c) => {
+        const ref = c.last_activity_at ?? c.created_at;
+        return sum + Math.floor((nowMs - new Date(ref).getTime()) / 86400000);
+      }, 0);
+      avgDays[s] = Math.round(total / group.length);
+    });
+    setAvgDaysByStage(avgDays);
+
+    // Conversion rates through the sales funnel
+    const funnelSteps = ["New", "Contacted", "Measured", "Quoted", "Sold"];
+    const activeCusts = customers.filter(c => c.lead_status !== "Lost");
+    const rates: { from: string; to: string; rate: number }[] = [];
+    for (let i = 0; i < funnelSteps.length - 1; i++) {
+      const fromStage = funnelSteps[i];
+      const toStage   = funnelSteps[i + 1];
+      const fromIdx   = funnelSteps.indexOf(fromStage);
+      const toIdx     = funnelSteps.indexOf(toStage);
+      const reachedFrom = activeCusts.filter(c => {
+        const idx = funnelSteps.indexOf(c.lead_status || "New");
+        return idx >= fromIdx;
+      }).length;
+      const reachedTo = activeCusts.filter(c => {
+        const idx = funnelSteps.indexOf(c.lead_status || "New");
+        return idx >= toIdx;
+      }).length;
+      rates.push({ from: fromStage, to: toStage, rate: reachedFrom > 0 ? Math.round((reachedTo / reachedFrom) * 100) : 0 });
+    }
+    setConversionRates(rates);
 
     // Heat score
     let hot = 0, warm = 0, cold = 0;
@@ -394,40 +434,130 @@ export default function AnalyticsPage() {
 
             {crmLoading ? <p className="mb-6 text-sm text-gray-400">Loading CRM data...</p> : (
               <>
-                {/* Lead pipeline funnel */}
-                {totalCustomers > 0 && (
-                  <div className="mb-6 rounded border p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="font-semibold">Lead Pipeline</h3>
-                      <span className="text-xs text-gray-400">{totalCustomers} total customers</span>
+                {/* ── Stage cards (clickable) ── */}
+                <div className="mb-4 rounded border p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-semibold">Lead Pipeline</h3>
+                    <span className="text-xs text-gray-400">{totalCustomers} total</span>
+                  </div>
+                  {(() => {
+                    const STAGE_COLORS: Record<string, string> = {
+                      New: "text-gray-700", Contacted: "text-blue-600", Scheduled: "text-purple-600",
+                      Measured: "text-amber-700", Quoted: "text-orange-600", Sold: "text-green-600",
+                      Installed: "text-emerald-600", Lost: "text-red-600",
+                    };
+                    return (
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+                        {stageStats.map(s => {
+                          const active = selectedStage === s.stage;
+                          return (
+                            <button key={s.stage} type="button"
+                              onClick={() => setSelectedStage(active ? null : s.stage)}
+                              className={`rounded border p-2 text-center transition-colors ${active ? "bg-black text-white border-black" : "hover:bg-gray-50"}`}>
+                              <div className={`text-xl font-bold ${active ? "text-white" : STAGE_COLORS[s.stage] ?? "text-black"}`}>{s.count}</div>
+                              <div className={`text-xs mt-0.5 ${active ? "text-gray-300" : "text-gray-500"}`}>{s.stage}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Stage drill-down */}
+                  {selectedStage && (
+                    <div className="mt-3 border-t pt-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-medium">{selectedStage}</span>
+                        <button type="button" onClick={() => setSelectedStage(null)} className="text-xs text-gray-400">✕</button>
+                      </div>
+                      {analyticsCusts.filter(c => (c.lead_status || "New") === selectedStage).length === 0
+                        ? <p className="text-sm text-gray-400">None.</p>
+                        : (
+                          <ul className="space-y-1 max-h-48 overflow-y-auto">
+                            {analyticsCusts
+                              .filter(c => (c.lead_status || "New") === selectedStage)
+                              .map(c => {
+                                const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown";
+                                const days = c.last_activity_at
+                                  ? Math.floor((Date.now() - new Date(c.last_activity_at).getTime()) / 86400000)
+                                  : null;
+                                return (
+                                  <li key={c.id}>
+                                    <Link href={`/customers/${c.id}`}
+                                      className="flex items-center justify-between rounded border px-2 py-1.5 hover:bg-gray-50 text-sm gap-2">
+                                      <span className="text-blue-600 font-medium truncate">{name}</span>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        {c.heat_score && (
+                                          <span className={`text-xs rounded px-1.5 py-0.5 ${
+                                            c.heat_score === "Hot" ? "bg-red-500 text-white" :
+                                            c.heat_score === "Cold" ? "bg-sky-400 text-white" :
+                                            "bg-amber-400 text-white"
+                                          }`}>{c.heat_score}</span>
+                                        )}
+                                        {days !== null && <span className="text-xs text-gray-400">{days}d ago</span>}
+                                      </div>
+                                    </Link>
+                                  </li>
+                                );
+                              })
+                            }
+                          </ul>
+                        )
+                      }
                     </div>
+                  )}
+                </div>
+
+                {/* ── Conversion rates ── */}
+                {conversionRates.length > 0 && (
+                  <div className="mb-4 rounded border p-4">
+                    <h3 className="font-semibold mb-3">Funnel Conversion</h3>
                     <div className="space-y-2">
-                      {stageStats.filter((s) => s.count > 0).map((s) => {
-                        const pct = Math.round((s.count / totalCustomers) * 100);
-                        const barColors: Record<string, string> = {
-                          New: "bg-gray-300", Contacted: "bg-blue-300", Scheduled: "bg-purple-300",
-                          Measured: "bg-amber-300", Quoted: "bg-orange-300", Sold: "bg-green-400",
-                          Installed: "bg-emerald-400", Lost: "bg-red-300",
-                        };
+                      {conversionRates.map(r => (
+                        <div key={r.from + r.to} className="flex items-center gap-3">
+                          <div className="w-36 shrink-0 text-xs text-gray-500">{r.from} → {r.to}</div>
+                          <div className="flex-1 rounded bg-gray-100 h-5">
+                            <div className={`h-5 rounded transition-all ${r.rate >= 60 ? "bg-green-400" : r.rate >= 30 ? "bg-amber-400" : "bg-red-300"}`}
+                              style={{ width: `${Math.max(3, r.rate)}%` }} />
+                          </div>
+                          <div className={`w-10 text-right text-sm font-bold ${r.rate >= 60 ? "text-green-600" : r.rate >= 30 ? "text-amber-600" : "text-red-500"}`}>
+                            {r.rate}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {soldCount > 0 && totalCustomers > 0 && (
+                      <div className="mt-3 text-xs text-gray-500 border-t pt-2">
+                        Overall close rate: <span className="font-semibold text-green-600">{Math.round((soldCount / totalCustomers) * 100)}%</span>
+                        <span className="ml-1">({soldCount} sold / {totalCustomers} total)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Avg days stuck per stage ── */}
+                {Object.keys(avgDaysByStage).length > 0 && (
+                  <div className="mb-6 rounded border p-4">
+                    <h3 className="font-semibold mb-3">Avg Days at Each Stage</h3>
+                    <div className="space-y-1.5">
+                      {stageStats.filter(s => s.count > 0).map(s => {
+                        const days = avgDaysByStage[s.stage] ?? 0;
+                        const warn = days > 14;
                         return (
-                          <div key={s.stage} className="flex items-center gap-2">
-                            <div className="w-20 shrink-0 text-xs text-gray-600">{s.stage}</div>
-                            <div className="flex-1 rounded bg-gray-100">
-                              <div className={`h-5 rounded ${barColors[s.stage] || "bg-gray-300"} transition-all`}
-                                style={{ width: `${Math.max(4, pct)}%` }} />
+                          <div key={s.stage} className="flex items-center gap-3 text-sm">
+                            <div className="w-24 shrink-0 text-gray-600">{s.stage}</div>
+                            <div className="flex-1 rounded bg-gray-100 h-4">
+                              <div className={`h-4 rounded transition-all ${warn ? "bg-red-300" : "bg-blue-200"}`}
+                                style={{ width: `${Math.min(100, Math.max(3, days * 2))}%` }} />
                             </div>
-                            <div className="w-8 text-right text-sm font-medium">{s.count}</div>
-                            <div className="w-8 text-right text-xs text-gray-400">{pct}%</div>
+                            <div className={`w-16 text-right text-xs font-medium ${warn ? "text-red-600" : "text-gray-600"}`}>
+                              {days}d avg {warn ? "⚠️" : ""}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
-                    {soldCount > 0 && totalCustomers > 0 && (
-                      <div className="mt-3 text-xs text-gray-500">
-                        Close rate: <span className="font-semibold text-green-600">{Math.round((soldCount / totalCustomers) * 100)}%</span>
-                        <span className="ml-1">({soldCount} sold or installed of {totalCustomers} customers)</span>
-                      </div>
-                    )}
+                    <p className="mt-2 text-xs text-gray-400">Based on days since last activity. Red = over 14 days.</p>
                   </div>
                 )}
 

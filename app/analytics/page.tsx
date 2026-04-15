@@ -82,6 +82,7 @@ export default function AnalyticsPage() {
   const [totalRevenue,  setTotalRevenue]  = useState(0);
   const [pipelineTotal, setPipelineTotal] = useState(0);
   const [avgDealSize,   setAvgDealSize]   = useState(0);
+  const [monthlyPL, setMonthlyPL] = useState<{ month: string; revenue: number; cost: number; profit: number; margin: number; deals: number }[]>([]);
 
   useEffect(() => { loadStats(); loadCrmStats(); }, [range]);
 
@@ -306,15 +307,34 @@ export default function AnalyticsPage() {
     const TYPES = ["Call", "Text", "Email", "Note", "Visit"];
     setActivityTypeStats(TYPES.filter((t) => actCounts[t] > 0).map((t) => ({ type: t, count: actCounts[t] })));
 
-    // Revenue from quotes
+    // Revenue from quotes — include created_at + cost_total for P&L
     const { data: quoteData } = await supabase
-      .from("quotes").select("total, status").gt("total", 0);
-    const quotes = (quoteData || []) as { total: number; status: string }[];
-    const sold = quotes.filter(q => q.status === "approved");
+      .from("quotes").select("total, cost_total, status, created_at").gt("total", 0);
+    const quotes = (quoteData || []) as { total: number; cost_total: number; status: string; created_at: string }[];
+    const sold     = quotes.filter(q => q.status === "approved");
     const pipeline = quotes.filter(q => q.status !== "rejected" && q.status !== "approved");
     setTotalRevenue(sold.reduce((s, q) => s + q.total, 0));
     setPipelineTotal(pipeline.reduce((s, q) => s + q.total, 0));
     setAvgDealSize(sold.length > 0 ? sold.reduce((s, q) => s + q.total, 0) / sold.length : 0);
+
+    // Monthly P&L — last 12 months of closed jobs
+    const monthMap: Record<string, { revenue: number; cost: number; deals: number }> = {};
+    sold.forEach(q => {
+      const mo = q.created_at.slice(0, 7); // "2026-04"
+      if (!monthMap[mo]) monthMap[mo] = { revenue: 0, cost: 0, deals: 0 };
+      monthMap[mo].revenue += q.total;
+      monthMap[mo].cost    += q.cost_total || 0;
+      monthMap[mo].deals   += 1;
+    });
+    const sortedMonths = Object.keys(monthMap).sort().slice(-12);
+    setMonthlyPL(sortedMonths.map(mo => {
+      const { revenue, cost, deals } = monthMap[mo];
+      const profit = revenue - cost;
+      const margin = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
+      const [yr, mn] = mo.split("-");
+      const label = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+      return { month: label, revenue, cost, profit, margin, deals };
+    }));
 
     setCrmLoading(false);
   }
@@ -470,6 +490,56 @@ export default function AnalyticsPage() {
                     <div className="text-xs text-gray-400">(closed jobs)</div>
                   </div>
                 </div>
+
+                {/* ── P&L monthly breakdown ── */}
+                {monthlyPL.length > 0 && (
+                  <div className="mb-4 rounded border overflow-hidden">
+                    <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">P&amp;L by Month</h3>
+                      <span className="text-xs text-gray-400">closed jobs only</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-gray-500">
+                            <th className="text-left px-3 py-2">Month</th>
+                            <th className="text-right px-3 py-2">Revenue</th>
+                            <th className="text-right px-3 py-2">COGS</th>
+                            <th className="text-right px-3 py-2">Gross Profit</th>
+                            <th className="text-right px-3 py-2">Margin</th>
+                            <th className="text-right px-3 py-2">Jobs</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyPL.map((row, i) => (
+                            <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                              <td className="px-3 py-2 font-medium">{row.month}</td>
+                              <td className="px-3 py-2 text-right text-green-700">${row.revenue.toFixed(0)}</td>
+                              <td className="px-3 py-2 text-right text-gray-500">${row.cost.toFixed(0)}</td>
+                              <td className="px-3 py-2 text-right font-semibold">${row.profit.toFixed(0)}</td>
+                              <td className={`px-3 py-2 text-right font-semibold ${row.margin >= 55 ? "text-green-600" : row.margin >= 40 ? "text-amber-600" : "text-red-500"}`}>
+                                {row.margin}%
+                              </td>
+                              <td className="px-3 py-2 text-right text-gray-500">{row.deals}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="border-t bg-gray-50 font-semibold">
+                          <tr>
+                            <td className="px-3 py-2">Total</td>
+                            <td className="px-3 py-2 text-right text-green-700">${monthlyPL.reduce((s, r) => s + r.revenue, 0).toFixed(0)}</td>
+                            <td className="px-3 py-2 text-right text-gray-500">${monthlyPL.reduce((s, r) => s + r.cost, 0).toFixed(0)}</td>
+                            <td className="px-3 py-2 text-right">${monthlyPL.reduce((s, r) => s + r.profit, 0).toFixed(0)}</td>
+                            <td className="px-3 py-2 text-right">
+                              {(() => { const rev = monthlyPL.reduce((s, r) => s + r.revenue, 0); const prof = monthlyPL.reduce((s, r) => s + r.profit, 0); return rev > 0 ? Math.round((prof / rev) * 100) + "%" : "—"; })()}
+                            </td>
+                            <td className="px-3 py-2 text-right text-gray-500">{monthlyPL.reduce((s, r) => s + r.deals, 0)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* ── Stage cards (clickable) ── */}
                 <div className="mb-4 rounded border p-4">

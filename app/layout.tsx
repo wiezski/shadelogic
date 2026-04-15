@@ -49,6 +49,10 @@ export default function RootLayout({
               className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
               Products
             </Link>
+            <Link href="/payments"
+              className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+              Payments
+            </Link>
           </div>
         </header>
         {children}

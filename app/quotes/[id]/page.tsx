@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import React from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
@@ -35,6 +36,9 @@ type Quote = {
   payment_notes: string | null;
   expires_at: string | null;
   valid_days: number;
+  signature_data: string | null;
+  signed_at: string | null;
+  signed_name: string | null;
 };
 
 type Material = {
@@ -141,6 +145,15 @@ export default function QuotePage() {
   const [depositPct,  setDepositPct]  = useState("50");
   const [payMethod,   setPayMethod]   = useState("check");
   const [payNotes,    setPayNotes]    = useState("");
+
+  // Signature
+  const [showSignature, setShowSignature] = useState(false);
+  const [signedName,    setSignedName]    = useState("");
+  const [signAgreed,    setSignAgreed]    = useState(false);
+  const [savingSig,     setSavingSig]     = useState(false);
+
+  // Quick-add product grid
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   // Add material form
   const [showAddMat,   setShowAddMat]   = useState(false);
@@ -375,6 +388,47 @@ export default function QuotePage() {
     setSaving(false);
   }
 
+  async function saveSignature(canvasEl: HTMLCanvasElement) {
+    if (!quote || !signedName.trim() || !signAgreed) return;
+    setSavingSig(true);
+    const sigData = canvasEl.toDataURL("image/png");
+    const now     = new Date().toISOString();
+    await supabase.from("quotes").update({
+      signature_data: sigData,
+      signed_at:      now,
+      signed_name:    signedName.trim(),
+      status:         "approved",
+      sent_at:        quote.sent_at ?? now,
+    }).eq("id", quoteId);
+    await supabase.from("customers").update({
+      lead_status:        "Sold",
+      last_activity_at:   now,
+    }).eq("id", quote.customer_id);
+    await supabase.from("activity_log").insert([{
+      customer_id: quote.customer_id, type: "note",
+      notes: `Quote approved & signed by ${signedName.trim()}. Total: ${fmtMoney(quote.total || 0)}`,
+      created_by: "ShadeLogic",
+    }]);
+    setQuote(prev => prev ? { ...prev, status: "approved", signature_data: sigData, signed_at: now, signed_name: signedName.trim() } : prev);
+    setShowSignature(false);
+    setSavingSig(false);
+  }
+
+  async function quickAddProduct(p: Product) {
+    const retail = parseFloat(fmt(p.default_cost * p.default_multiplier));
+    const { data } = await supabase.from("quote_line_items").insert([{
+      quote_id: quoteId, product_name: p.name, product_id: p.id,
+      cost: p.default_cost, multiplier: p.default_multiplier, retail,
+      is_motorized: false, motor_cost: 0, motor_retail: 0,
+      sort_order: lines.length,
+    }]).select("*").single();
+    if (data) {
+      const updated = [...lines, data as LineItem];
+      setLines(updated);
+      await recalcAndSave(updated);
+    }
+  }
+
   async function saveTitle() {
     await supabase.from("quotes").update({ title: title || null }).eq("id", quoteId);
   }
@@ -489,6 +543,25 @@ export default function QuotePage() {
           <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${statusInfo.badge}`}>{statusInfo.label}</span>
         </div>
 
+        {/* Signed banner */}
+        {quote.signed_at && quote.signed_name && (
+          <div className="rounded border border-green-300 bg-green-50 px-3 py-2 flex items-center gap-2">
+            <span className="text-green-600 text-lg">✍</span>
+            <div>
+              <div className="text-xs font-semibold text-green-800">Signed by {quote.signed_name}</div>
+              <div className="text-xs text-green-600">{new Date(quote.signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Get signature button */}
+        {quote.status !== "rejected" && !quote.signed_at && lines.length > 0 && (
+          <button onClick={() => setShowSignature(true)}
+            className="w-full rounded border border-blue-400 text-blue-700 py-2.5 text-sm font-medium hover:bg-blue-50">
+            ✍ Get Customer Signature
+          </button>
+        )}
+
         {/* Expiry warning */}
         {(() => {
           if (quote.status === "approved" || quote.status === "rejected") return null;
@@ -529,18 +602,38 @@ export default function QuotePage() {
             <div className="flex gap-2">
               <button onClick={() => setShowLinkMeasure(true)}
                 className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
-                📐 Pull from Measure
+                📐 Measure
+              </button>
+              <button onClick={() => setShowQuickAdd(v => !v)}
+                className={`rounded border px-2.5 py-1 text-xs ${showQuickAdd ? "bg-black text-white" : "hover:bg-gray-50 text-gray-600"}`}>
+                ⚡ Quick Add
               </button>
               <button onClick={() => setShowAddLine(true)}
                 className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
-                + Add Line
+                + Custom
               </button>
             </div>
           </div>
 
+          {/* Quick-add product grid */}
+          {showQuickAdd && products.length > 0 && (
+            <div className="border-b px-3 py-2 bg-gray-50">
+              <div className="text-xs text-gray-500 mb-2 font-medium">Tap to add instantly:</div>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                {products.map(p => (
+                  <button key={p.id} onClick={() => quickAddProduct(p)}
+                    className="rounded border bg-white px-2 py-2 text-left hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                    <div className="text-xs font-medium truncate">{p.name}</div>
+                    <div className="text-xs text-green-600 font-semibold">{fmtMoney(p.default_cost * p.default_multiplier)}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {lines.length === 0 ? (
             <div className="px-3 py-8 text-center text-gray-400 text-xs">
-              No line items yet. Pull from a measure job or add lines manually.
+              No line items yet. Use ⚡ Quick Add, pull from a measure job, or add a custom line.
             </div>
           ) : (
             <ul>
@@ -935,6 +1028,27 @@ export default function QuotePage() {
         </Modal>
       )}
 
+      {/* ── SIGNATURE MODAL ── */}
+      {showSignature && (
+        <Modal title="Customer Signature" onClose={() => setShowSignature(false)}>
+          <div className="space-y-3">
+            <div className="rounded bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
+              <div className="font-medium text-gray-800">{quote.title ?? "Quote"}</div>
+              <div>Total: <strong>{fmtMoney(total)}</strong></div>
+              <div>Customer: <strong>{customerName}</strong></div>
+            </div>
+
+            {/* Signature canvas */}
+            <div>
+              <div className="text-xs text-gray-500 mb-1 font-medium">Sign below:</div>
+              <SignatureCanvas onSave={saveSignature} saving={savingSig}
+                signedName={signedName} setSignedName={setSignedName}
+                agreed={signAgreed} setAgreed={setSignAgreed} />
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* ── ADD MATERIAL MODAL ── */}
       {showAddMat && (
         <Modal title="Add Material Item" onClose={() => setShowAddMat(false)}>
@@ -971,6 +1085,86 @@ export default function QuotePage() {
         </Modal>
       )}
     </main>
+  );
+}
+
+// ── Signature Canvas ──────────────────────────────────────────
+
+function SignatureCanvas({ onSave, saving, signedName, setSignedName, agreed, setAgreed }: {
+  onSave: (canvas: HTMLCanvasElement) => void;
+  saving: boolean;
+  signedName: string;
+  setSignedName: (v: string) => void;
+  agreed: boolean;
+  setAgreed: (v: boolean) => void;
+}) {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const drawing   = React.useRef(false);
+  const [hasStrokes, setHasStrokes] = React.useState(false);
+
+  function getPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const src  = "touches" in e ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  function startDraw(e: React.MouseEvent | React.TouchEvent) {
+    const canvas = canvasRef.current; if (!canvas) return;
+    e.preventDefault();
+    drawing.current = true;
+    const ctx = canvas.getContext("2d")!;
+    const pos = getPos(e, canvas);
+    ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+  }
+
+  function draw(e: React.MouseEvent | React.TouchEvent) {
+    if (!drawing.current) return;
+    const canvas = canvasRef.current; if (!canvas) return;
+    e.preventDefault();
+    const ctx = canvas.getContext("2d")!;
+    ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.strokeStyle = "#111";
+    const pos = getPos(e, canvas);
+    ctx.lineTo(pos.x, pos.y); ctx.stroke();
+    setHasStrokes(true);
+  }
+
+  function stopDraw() { drawing.current = false; }
+
+  function clear() {
+    const canvas = canvasRef.current; if (!canvas) return;
+    canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+    setHasStrokes(false);
+  }
+
+  return (
+    <div className="space-y-3">
+      <canvas
+        ref={canvasRef} width={400} height={150}
+        className="w-full border-2 border-dashed border-gray-300 rounded bg-white touch-none"
+        style={{ height: 150 }}
+        onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+        onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
+      />
+      <div className="flex justify-end">
+        <button onClick={clear} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">Type your full name to confirm *</label>
+        <input value={signedName} onChange={e => setSignedName(e.target.value)}
+          placeholder="John Smith"
+          className="w-full border rounded px-2 py-1.5 text-sm" />
+      </div>
+      <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+        <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" />
+        I agree to proceed with this quote and authorize the work described.
+      </label>
+      <button
+        onClick={() => { if (canvasRef.current) onSave(canvasRef.current); }}
+        disabled={saving || !hasStrokes || !signedName.trim() || !agreed}
+        className="w-full bg-green-600 text-white rounded py-2.5 text-sm font-semibold disabled:opacity-40">
+        {saving ? "Saving…" : "✓ Sign & Approve Quote"}
+      </button>
+    </div>
   );
 }
 

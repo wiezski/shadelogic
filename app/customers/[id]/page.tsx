@@ -386,14 +386,17 @@ export default function CustomerPage() {
   }
 
   function startVoiceInput() {
-    const SR = (window as unknown as { SpeechRecognition?: new() => SpeechRecognition; webkitSpeechRecognition?: new() => SpeechRecognition }).SpeechRecognition
-      || (window as unknown as { webkitSpeechRecognition?: new() => SpeechRecognition }).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any;
+    const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
     if (!SR) { alert("Voice input not supported in this browser."); return; }
-    const rec = new SR();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = new SR() as any;
     rec.continuous = false;
     rec.interimResults = false;
     setListening(true);
-    rec.onresult = (e: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
       const transcript = e.results[0][0].transcript;
       setActNotes((prev) => prev ? prev + " " + transcript : transcript);
       setListening(false);

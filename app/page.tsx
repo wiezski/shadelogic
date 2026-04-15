@@ -11,6 +11,17 @@ type Customer = {
   address: string | null;
   phone: string | null;
   email: string | null;
+  lead_status: string | null;
+  heat_score: string | null;
+  last_activity_at: string | null;
+};
+
+type TaskDue = {
+  id: string;
+  title: string;
+  due_date: string | null;
+  customer_id: string;
+  customer_name: string;
 };
 
 type DashboardJob = {
@@ -49,6 +60,23 @@ function daysAgo(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
+const heatStyle: Record<string, string> = {
+  Hot:  "bg-red-500 text-white",
+  Warm: "bg-amber-400 text-white",
+  Cold: "bg-sky-400 text-white",
+};
+
+const stageStyle: Record<string, string> = {
+  New:       "bg-gray-100 text-gray-600",
+  Contacted: "bg-blue-100 text-blue-700",
+  Scheduled: "bg-purple-100 text-purple-700",
+  Measured:  "bg-amber-100 text-amber-800",
+  Quoted:    "bg-orange-100 text-orange-700",
+  Sold:      "bg-green-100 text-green-700",
+  Installed: "bg-emerald-100 text-emerald-700",
+  Lost:      "bg-red-100 text-red-700",
+};
+
 type FilterKey = "measures_to_schedule" | "measures_done" | "installs_to_schedule" | "installs_scheduled" | "issues";
 
 export default function HomePage() {
@@ -62,6 +90,7 @@ export default function HomePage() {
   const [installsToSchedule, setInstallsToSchedule] = useState<DashboardJob[]>([]);
   const [installsScheduled, setInstallsScheduled] = useState<DashboardJob[]>([]);
   const [issueJobs, setIssueJobs] = useState<DashboardJob[]>([]);
+  const [tasksDue, setTasksDue] = useState<TaskDue[]>([]);
 
   // Add customer form
   const [showForm, setShowForm] = useState(false);
@@ -78,6 +107,7 @@ export default function HomePage() {
   useEffect(() => {
     loadDashboard();
     loadCustomers();
+    loadTasksDue();
   }, []);
 
   async function loadDashboard() {
@@ -147,9 +177,34 @@ export default function HomePage() {
 
   async function loadCustomers() {
     const { data } = await supabase
-      .from("customers").select("id, first_name, last_name, address, phone, email")
+      .from("customers")
+      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at")
       .order("created_at", { ascending: false });
     setCustomers((data || []) as Customer[]);
+  }
+
+  async function loadTasksDue() {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: taskData } = await supabase
+      .from("tasks")
+      .select("id, title, due_date, customer_id")
+      .eq("completed", false)
+      .lte("due_date", today)
+      .order("due_date", { ascending: true });
+    if (!taskData || taskData.length === 0) return;
+
+    const custIds = [...new Set(taskData.map((t: { customer_id: string }) => t.customer_id))];
+    const { data: custData } = await supabase
+      .from("customers").select("id, first_name, last_name").in("id", custIds);
+    const custMap: Record<string, string> = {};
+    (custData || []).forEach((c: { id: string; first_name: string | null; last_name: string | null }) => {
+      custMap[c.id] = [c.first_name, c.last_name].filter(Boolean).join(" ");
+    });
+
+    setTasksDue(taskData.map((t: { id: string; title: string; due_date: string | null; customer_id: string }) => ({
+      ...t,
+      customer_name: custMap[t.customer_id] || "Unknown",
+    })));
   }
 
   async function addCustomer(e: React.FormEvent) {
@@ -272,6 +327,33 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* Tasks due today / overdue */}
+            {tasksDue.length > 0 && (
+              <div className="mb-4 rounded border p-3">
+                <h2 className="mb-2 text-sm font-semibold">
+                  Tasks Due
+                  <span className="ml-1.5 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">{tasksDue.length}</span>
+                </h2>
+                <ul className="space-y-1.5">
+                  {tasksDue.map((t) => (
+                    <li key={t.id}>
+                      <Link href={`/customers/${t.customer_id}`} className="flex items-center justify-between rounded border p-2 hover:bg-gray-50">
+                        <div>
+                          <div className="text-sm font-medium text-blue-600">{t.title}</div>
+                          <div className="text-xs text-gray-500">{t.customer_name}</div>
+                        </div>
+                        {t.due_date && (
+                          <span className={`text-xs font-medium ${t.due_date < new Date().toISOString().slice(0, 10) ? "text-red-600" : "text-amber-600"}`}>
+                            {t.due_date < new Date().toISOString().slice(0, 10) ? "Overdue" : "Today"}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Quick actions */}
             <div className="flex gap-2">
               <button onClick={() => { setTab("customers"); setShowForm(true); }} className="rounded bg-black px-4 py-2 text-sm text-white">
@@ -317,12 +399,25 @@ export default function HomePage() {
               <ul className="space-y-2">
                 {customers.map((customer) => (
                   <li key={customer.id} className="rounded border p-3">
-                    <Link href={`/customers/${customer.id}`} className="font-semibold text-blue-600 hover:underline">
-                      {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
-                    </Link>
-                    <div className="text-sm text-gray-600">{formatAddressDisplay(customer.address)}</div>
-                    {customer.phone && <div className="text-sm text-gray-600">{customer.phone}</div>}
-                    {customer.email && <div className="text-sm text-gray-600">{customer.email}</div>}
+                    <div className="flex items-start justify-between gap-2">
+                      <Link href={`/customers/${customer.id}`} className="font-semibold text-blue-600 hover:underline">
+                        {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
+                      </Link>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {customer.heat_score && customer.heat_score !== "Warm" && (
+                          <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${heatStyle[customer.heat_score] || "bg-gray-100 text-gray-500"}`}>
+                            {customer.heat_score}
+                          </span>
+                        )}
+                        {customer.lead_status && customer.lead_status !== "New" && (
+                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${stageStyle[customer.lead_status] || "bg-gray-100 text-gray-500"}`}>
+                            {customer.lead_status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-0.5 text-sm text-gray-500">{formatAddressDisplay(customer.address)}</div>
+                    {customer.phone && <div className="text-sm text-gray-500">{customer.phone}</div>}
                   </li>
                 ))}
               </ul>

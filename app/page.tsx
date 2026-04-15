@@ -115,6 +115,7 @@ export default function HomePage() {
   const [tasksDue, setTasksDue] = useState<TaskDue[]>([]);
   const [todayAppts, setTodayAppts] = useState<TodayAppt[]>([]);
   const [readyToInstall, setReadyToInstall] = useState<{ id: string; name: string }[]>([]);
+  const [focusItems, setFocusItems] = useState<{ label: string; sub: string; href: string; color: string }[]>([]);
   const [custSearch, setCustSearch] = useState("");
   const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
   const [workQueueLoading, setWorkQueueLoading] = useState(true);
@@ -140,6 +141,7 @@ export default function HomePage() {
     loadTodayAppts();
     loadPipelineValue();
     loadReadyToInstall();
+    loadTodayFocus();
     loadWorkQueue();
   }, []);
 
@@ -238,6 +240,52 @@ export default function HomePage() {
       ...t,
       customer_name: custMap[t.customer_id] || "Unknown",
     })));
+  }
+
+  async function loadTodayFocus() {
+    const today = new Date().toISOString().slice(0, 10);
+    const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString();
+    const items: { label: string; sub: string; href: string; color: string; priority: number }[] = [];
+
+    // Overdue tasks
+    const { data: overdue } = await supabase.from("tasks")
+      .select("id, title, customer_id").eq("completed", false).lt("due_date", today).limit(3);
+    if (overdue && overdue.length > 0) {
+      const custIds = overdue.map((t: any) => t.customer_id);
+      const { data: cn } = await supabase.from("customers").select("id, first_name, last_name").in("id", custIds);
+      const nm: Record<string, string> = {};
+      (cn || []).forEach((c: any) => { nm[c.id] = [c.first_name, c.last_name].filter(Boolean).join(" "); });
+      items.push({ label: `${overdue.length} overdue task${overdue.length > 1 ? "s" : ""}`, sub: (overdue as any[])[0].title, href: `/customers/${(overdue as any[])[0].customer_id}`, color: "text-red-600", priority: 1 });
+    }
+
+    // Deposits not collected
+    const { count: depCount } = await supabase.from("quotes")
+      .select("id", { count: "exact", head: true }).eq("status", "approved").eq("deposit_paid", false).lt("created_at", threeDaysAgo);
+    if (depCount && depCount > 0) {
+      items.push({ label: `${depCount} deposit${depCount > 1 ? "s" : ""} not collected`, sub: "Collect before ordering materials", href: "/payments", color: "text-amber-600", priority: 2 });
+    }
+
+    // Quotes waiting on response
+    const { count: sentCount } = await supabase.from("quotes")
+      .select("id", { count: "exact", head: true }).eq("status", "sent").lt("created_at", threeDaysAgo);
+    if (sentCount && sentCount > 0) {
+      items.push({ label: `${sentCount} quote${sentCount > 1 ? "s" : ""} waiting for response`, sub: "Follow up today", href: "/payments", color: "text-blue-600", priority: 3 });
+    }
+
+    // Today's appointments
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const endToday   = new Date(); endToday.setHours(23, 59, 59, 999);
+    const { count: apptCount } = await supabase.from("appointments")
+      .select("id", { count: "exact", head: true })
+      .gte("scheduled_at", startToday.toISOString())
+      .lte("scheduled_at", endToday.toISOString())
+      .not("status", "in", '("canceled","completed")');
+    if (apptCount && apptCount > 0) {
+      items.push({ label: `${apptCount} appointment${apptCount > 1 ? "s" : ""} today`, sub: "View your schedule", href: "/schedule", color: "text-green-600", priority: 1 });
+    }
+
+    items.sort((a, b) => a.priority - b.priority);
+    setFocusItems(items.slice(0, 3));
   }
 
   async function loadReadyToInstall() {
@@ -528,6 +576,27 @@ export default function HomePage() {
 
         {tab === "dashboard" && (
           <>
+            {/* ── Today's Focus ── */}
+            {focusItems.length > 0 && (
+              <div className="mb-4 rounded-xl border-2 border-black p-3">
+                <div className="text-xs font-bold uppercase tracking-wide mb-2">Today's Focus</div>
+                <ul className="space-y-2">
+                  {focusItems.map((item, i) => (
+                    <li key={i}>
+                      <Link href={item.href}
+                        className="flex items-center justify-between gap-2 rounded-lg p-2 hover:bg-gray-50">
+                        <div className="min-w-0">
+                          <div className={`text-sm font-semibold ${item.color}`}>{item.label}</div>
+                          <div className="text-xs text-gray-400 truncate">{item.sub}</div>
+                        </div>
+                        <span className="text-gray-300 shrink-0">→</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* ── Sales Pipeline ── */}
             <div className="mb-1 flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Sales Pipeline</span>

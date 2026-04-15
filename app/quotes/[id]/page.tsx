@@ -146,6 +146,13 @@ export default function QuotePage() {
   const [payMethod,   setPayMethod]   = useState("check");
   const [payNotes,    setPayNotes]    = useState("");
 
+  // Templates
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [showLoadTemplate, setShowLoadTemplate] = useState(false);
+  const [templateName,     setTemplateName]     = useState("");
+  const [templates,        setTemplates]        = useState<{ id: string; name: string }[]>([]);
+  const [savingTemplate,   setSavingTemplate]   = useState(false);
+
   // Signature
   const [showSignature, setShowSignature] = useState(false);
   const [signedName,    setSignedName]    = useState("");
@@ -399,6 +406,17 @@ export default function QuotePage() {
         { customer_id: quote.customer_id, title: "Collect deposit", due_date: new Date().toISOString().slice(0, 10) },
         { customer_id: quote.customer_id, title: "Order all materials", due_date: new Date().toISOString().slice(0, 10) },
       ]);
+      // Auto-generate materials if none exist
+      const { count } = await supabase.from("quote_materials").select("id", { count: "exact", head: true }).eq("quote_id", quoteId);
+      if ((count ?? 0) === 0 && lines.length > 0) {
+        const seen = new Set<string>();
+        const toAdd = lines.filter(l => { if (seen.has(l.product_name)) return false; seen.add(l.product_name); return true; });
+        await supabase.from("quote_materials").insert(
+          toAdd.map(l => ({ quote_id: quoteId, description: `${l.product_name} (${lines.filter(x => x.product_name === l.product_name).length}x)`, status: "not_ordered" }))
+        );
+        const { data: newMats } = await supabase.from("quote_materials").select("*").eq("quote_id", quoteId);
+        if (newMats) setMaterials(newMats as Material[]);
+      }
     }
     setSaving(false);
   }
@@ -442,6 +460,50 @@ export default function QuotePage() {
       setLines(updated);
       await recalcAndSave(updated);
     }
+  }
+
+  async function loadTemplateList() {
+    const { data } = await supabase.from("quote_templates").select("id, name").order("name");
+    setTemplates((data || []) as { id: string; name: string }[]);
+  }
+
+  async function saveAsTemplate() {
+    if (!templateName.trim() || lines.length === 0) return;
+    setSavingTemplate(true);
+    const { data: tmpl } = await supabase.from("quote_templates")
+      .insert([{ name: templateName.trim() }]).select("id").single();
+    if (tmpl) {
+      await supabase.from("quote_template_lines").insert(
+        lines.map((l, i) => ({
+          template_id: tmpl.id, product_name: l.product_name, product_id: l.product_id,
+          cost: l.cost, multiplier: l.multiplier, retail: l.retail,
+          is_motorized: l.is_motorized, motor_cost: l.motor_cost, motor_retail: l.motor_retail,
+          notes: l.notes, sort_order: i,
+        }))
+      );
+    }
+    setSavingTemplate(false);
+    setShowSaveTemplate(false);
+    setTemplateName("");
+  }
+
+  async function loadFromTemplate(templateId: string) {
+    const { data: tLines } = await supabase.from("quote_template_lines")
+      .select("*").eq("template_id", templateId).order("sort_order");
+    if (!tLines || tLines.length === 0) return;
+    await supabase.from("quote_line_items").delete().eq("quote_id", quoteId);
+    const { data: inserted } = await supabase.from("quote_line_items").insert(
+      tLines.map((tl: any, i: number) => ({
+        quote_id: quoteId, product_name: tl.product_name, product_id: tl.product_id,
+        cost: tl.cost, multiplier: tl.multiplier, retail: tl.retail,
+        is_motorized: tl.is_motorized, motor_cost: tl.motor_cost, motor_retail: tl.motor_retail,
+        notes: tl.notes, sort_order: i,
+      }))
+    ).select("*");
+    const updated = (inserted || []) as LineItem[];
+    setLines(updated);
+    await recalcAndSave(updated);
+    setShowLoadTemplate(false);
   }
 
   async function saveTitle() {
@@ -643,6 +705,10 @@ export default function QuotePage() {
           <div className="flex items-center justify-between px-3 py-2 border-b">
             <div className="font-semibold text-sm">Quote Lines <span className="text-gray-400 font-normal">({lines.length})</span></div>
             <div className="flex gap-2">
+              <button onClick={() => { loadTemplateList(); setShowLoadTemplate(true); }}
+                className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
+                📄 Template
+              </button>
               <button onClick={() => setShowLinkMeasure(true)}
                 className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
                 📐 Measure
@@ -845,6 +911,16 @@ export default function QuotePage() {
           </div>
         )}
 
+        {/* Save as template */}
+        {lines.length > 0 && (
+          <div className="text-right">
+            <button onClick={() => setShowSaveTemplate(true)}
+              className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+              💾 Save as Template
+            </button>
+          </div>
+        )}
+
         {/* Notes */}
         <div className="rounded border p-3">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notes</div>
@@ -931,7 +1007,33 @@ export default function QuotePage() {
               </div>
             )}
             {materials.length === 0 ? (
-              <div className="px-3 py-6 text-center text-xs text-gray-400">No materials tracked yet. Add items as you place orders.</div>
+              <div className="px-3 py-4 text-center space-y-2">
+                <div className="text-xs text-gray-400">No materials tracked yet.</div>
+                {lines.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      // Auto-generate one material item per unique product
+                      const seen = new Set<string>();
+                      const toAdd = lines.filter(l => {
+                        if (seen.has(l.product_name)) return false;
+                        seen.add(l.product_name); return true;
+                      });
+                      const inserts = toAdd.map(l => ({
+                        quote_id: quoteId,
+                        description: `${l.product_name}${l.is_motorized ? " + Motorization" : ""} (${lines.filter(x => x.product_name === l.product_name).length}x)`,
+                        status: "not_ordered",
+                      }));
+                      if (inserts.length > 0) {
+                        const { data } = await supabase.from("quote_materials").insert(inserts).select("*");
+                        if (data) setMaterials(data as Material[]);
+                      }
+                    }}
+                    className="text-xs bg-black text-white rounded px-3 py-1.5 hover:bg-gray-800">
+                    ⚡ Generate from Quote Lines
+                  </button>
+                )}
+                <div className="text-xs text-gray-300">or add items manually above</div>
+              </div>
             ) : (
               <ul>
                 {materials.map(m => {
@@ -1080,6 +1182,48 @@ export default function QuotePage() {
               <button type="button" onClick={() => setShowAddLine(false)} className="border rounded py-2 px-4 text-sm">Cancel</button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ── SAVE TEMPLATE MODAL ── */}
+      {showSaveTemplate && (
+        <Modal title="Save as Template" onClose={() => setShowSaveTemplate(false)}>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">Name this template to reuse it on future quotes.</p>
+            <input value={templateName} onChange={e => setTemplateName(e.target.value)}
+              placeholder='e.g. "Standard Package", "Builder Spec"'
+              className="w-full border rounded px-2 py-1.5 text-sm" autoFocus />
+            <div className="flex gap-2">
+              <button onClick={saveAsTemplate} disabled={savingTemplate || !templateName.trim()}
+                className="flex-1 bg-black text-white rounded py-2 text-sm disabled:opacity-40">
+                {savingTemplate ? "Saving…" : "Save Template"}
+              </button>
+              <button onClick={() => setShowSaveTemplate(false)} className="border rounded py-2 px-4 text-sm">Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── LOAD TEMPLATE MODAL ── */}
+      {showLoadTemplate && (
+        <Modal title="Load Template" onClose={() => setShowLoadTemplate(false)}>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">Loading a template replaces all current line items.</p>
+            {templates.length === 0 ? (
+              <p className="text-sm text-gray-400">No templates saved yet. Build a quote and tap "Save as Template."</p>
+            ) : (
+              <ul className="space-y-2">
+                {templates.map(t => (
+                  <li key={t.id}>
+                    <button onClick={() => loadFromTemplate(t.id)}
+                      className="w-full text-left rounded border p-3 hover:bg-gray-50 text-sm font-medium">
+                      📄 {t.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </Modal>
       )}
 

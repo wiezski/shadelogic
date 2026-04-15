@@ -969,6 +969,18 @@ export default function QuotePage() {
         {/* Send */}
         <div className="rounded border p-3 space-y-2">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Send Quote</div>
+          {/* Customer approval link */}
+          <div className="rounded bg-blue-50 border border-blue-200 px-3 py-2 space-y-1.5">
+            <div className="text-xs text-blue-700 font-medium">📲 Customer Approval Link</div>
+            <div className="text-xs text-blue-600 font-mono break-all">
+              {typeof window !== "undefined" ? `${window.location.origin}/q/${quoteId}` : `/q/${quoteId}`}
+            </div>
+            <a
+              href={`sms:${customer?.phone ? customer.phone.replace(/\D/g,"") : ""}${/iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") ? "&" : "?"}body=${encodeURIComponent(`Hi ${customerName.split(" ")[0]}! Your quote from ${typeof window !== "undefined" ? new URL(window.location.href).hostname : "us"} is ready. View and approve here: ${typeof window !== "undefined" ? window.location.origin : ""}/q/${quoteId}`)}`}
+              className="flex items-center gap-1.5 text-xs text-blue-700 font-medium hover:underline">
+              💬 Text link to customer →
+            </a>
+          </div>
           <a href={`sms:${customer?.phone ? customer.phone.replace(/\D/g,"") : ""}${/iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") ? "&" : "?"}body=${encodeURIComponent(smsSummary)}`}
             className="flex items-center gap-2 w-full rounded border border-green-500 text-green-700 px-3 py-2 text-sm hover:bg-green-50">
             💬 Send via Text {customer?.phone ? `(${customer.phone})` : ""}

@@ -500,9 +500,25 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-white p-4 text-black">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-700">Dashboard</h1>
           <Link href="/analytics" className="text-sm text-blue-600 hover:underline">Analytics →</Link>
+        </div>
+
+        {/* Quick-actions */}
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <button onClick={() => { setTab("customers"); setShowForm(true); }}
+            className="rounded border py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex flex-col items-center gap-1">
+            <span className="text-lg">👤</span>New Customer
+          </button>
+          <Link href="/schedule"
+            className="rounded border py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex flex-col items-center gap-1 text-center">
+            <span className="text-lg">📅</span>Schedule
+          </Link>
+          <Link href="/reminders"
+            className="rounded border py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex flex-col items-center gap-1 text-center">
+            <span className="text-lg">🔔</span>Reminders
+          </Link>
         </div>
 
         <div className="mb-4 flex rounded border overflow-hidden">

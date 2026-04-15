@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
   default_deposit_pct   NUMERIC(5,2)  DEFAULT 50,
   default_markup        NUMERIC(5,2)  DEFAULT 2.50,
   default_quote_days    INTEGER       DEFAULT 30,
+  google_review_link    TEXT,
   created_at            TIMESTAMPTZ   DEFAULT NOW()
 );
 

@@ -15,6 +15,7 @@ type Settings = {
   website: string | null;
   license_number: string | null;
   tagline: string | null;
+  google_review_link: string | null;
   default_deposit_pct: number;
   default_markup: number;
   default_quote_days: number;
@@ -80,6 +81,8 @@ export default function SettingsPage() {
           <Field label="Company Name *" field="name" placeholder="Aspen Blinds" />
           <Field label="Tagline" field="tagline" placeholder="Window Treatments for Every Home" />
           <Field label="License # (optional)" field="license_number" placeholder="Utah Contractor #12345" />
+          <Field label="Google Review Link" field="google_review_link" placeholder="https://g.page/r/YOUR_ID/review" />
+          <p className="text-xs text-gray-400">Paste your Google Business review link — it goes into every review request text after installs.</p>
         </div>
 
         {/* Contact */}

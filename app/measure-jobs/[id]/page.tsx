@@ -1653,6 +1653,11 @@ export default function MeasureJobPage() {
                     <div className="mt-3 border-t pt-3 space-y-2">
                       <div className="rounded bg-green-600 text-white px-3 py-2 text-sm font-semibold">✓ Install Complete</div>
                       <a
+                        href={`sms:?body=${encodeURIComponent(`Hi! Your window treatment installation is complete. We hope you love them! 😊\n\nIf you have a moment, a Google review would mean the world to us: https://g.page/r/YOUR_GOOGLE_REVIEW_LINK\n\nThank you for choosing us!`)}`}
+                        className="flex items-center justify-center gap-1.5 w-full rounded bg-amber-500 text-white py-2 text-sm font-medium hover:bg-amber-600">
+                        ⭐ Send Review Request
+                      </a>
+                      <a
                         href={`sms:?body=${encodeURIComponent(`Hi! Your window treatment installation is complete. Thank you for choosing us — we hope you love them! Reach out anytime if you need anything.`)}`}
                         className="flex items-center justify-center gap-1.5 w-full rounded border border-blue-400 text-blue-700 py-2 text-sm hover:bg-blue-50">
                         💬 Send Follow-up Text

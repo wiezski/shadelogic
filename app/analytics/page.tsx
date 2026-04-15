@@ -336,28 +336,22 @@ export default function AnalyticsPage() {
               <div className="flex-1 border-t border-gray-200" />
             </div>
 
-            {/* Top stats — matches dashboard categories */}
+            {/* Top stats — clickable → /jobs?filter=... */}
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold">{measuresToSchedule}</div>
-                <div className="mt-1 text-xs text-gray-500">Measures to Schedule</div>
-              </div>
-              <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold text-green-600">{measuresDone}</div>
-                <div className="mt-1 text-xs text-gray-500">Measures Done</div>
-              </div>
-              <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold">{installsToSchedule}</div>
-                <div className="mt-1 text-xs text-gray-500">Installs to Schedule</div>
-              </div>
-              <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold text-blue-600">{installsScheduled}</div>
-                <div className="mt-1 text-xs text-gray-500">Installs Scheduled</div>
-              </div>
-              <div className="rounded border p-4 text-center">
-                <div className={`text-3xl font-bold ${openIssues > 0 ? "text-red-600" : "text-black"}`}>{openIssues}</div>
-                <div className="mt-1 text-xs text-gray-500">Open Issues</div>
-              </div>
+              {[
+                { key: "measures_to_schedule", label: "Measures to Schedule", count: measuresToSchedule, color: "text-black" },
+                { key: "measures_done",         label: "Measures Done",         count: measuresDone,        color: "text-green-600" },
+                { key: "installs_to_schedule",  label: "Installs to Schedule",  count: installsToSchedule,  color: "text-black" },
+                { key: "installs_scheduled",    label: "Installs Scheduled",    count: installsScheduled,   color: "text-blue-600" },
+                { key: "issues",                label: "Open Issues",           count: openIssues,          color: openIssues > 0 ? "text-red-600" : "text-black" },
+              ].map(({ key, label, count, color }) => (
+                <Link key={key} href={`/jobs?filter=${key}`}
+                  className="rounded border p-4 text-center hover:bg-gray-50 transition-colors block">
+                  <div className={`text-3xl font-bold ${color}`}>{count}</div>
+                  <div className="mt-1 text-xs text-gray-500">{label}</div>
+                  <div className="mt-1 text-xs text-blue-500">View all →</div>
+                </Link>
+              ))}
             </div>
 
             {/* Install completion % */}
@@ -415,8 +409,13 @@ export default function AnalyticsPage() {
                   <thead><tr className="border-b text-left text-xs text-gray-500"><th className="pb-2">Name</th><th className="pb-2 text-right">Jobs</th><th className="pb-2 text-right">Windows</th></tr></thead>
                   <tbody>
                     {measurerStats.map((m) => (
-                      <tr key={m.name} className="border-b last:border-0">
-                        <td className="py-2">{m.name}</td>
+                      <tr key={m.name} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="py-2">
+                          <Link href={`/jobs?measurer=${encodeURIComponent(m.name)}`}
+                            className="text-blue-600 hover:underline">
+                            {m.name}
+                          </Link>
+                        </td>
                         <td className="py-2 text-right">{m.jobs}</td>
                         <td className="py-2 text-right">{m.windows}</td>
                       </tr>

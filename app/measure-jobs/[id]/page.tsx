@@ -249,10 +249,15 @@ export default function MeasureJobPage() {
       }
       setCustomer(customerData || null);
 
+      // For converted install jobs, load rooms/windows from the source measure job
+      const roomsSourceId = (jobData.install_mode && jobData.linked_measure_id)
+        ? jobData.linked_measure_id
+        : measureJobId;
+
       const { data: roomData, error: roomError } = await supabase
         .from("rooms")
         .select("id, measure_job_id, name, room_notes, sort_order")
-        .eq("measure_job_id", measureJobId)
+        .eq("measure_job_id", roomsSourceId)
         .order("sort_order", { ascending: true });
 
       if (roomError) {
@@ -957,9 +962,16 @@ export default function MeasureJobPage() {
   return (
     <main className="p-3 text-sm text-black">
       <div className="mx-auto max-w-7xl">
-        <Link href={`/customers/${job.customer_id}`} className="text-blue-600 hover:underline">
-          ← Back to customer
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/customers/${job.customer_id}`} className="text-blue-600 hover:underline">
+            ← Back to customer
+          </Link>
+          {job.install_mode && job.linked_measure_id && (
+            <Link href={`/measure-jobs/${job.linked_measure_id}`} className="text-purple-600 hover:underline text-xs">
+              View source measure →
+            </Link>
+          )}
+        </div>
 
         <h1 className="mb-2 mt-1 text-xl font-bold">{job.title}</h1>
 

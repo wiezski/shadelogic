@@ -55,6 +55,7 @@ type CustomerOption = {
   id: string;
   name: string;
   address: string | null;
+  phone: string | null;
 };
 
 // ── Constants ──────────────────────────────────────────────────
@@ -202,7 +203,8 @@ function SchedulePageInner() {
   const [saving,        setSaving]        = useState(false);
 
   // Confirmation
-  const [confirmMsg, setConfirmMsg] = useState("");
+  const [confirmMsg,       setConfirmMsg]       = useState("");
+  const [confirmPhone,     setConfirmPhone]     = useState("");
 
   // Outcome
   const [outcome,      setOutcome]      = useState<AppointmentOutcome | null>(null);
@@ -276,10 +278,11 @@ function SchedulePageInner() {
 
   async function loadCustomers() {
     const { data } = await supabase
-      .from("customers").select("id, first_name, last_name, address")
+      .from("customers").select("id, first_name, last_name, address, phone")
       .order("last_name", { ascending: true });
     setCustomers((data || []).map((c: any) => ({
-      id: c.id, name: [c.first_name, c.last_name].filter(Boolean).join(" "), address: c.address,
+      id: c.id, name: [c.first_name, c.last_name].filter(Boolean).join(" "),
+      address: c.address, phone: c.phone ?? null,
     })));
   }
 
@@ -324,6 +327,24 @@ function SchedulePageInner() {
     setSaving(false);
     if (error) { alert("Error: " + error.message); return; }
 
+    // Auto-advance lead status based on appointment type
+    // Only move forward — never downgrade
+    const STAGE_ORDER = ["New","Contacted","Scheduled","Measured","Quoted","Sold","Installed","Lost","On Hold","Waiting"];
+    const statusMap: Partial<Record<AppointmentType, string>> = {
+      sales_consultation: "Contacted",
+      measure:            "Scheduled",
+      install:            "Sold",
+    };
+    const targetStatus = statusMap[createType];
+    if (targetStatus) {
+      const { data: custRow } = await supabase.from("customers").select("lead_status").eq("id", custId).single();
+      const currentIdx = STAGE_ORDER.indexOf(custRow?.lead_status ?? "New");
+      const targetIdx  = STAGE_ORDER.indexOf(targetStatus);
+      if (targetIdx > currentIdx) {
+        await supabase.from("customers").update({ lead_status: targetStatus, last_activity_at: new Date().toISOString() }).eq("id", custId);
+      }
+    }
+
     setShowCreate(false);
     const cust = customers.find(c => c.id === custId);
     const firstName = cust?.name?.split(" ")[0] ?? "there";
@@ -335,6 +356,7 @@ function SchedulePageInner() {
       `${createAddr ? ` at ${createAddr}` : ""}. Reply YES to confirm or call to reschedule.`
     );
     setSelectedAppt({ ...(data as any), customer_name: cust?.name ?? "Unknown", customer_address: cust?.address ?? null });
+    setConfirmPhone(cust?.phone ?? "");
     setShowConfirm(true);
     loadAppointments();
   }
@@ -440,6 +462,7 @@ function SchedulePageInner() {
       `Hi ${appt.customer_name.split(" ")[0]}! Reminder: your ${APPT_TYPES[appt.type].label} is ` +
       `${dateStr} at ${timeStr}${appt.address ? ` at ${appt.address}` : ""}. See you then!`
     );
+    setConfirmPhone(customers.find(c => c.id === appt.customer_id)?.phone ?? "");
     setShowDetail(false); setShowConfirm(true);
   }
 
@@ -447,6 +470,7 @@ function SchedulePageInner() {
     setConfirmMsg(
       `Hi ${appt.customer_name.split(" ")[0]}! I'm on my way and should arrive in about 15–20 minutes.`
     );
+    setConfirmPhone(customers.find(c => c.id === appt.customer_id)?.phone ?? "");
     setShowDetail(false); setShowConfirm(true);
   }
 
@@ -639,11 +663,20 @@ function SchedulePageInner() {
         <Modal title="Send Confirmation" onClose={() => setShowConfirm(false)}>
           <div className="space-y-3">
             <p className="text-sm text-gray-500">
-              Review and log a confirmation message for{" "}
+              Review the message for{" "}
               <span className="font-medium text-black">{selectedAppt.customer_name}</span>:
             </p>
             <textarea value={confirmMsg} onChange={e => setConfirmMsg(e.target.value)}
               rows={5} className="w-full border rounded px-2 py-1.5 text-sm" />
+
+            {/* Open in SMS app */}
+            <a
+              href={`sms:${confirmPhone ? confirmPhone.replace(/\D/g,"") : ""}${/iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") ? "&" : "?"}body=${encodeURIComponent(confirmMsg)}`}
+              className="flex items-center justify-center gap-2 w-full border border-green-600 text-green-700 rounded py-2 text-sm hover:bg-green-50"
+            >
+              💬 Open in Messages App
+            </a>
+
             <div className="flex gap-2">
               <button onClick={sendConfirmation}
                 className="flex-1 bg-black text-white rounded py-2 text-sm">
@@ -653,7 +686,7 @@ function SchedulePageInner() {
                 className="border rounded py-2 px-4 text-sm">Skip</button>
             </div>
             <p className="text-xs text-gray-400">
-              Tapping "Mark as Sent" logs this as a Text activity on the customer record.
+              "Open in Messages" pre-fills your messages app. "Mark as Sent" logs it as activity without opening Messages.
             </p>
           </div>
         </Modal>

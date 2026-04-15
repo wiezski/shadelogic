@@ -723,6 +723,18 @@ export default function CustomerPage() {
             </div>
           </div>
 
+          {/* Tap to navigate */}
+          {street && (
+            <div className="mt-2">
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent([street, city, addrState, zip].filter(Boolean).join(", "))}`}
+                target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                📍 Open in Maps →
+              </a>
+            </div>
+          )}
+
           {/* ── Phone Numbers ──────────────────────────── */}
           <div className="mt-4">
             <label className="mb-2 block text-xs font-medium text-gray-500">Phone Numbers</label>

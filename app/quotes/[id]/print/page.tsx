@@ -32,6 +32,21 @@ type LineItem = {
   notes: string | null;
 };
 
+type CompanySettings = {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  website: string | null;
+  tagline: string | null;
+  license_number: string | null;
+  default_deposit_pct: number;
+  default_quote_days: number;
+};
+
 type Customer = {
   id: string;
   first_name: string | null;
@@ -67,6 +82,7 @@ function PrintQuoteInner() {
   const [quote,    setQuote]    = useState<Quote | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [lines,    setLines]    = useState<LineItem[]>([]);
+  const [company,  setCompany]  = useState<CompanySettings | null>(null);
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
@@ -81,13 +97,15 @@ function PrintQuoteInner() {
   }, [loading, quote]);
 
   async function load() {
-    const [qRes, lRes] = await Promise.all([
+    const [qRes, lRes, coRes] = await Promise.all([
       supabase.from("quotes").select("*").eq("id", quoteId).single(),
       supabase.from("quote_line_items").select("*").eq("quote_id", quoteId).order("sort_order").order("room_name"),
+      supabase.from("company_settings").select("*").limit(1).single(),
     ]);
     if (!qRes.data) { setLoading(false); return; }
     setQuote(qRes.data as Quote);
     setLines((lRes.data || []) as LineItem[]);
+    if (coRes.data) setCompany(coRes.data as CompanySettings);
     const { data: c } = await supabase.from("customers").select("id, first_name, last_name, address, email, phone").eq("id", qRes.data.customer_id).single();
     if (c) setCustomer(c as Customer);
     setLoading(false);
@@ -144,9 +162,15 @@ function PrintQuoteInner() {
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            {/* Company name — update this once auth/settings is built */}
-            <div className="text-2xl font-bold tracking-tight text-gray-900">ShadeLogic</div>
-            <div className="text-xs text-gray-400 mt-0.5">Window Treatments</div>
+            <div className="text-2xl font-bold tracking-tight text-gray-900">{company?.name ?? "ShadeLogic"}</div>
+            {company?.tagline && <div className="text-xs text-gray-400 mt-0.5">{company.tagline}</div>}
+            {company?.phone  && <div className="text-xs text-gray-500 mt-0.5">{company.phone}</div>}
+            {company?.email  && <div className="text-xs text-gray-500">{company.email}</div>}
+            {company?.website && <div className="text-xs text-gray-500">{company.website}</div>}
+            {(company?.city || company?.state) && (
+              <div className="text-xs text-gray-500">{[company.address, company.city, company.state, company.zip].filter(Boolean).join(", ")}</div>
+            )}
+            {company?.license_number && <div className="text-xs text-gray-400 mt-0.5">{company.license_number}</div>}
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-gray-300 tracking-wide">QUOTE</div>
@@ -247,8 +271,8 @@ function PrintQuoteInner() {
 
         {/* Terms */}
         <div className="text-xs text-gray-400 space-y-1 border-t border-gray-100 pt-4">
-          <div>• Quote valid for {quote.valid_days || 30} days from date issued ({expiryDate}).</div>
-          <div>• 50% deposit required to place order. Balance due upon completion.</div>
+          <div>• Quote valid for {quote.valid_days || company?.default_quote_days || 30} days from date issued ({expiryDate}).</div>
+          <div>• {company?.default_deposit_pct ?? 50}% deposit required to place order. Balance due upon completion.</div>
           <div>• Prices are subject to change after expiry.</div>
           <div>• Lead times vary by product and manufacturer — estimated at time of order.</div>
         </div>

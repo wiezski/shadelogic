@@ -385,6 +385,21 @@ export default function QuotePage() {
         created_by: "ShadeLogic",
       }]);
     }
+    // Auto-create follow-up tasks
+    if (newStatus === "sent") {
+      const followUpDate = new Date(); followUpDate.setDate(followUpDate.getDate() + 3);
+      await supabase.from("tasks").insert([{
+        customer_id: quote.customer_id,
+        title: `Follow up on quote — ${fmtMoney(quote.total || 0)}`,
+        due_date: followUpDate.toISOString().slice(0, 10),
+      }]);
+    }
+    if (newStatus === "approved") {
+      await supabase.from("tasks").insert([
+        { customer_id: quote.customer_id, title: "Collect deposit", due_date: new Date().toISOString().slice(0, 10) },
+        { customer_id: quote.customer_id, title: "Order all materials", due_date: new Date().toISOString().slice(0, 10) },
+      ]);
+    }
     setSaving(false);
   }
 
@@ -444,6 +459,12 @@ export default function QuotePage() {
     setQuote(prev => prev ? { ...prev, ...updates } : prev);
     await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Deposit received: ${fmtMoney(depAmt)} (${payMethod})`, created_by: "ShadeLogic" }]);
     await supabase.from("customers").update({ last_activity_at: new Date().toISOString() }).eq("id", quote.customer_id);
+    // Auto-task: order materials now that deposit is in
+    await supabase.from("tasks").insert([{
+      customer_id: quote.customer_id,
+      title: "Order all materials — deposit received",
+      due_date: new Date().toISOString().slice(0, 10),
+    }]);
   }
 
   async function markBalancePaid() {
@@ -522,10 +543,32 @@ export default function QuotePage() {
         </div>
 
         {/* New quote banner */}
-        {isNew && (
-          <div className="rounded-lg bg-orange-500 text-white px-4 py-3">
-            <div className="font-bold text-lg">📋 New Quote Created</div>
-            <div className="text-sm opacity-90 mt-0.5">Pull windows from the measure job to build your line items, then send.</div>
+        {isNew && lines.length === 0 && (
+          <div className="rounded-lg bg-orange-500 text-white px-4 py-3 space-y-2">
+            <div className="font-bold text-lg">📋 New Quote</div>
+            {quote.linked_measure_id ? (
+              <>
+                <div className="text-sm opacity-90">A measure job is linked. Pull the windows to build your line items:</div>
+                <button
+                  onClick={() => pullFromMeasure(quote.linked_measure_id!)}
+                  disabled={pulling}
+                  className="w-full rounded bg-white text-orange-600 font-semibold py-2 text-sm disabled:opacity-50">
+                  {pulling ? "Pulling windows…" : "📐 Pull Windows from Measure →"}
+                </button>
+              </>
+            ) : measureJobs.length > 0 ? (
+              <>
+                <div className="text-sm opacity-90">Link a measure job to pull in all the windows:</div>
+                <button onClick={() => setShowLinkMeasure(true)}
+                  className="w-full rounded bg-white text-orange-600 font-semibold py-2 text-sm">
+                  📐 Select Measure Job →
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-sm opacity-90">No measure job yet — use ⚡ Quick Add to build this quote from scratch.</div>
+              </>
+            )}
           </div>
         )}
 

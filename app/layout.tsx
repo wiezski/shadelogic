@@ -53,6 +53,14 @@ export default function RootLayout({
               className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
               Payments
             </Link>
+            <Link href="/reminders"
+              className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+              Reminders
+            </Link>
+            <Link href="/settings"
+              className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+              Settings
+            </Link>
           </div>
         </header>
         {children}

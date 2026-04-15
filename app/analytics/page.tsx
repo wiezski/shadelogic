@@ -339,6 +339,25 @@ export default function AnalyticsPage() {
     setCrmLoading(false);
   }
 
+  async function exportCSV() {
+    const { data: custs } = await supabase.from("customers")
+      .select("first_name, last_name, phone, email, lead_status, heat_score, lead_source, address, created_at")
+      .order("created_at", { ascending: false });
+    if (!custs || custs.length === 0) { alert("No customers to export."); return; }
+
+    const header = ["First Name","Last Name","Phone","Email","Status","Heat","Source","Address","Created"];
+    const rows = custs.map((c: any) => {
+      const addr = c.address ? c.address.replace(/\|/g, ", ") : "";
+      return [c.first_name ?? "", c.last_name ?? "", c.phone ?? "", c.email ?? "", c.lead_status ?? "", c.heat_score ?? "", c.lead_source ?? "", addr, c.created_at?.slice(0,10) ?? ""];
+    });
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = `shadelogic-customers-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
   function toggleIssueExpand(issueType: string) {
     setIssueStats((prev) => prev.map((s) => s.issue_type === issueType ? { ...s, expanded: !s.expanded } : s));
   }
@@ -348,7 +367,12 @@ export default function AnalyticsPage() {
   return (
     <main className="min-h-screen bg-white p-6 text-black">
       <div className="mx-auto max-w-3xl">
-        <Link href="/" className="mb-4 inline-block text-blue-600 hover:underline">← Back</Link>
+        <div className="mb-4 flex items-center justify-between">
+          <Link href="/" className="text-blue-600 hover:underline text-sm">← Back</Link>
+          <button onClick={exportCSV} className="text-xs border rounded px-2.5 py-1.5 text-gray-600 hover:bg-gray-50">
+            ⬇ Export CSV
+          </button>
+        </div>
 
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Analytics</h1>

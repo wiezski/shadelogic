@@ -1211,6 +1211,75 @@ export default function CustomerPage() {
             </ul>
           )}
         </div>
+        {/* ── Timeline ─────────────────────────────────── */}
+        <div className="rounded border p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">Timeline</h2>
+          {(() => {
+            type Event = { date: string; label: string; sub?: string; icon: string; color: string };
+            const events: Event[] = [];
+
+            // Activities
+            activities.forEach(a => {
+              const icons: Record<string, string> = { Call: "📞", Text: "💬", Email: "📧", Note: "📝", Visit: "🚗" };
+              const colors: Record<string, string> = { Call: "text-green-600", Text: "text-blue-600", Email: "text-purple-600", Note: "text-gray-500", Visit: "text-amber-600" };
+              events.push({ date: a.created_at, label: `${a.type}${a.notes ? `: ${a.notes.slice(0, 60)}${a.notes.length > 60 ? "…" : ""}` : ""}`, icon: icons[a.type] ?? "📝", color: colors[a.type] ?? "text-gray-500" });
+            });
+
+            // Tasks
+            tasks.forEach(t => {
+              if (t.completed && t.completed_at) events.push({ date: t.completed_at, label: `Task completed: ${t.title}`, icon: "✅", color: "text-green-600" });
+            });
+
+            // Quotes
+            quotes.forEach(q => {
+              events.push({ date: q.created_at, label: `Quote created: ${q.title ?? "Untitled"}`, sub: q.amount ? `$${q.amount}` : undefined, icon: "📋", color: "text-orange-500" });
+            });
+
+            // Appointments
+            appts.forEach(a => {
+              const APPT_LABELS: Record<string, string> = { sales_consultation: "Sales Consult", measure: "Measure", install: "Install", service_call: "Service Call", repair: "Repair", site_walk: "Site Walk", punch: "Punch Visit" };
+              if (a.status === "completed") events.push({ date: a.scheduled_at, label: `Appointment: ${APPT_LABELS[a.type] ?? a.type}`, sub: a.outcome?.replace(/_/g, " ") ?? undefined, icon: "📅", color: "text-indigo-600" });
+            });
+
+            // Measure jobs
+            jobs.filter(j => !j.install_mode).forEach(j => {
+              events.push({ date: j.created_at, label: `Measure job created: ${j.title}`, icon: "📐", color: "text-purple-600" });
+            });
+            jobs.filter(j => j.install_mode).forEach(j => {
+              events.push({ date: j.created_at, label: `Install job created: ${j.title}`, icon: "🔧", color: "text-green-600" });
+            });
+
+            if (events.length === 0) return <p className="text-sm text-gray-400">No activity yet.</p>;
+
+            // Sort newest first
+            events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            return (
+              <div className="relative">
+                <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-100" />
+                <ul className="space-y-3">
+                  {events.map((e, i) => (
+                    <li key={i} className="flex gap-3 relative">
+                      <div className={`shrink-0 w-7 h-7 rounded-full bg-white border flex items-center justify-center text-sm z-10`}>
+                        {e.icon}
+                      </div>
+                      <div className="min-w-0 pt-0.5">
+                        <div className={`text-sm ${e.color}`}>{e.label}</div>
+                        {e.sub && <div className="text-xs text-gray-400">{e.sub}</div>}
+                        <div className="text-xs text-gray-300 mt-0.5">
+                          {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {" "}
+                          {new Date(e.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
+        </div>
+
       </div>
     </main>
   );

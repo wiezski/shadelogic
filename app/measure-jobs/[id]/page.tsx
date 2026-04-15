@@ -200,6 +200,7 @@ export default function MeasureJobPage() {
 
   const [job, setJob] = useState<MeasureJob | null>(null);
   const [convertingToInstall, setConvertingToInstall] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [windows, setWindows] = useState<WindowItem[]>([]);
@@ -645,6 +646,42 @@ export default function MeasureJobPage() {
     setInstallCompleting(false);
   }
 
+  async function duplicateJob() {
+    if (!job) return;
+    if (!confirm("Duplicate this measure job? All rooms and windows will be copied.")) return;
+    setDuplicating(true);
+    const newTitle = job.title + " (Copy)";
+    const { data: newJob, error } = await supabase
+      .from("measure_jobs")
+      .insert([{ customer_id: job.customer_id, title: newTitle, install_mode: false }])
+      .select("id").single();
+    if (error || !newJob) { alert("Error: " + error?.message); setDuplicating(false); return; }
+
+    // Duplicate rooms + windows
+    for (const room of rooms) {
+      const { data: newRoom } = await supabase
+        .from("rooms")
+        .insert([{ measure_job_id: newJob.id, name: room.name, room_notes: room.room_notes, sort_order: room.sort_order }])
+        .select("id").single();
+      if (!newRoom) continue;
+      const roomWins = windows.filter(w => w.room_id === room.id);
+      if (roomWins.length > 0) {
+        await supabase.from("windows").insert(
+          roomWins.map(w => ({
+            room_id: newRoom.id, sort_order: w.sort_order, product: w.product,
+            lift_system: w.lift_system, width: w.width, height: w.height,
+            mount_type: w.mount_type, casing_depth: w.casing_depth,
+            control_side: w.control_side, hold_downs: w.hold_downs,
+            metal_or_concrete: w.metal_or_concrete, over_10_ft: w.over_10_ft,
+            takedown: w.takedown, notes: w.notes,
+          }))
+        );
+      }
+    }
+    setDuplicating(false);
+    router.push(`/measure-jobs/${newJob.id}`);
+  }
+
   async function convertToInstall() {
     if (!job) return;
     if (!confirm("Create a separate Install job for this customer? The measure record will stay as-is.")) return;
@@ -1036,14 +1073,22 @@ export default function MeasureJobPage() {
   return (
     <main className="p-3 text-sm text-black">
       <div className="mx-auto max-w-7xl">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link href={`/customers/${job.customer_id}`} className="text-blue-600 hover:underline">
-            ← Back to customer
-          </Link>
-          {job.install_mode && job.linked_measure_id && (
-            <Link href={`/measure-jobs/${job.linked_measure_id}`} className="text-purple-600 hover:underline text-xs">
-              View source measure →
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href={`/customers/${job.customer_id}`} className="text-blue-600 hover:underline">
+              ← Back to customer
             </Link>
+            {job.install_mode && job.linked_measure_id && (
+              <Link href={`/measure-jobs/${job.linked_measure_id}`} className="text-purple-600 hover:underline text-xs">
+                View measurements →
+              </Link>
+            )}
+          </div>
+          {!job.install_mode && (
+            <button onClick={duplicateJob} disabled={duplicating}
+              className="text-xs border rounded px-2.5 py-1 text-gray-500 hover:bg-gray-50 disabled:opacity-50">
+              {duplicating ? "Copying…" : "⎘ Duplicate Job"}
+            </button>
           )}
         </div>
 

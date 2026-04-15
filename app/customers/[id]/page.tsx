@@ -20,7 +20,12 @@ type Customer = {
   preferred_contact: string | null;
   next_action: string | null;
   created_at: string;
+  tags: string[] | null;
+  lead_source: string | null;
 };
+
+const PRESET_TAGS = ["Builder", "High-end", "Motorized", "Retrofit", "New Construction", "Referral", "Repeat Customer"];
+const LEAD_SOURCES = ["Referral", "Website", "Google", "Facebook", "Door Hanger", "Repeat", "Builder", "Other"];
 
 type CustomerPhone = {
   id: string;
@@ -321,7 +326,7 @@ export default function CustomerPage() {
   async function loadCustomer() {
     const { data } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at, preferred_contact, next_action, created_at")
+      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at, preferred_contact, next_action, created_at, tags, lead_source")
       .eq("id", customerId)
       .single();
     if (data) {
@@ -719,6 +724,47 @@ export default function CustomerPage() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* ── Tags + Lead Source ───────────────────────── */}
+        <div className="mb-5 rounded border p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">Tags & Source</h2>
+          <div className="mb-3">
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">Tags</label>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_TAGS.map(tag => {
+                const active = (customer.tags ?? []).includes(tag);
+                return (
+                  <button key={tag} type="button"
+                    onClick={async () => {
+                      const current = customer.tags ?? [];
+                      const updated = active ? current.filter(t => t !== tag) : [...current, tag];
+                      updateLocal("tags", updated);
+                      await supabase.from("customers").update({ tags: updated }).eq("id", customerId);
+                    }}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${
+                      active ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300 hover:border-gray-500"
+                    }`}>
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Lead Source</label>
+            <select
+              value={customer.lead_source ?? ""}
+              onChange={async e => {
+                const val = e.target.value || null;
+                updateLocal("lead_source", val);
+                await supabase.from("customers").update({ lead_source: val }).eq("id", customerId);
+              }}
+              className="w-full border rounded px-2 py-1.5 text-sm">
+              <option value="">— Not set —</option>
+              {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
         </div>
 

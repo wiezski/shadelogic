@@ -114,6 +114,8 @@ export default function HomePage() {
   const [issueJobs, setIssueJobs] = useState<DashboardJob[]>([]);
   const [tasksDue, setTasksDue] = useState<TaskDue[]>([]);
   const [todayAppts, setTodayAppts] = useState<TodayAppt[]>([]);
+  const [readyToInstall, setReadyToInstall] = useState<{ id: string; name: string }[]>([]);
+  const [custSearch, setCustSearch] = useState("");
   const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
   const [workQueueLoading, setWorkQueueLoading] = useState(true);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
@@ -137,6 +139,7 @@ export default function HomePage() {
     loadTasksDue();
     loadTodayAppts();
     loadPipelineValue();
+    loadReadyToInstall();
     loadWorkQueue();
   }, []);
 
@@ -234,6 +237,19 @@ export default function HomePage() {
     setTasksDue(taskData.map((t: { id: string; title: string; due_date: string | null; customer_id: string }) => ({
       ...t,
       customer_name: custMap[t.customer_id] || "Unknown",
+    })));
+  }
+
+  async function loadReadyToInstall() {
+    // Customers whose next_action contains "ready to schedule install"
+    const { data } = await supabase
+      .from("customers")
+      .select("id, first_name, last_name")
+      .ilike("next_action", "%ready to schedule install%")
+      .not("lead_status", "in", '("Installed","Complete")');
+    setReadyToInstall((data || []).map((c: any) => ({
+      id: c.id,
+      name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown",
     })));
   }
 
@@ -636,6 +652,30 @@ export default function HomePage() {
             )}
 
             {/* Today's appointments */}
+            {/* Ready to Install */}
+            {readyToInstall.length > 0 && (
+              <div className="mb-4 rounded border border-green-300 bg-green-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-green-800">
+                    ✓ Ready to Install
+                    <span className="ml-1.5 rounded bg-green-200 text-green-800 px-1.5 py-0.5 text-xs font-medium">{readyToInstall.length}</span>
+                  </h2>
+                  <span className="text-xs text-green-600">All materials received</span>
+                </div>
+                <ul className="space-y-1">
+                  {readyToInstall.map(c => (
+                    <li key={c.id}>
+                      <Link href={`/customers/${c.id}`}
+                        className="flex items-center justify-between rounded border border-green-200 bg-white p-2 hover:bg-green-50">
+                        <span className="text-sm font-medium text-green-800">{c.name}</span>
+                        <span className="text-xs text-green-600">Schedule install →</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {todayAppts.length > 0 && (() => {
               const now = new Date();
               const nextAppt = todayAppts.find(a =>
@@ -749,11 +789,20 @@ export default function HomePage() {
 
         {tab === "customers" && (
           <>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold">Customers ({customers.length})</h2>
-              <button onClick={() => setShowForm((v) => !v)} className="rounded bg-black px-3 py-1 text-sm text-white">
-                {showForm ? "Cancel" : "+ Add Customer"}
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="font-semibold shrink-0">Customers ({customers.length})</h2>
+              <button onClick={() => setShowForm((v) => !v)} className="shrink-0 rounded bg-black px-3 py-1 text-sm text-white">
+                {showForm ? "Cancel" : "+ New"}
               </button>
+            </div>
+            <div className="mb-3">
+              <input
+                type="search"
+                placeholder="Search by name, address, phone…"
+                value={custSearch}
+                onChange={e => setCustSearch(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm"
+              />
             </div>
 
             {showForm && (
@@ -777,11 +826,19 @@ export default function HomePage() {
               </form>
             )}
 
-            {customers.length === 0 ? (
-              <p className="text-gray-500">No customers yet.</p>
-            ) : (
+            {(() => {
+              const q = custSearch.toLowerCase();
+              const filtered = q
+                ? customers.filter(c =>
+                    [c.first_name, c.last_name, c.address, c.phone, c.email]
+                      .filter(Boolean).join(" ").toLowerCase().includes(q)
+                  )
+                : customers;
+              return filtered.length === 0 ? (
+                <p className="text-gray-500">{custSearch ? "No customers match." : "No customers yet."}</p>
+              ) : (
               <ul className="space-y-2">
-                {customers.map((customer) => (
+                {filtered.map((customer) => (
                   <li key={customer.id} className="rounded border p-3">
                     <div className="flex items-start justify-between gap-2">
                       <Link href={`/customers/${customer.id}`} className="font-semibold text-blue-600 hover:underline">
@@ -805,7 +862,8 @@ export default function HomePage() {
                   </li>
                 ))}
               </ul>
-            )}
+              );
+            })()}
           </>
         )}
       </div>

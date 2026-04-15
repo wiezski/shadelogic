@@ -33,6 +33,8 @@ type Quote = {
   balance_paid_at: string | null;
   payment_method: string | null;
   payment_notes: string | null;
+  expires_at: string | null;
+  valid_days: number;
 };
 
 type Material = {
@@ -455,9 +457,15 @@ export default function QuotePage() {
     <main className="min-h-screen bg-white p-4 text-black text-sm pb-16">
       <div className="mx-auto max-w-3xl space-y-4">
 
-        <Link href={`/customers/${quote.customer_id}`} className="text-blue-600 hover:underline text-sm">
-          ← Back to {customerName}
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link href={`/customers/${quote.customer_id}`} className="text-blue-600 hover:underline text-sm">
+            ← Back to {customerName}
+          </Link>
+          <a href={`/quotes/${quoteId}/print`} target="_blank" rel="noreferrer"
+            className="text-xs border rounded px-2.5 py-1.5 text-gray-600 hover:bg-gray-50">
+            🖨 Print / PDF
+          </a>
+        </div>
 
         {/* New quote banner */}
         {isNew && (
@@ -480,6 +488,23 @@ export default function QuotePage() {
           </div>
           <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${statusInfo.badge}`}>{statusInfo.label}</span>
         </div>
+
+        {/* Expiry warning */}
+        {(() => {
+          if (quote.status === "approved" || quote.status === "rejected") return null;
+          const expiry = quote.expires_at
+            ? new Date(quote.expires_at)
+            : (() => { const d = new Date(quote.created_at); d.setDate(d.getDate() + (quote.valid_days || 30)); return d; })();
+          const daysLeft = Math.ceil((expiry.getTime() - Date.now()) / 86400000);
+          if (daysLeft > 7) return null;
+          return (
+            <div className={`rounded px-3 py-2 text-xs font-medium ${daysLeft <= 0 ? "bg-red-50 border border-red-200 text-red-700" : "bg-amber-50 border border-amber-200 text-amber-700"}`}>
+              {daysLeft <= 0 ? "⚠ Quote expired" : `⚠ Expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`}
+              {" — "}
+              {expiry.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </div>
+          );
+        })()}
 
         {/* Status */}
         <div className="rounded border p-3">

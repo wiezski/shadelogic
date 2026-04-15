@@ -25,7 +25,39 @@ type Quote = {
   subtotal: number;
   total: number;
   cost_total: number;
+  deposit_pct: number;
+  deposit_paid: boolean;
+  deposit_paid_at: string | null;
+  deposit_amount: number;
+  balance_paid: boolean;
+  balance_paid_at: string | null;
+  payment_method: string | null;
+  payment_notes: string | null;
 };
+
+type Material = {
+  id: string;
+  quote_id: string;
+  description: string;
+  status: string;
+  vendor: string | null;
+  order_number: string | null;
+  tracking_number: string | null;
+  ordered_at: string | null;
+  shipped_at: string | null;
+  received_at: string | null;
+  notes: string | null;
+};
+
+const MATERIAL_STATUSES = [
+  { value: "not_ordered", label: "Not Ordered", color: "bg-gray-100 text-gray-600" },
+  { value: "ordered",     label: "Ordered",     color: "bg-blue-100 text-blue-700" },
+  { value: "shipped",     label: "Shipped",     color: "bg-amber-100 text-amber-700" },
+  { value: "received",    label: "Received",    color: "bg-green-100 text-green-700" },
+  { value: "staged",      label: "Staged ✓",    color: "bg-emerald-100 text-emerald-700" },
+];
+
+const PAYMENT_METHODS = ["cash", "check", "card", "venmo", "zelle", "other"];
 
 type LineItem = {
   id: string;
@@ -101,6 +133,19 @@ export default function QuotePage() {
   const [measureJobs, setMeasureJobs] = useState<MeasureJob[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
+  const [materials,   setMaterials]   = useState<Material[]>([]);
+
+  // Payment state
+  const [depositPct,  setDepositPct]  = useState("50");
+  const [payMethod,   setPayMethod]   = useState("check");
+  const [payNotes,    setPayNotes]    = useState("");
+
+  // Add material form
+  const [showAddMat,   setShowAddMat]   = useState(false);
+  const [matDesc,      setMatDesc]      = useState("");
+  const [matVendor,    setMatVendor]    = useState("");
+  const [matOrderNum,  setMatOrderNum]  = useState("");
+  const [savingMat,    setSavingMat]    = useState(false);
 
   // Editing state
   const [editingLine, setEditingLine] = useState<string | null>(null);
@@ -136,17 +181,22 @@ export default function QuotePage() {
     setNotes(quoteData.notes ?? "");
     setDiscount(String(quoteData.discount_amount ?? 0));
 
-    const [cRes, lRes, pRes, mRes] = await Promise.all([
+    const [cRes, lRes, pRes, mRes, matRes] = await Promise.all([
       supabase.from("customers").select("id, first_name, last_name, phone, email").eq("id", quoteData.customer_id).single(),
       supabase.from("quote_line_items").select("*").eq("quote_id", quoteId).order("sort_order").order("room_name").order("window_label"),
       supabase.from("product_catalog").select("id, name, category, default_cost, default_multiplier").eq("active", true).order("name"),
       supabase.from("measure_jobs").select("id, title").eq("customer_id", quoteData.customer_id).eq("install_mode", false).order("created_at", { ascending: false }),
+      supabase.from("quote_materials").select("*").eq("quote_id", quoteId).order("created_at"),
     ]);
 
     if (cRes.data) setCustomer(cRes.data as Customer);
     setLines((lRes.data || []) as LineItem[]);
     setProducts((pRes.data || []) as Product[]);
     setMeasureJobs((mRes.data || []) as MeasureJob[]);
+    setMaterials((matRes.data || []) as Material[]);
+    setDepositPct(String(quoteData.deposit_pct ?? 50));
+    setPayMethod(quoteData.payment_method ?? "check");
+    setPayNotes(quoteData.payment_notes ?? "");
     setLoading(false);
   }
 
@@ -328,6 +378,59 @@ export default function QuotePage() {
   }
   async function saveNotes() {
     await supabase.from("quotes").update({ notes: notes || null }).eq("id", quoteId);
+  }
+
+  async function markDepositPaid() {
+    if (!quote) return;
+    const depAmt = parseFloat(fmt((quote.total || 0) * (parseFloat(depositPct) / 100)));
+    const updates = { deposit_paid: true, deposit_paid_at: new Date().toISOString(), deposit_amount: depAmt, deposit_pct: parseFloat(depositPct), payment_method: payMethod, payment_notes: payNotes || null };
+    await supabase.from("quotes").update(updates).eq("id", quoteId);
+    setQuote(prev => prev ? { ...prev, ...updates } : prev);
+    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Deposit received: ${fmtMoney(depAmt)} (${payMethod})`, created_by: "ShadeLogic" }]);
+    await supabase.from("customers").update({ last_activity_at: new Date().toISOString() }).eq("id", quote.customer_id);
+  }
+
+  async function markBalancePaid() {
+    if (!quote) return;
+    const updates = { balance_paid: true, balance_paid_at: new Date().toISOString(), payment_method: payMethod, payment_notes: payNotes || null };
+    await supabase.from("quotes").update(updates).eq("id", quoteId);
+    setQuote(prev => prev ? { ...prev, ...updates } : prev);
+    const balAmt = (quote.total || 0) - (quote.deposit_amount || 0);
+    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Balance received: ${fmtMoney(balAmt)} (${payMethod}). Job fully paid.`, created_by: "ShadeLogic" }]);
+    await supabase.from("customers").update({ last_activity_at: new Date().toISOString(), lead_status: "Installed" }).eq("id", quote.customer_id);
+  }
+
+  async function addMaterial(e: React.FormEvent) {
+    e.preventDefault();
+    if (!matDesc.trim()) return;
+    setSavingMat(true);
+    const { data } = await supabase.from("quote_materials").insert([{
+      quote_id: quoteId, description: matDesc.trim(), vendor: matVendor.trim() || null, order_number: matOrderNum.trim() || null, status: "not_ordered",
+    }]).select("*").single();
+    if (data) setMaterials(prev => [...prev, data as Material]);
+    setMatDesc(""); setMatVendor(""); setMatOrderNum("");
+    setSavingMat(false); setShowAddMat(false);
+  }
+
+  async function updateMaterialStatus(id: string, status: string) {
+    const now = new Date().toISOString();
+    const timeFields: Record<string, string> = { ordered: "ordered_at", shipped: "shipped_at", received: "received_at" };
+    const update: any = { status };
+    if (timeFields[status]) update[timeFields[status]] = now;
+    await supabase.from("quote_materials").update(update).eq("id", id);
+    setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...update } : m));
+
+    // If all materials are received/staged, flag customer as ready to install
+    const updated = materials.map(m => m.id === id ? { ...m, status } : m);
+    const allReady = updated.length > 0 && updated.every(m => m.status === "received" || m.status === "staged");
+    if (allReady && quote) {
+      await supabase.from("customers").update({ next_action: "All materials received — ready to schedule install" }).eq("id", quote.customer_id);
+    }
+  }
+
+  async function deleteMaterial(id: string) {
+    await supabase.from("quote_materials").delete().eq("id", id);
+    setMaterials(prev => prev.filter(m => m.id !== id));
   }
 
   // ── Render ────────────────────────────────────────────────────
@@ -589,6 +692,119 @@ export default function QuotePage() {
             className="w-full border rounded px-2 py-1.5 text-sm" />
         </div>
 
+        {/* ── PAYMENTS ── */}
+        {quote.status === "approved" && (
+          <div className="rounded border p-4 space-y-3">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payments</div>
+            {/* Deposit */}
+            <div className="rounded bg-gray-50 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Deposit</span>
+                {quote.deposit_paid
+                  ? <span className="text-xs rounded px-2 py-0.5 bg-green-100 text-green-700 font-medium">✓ Paid {new Date(quote.deposit_paid_at!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                  : <span className="text-xs text-amber-600 font-medium">Pending</span>
+                }
+              </div>
+              {!quote.deposit_paid && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Deposit %</span>
+                    <input type="number" min="0" max="100" value={depositPct} onChange={e => setDepositPct(e.target.value)}
+                      className="w-16 border rounded px-2 py-1 text-xs text-center" />
+                    <span className="text-xs text-gray-500">= <strong>{fmtMoney((quote.total || 0) * (parseFloat(depositPct) / 100))}</strong></span>
+                  </div>
+                  <div className="flex gap-2">
+                    <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1">
+                      {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                    </select>
+                    <button onClick={markDepositPaid} className="bg-green-600 text-white rounded px-3 py-1 text-xs font-medium">Mark Paid</button>
+                  </div>
+                </>
+              )}
+              {quote.deposit_paid && !quote.balance_paid && (
+                <div className="text-xs text-gray-500">{fmtMoney(quote.deposit_amount || 0)} received · Balance due: <strong>{fmtMoney((quote.total || 0) - (quote.deposit_amount || 0))}</strong></div>
+              )}
+            </div>
+            {/* Balance */}
+            {quote.deposit_paid && (
+              <div className="rounded bg-gray-50 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Balance</span>
+                  {quote.balance_paid
+                    ? <span className="text-xs rounded px-2 py-0.5 bg-green-100 text-green-700 font-medium">✓ Paid {new Date(quote.balance_paid_at!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    : <span className="text-xs text-amber-600 font-medium">{fmtMoney((quote.total || 0) - (quote.deposit_amount || 0))} due</span>
+                  }
+                </div>
+                {!quote.balance_paid && (
+                  <div className="flex gap-2">
+                    <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1">
+                      {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                    </select>
+                    <button onClick={markBalancePaid} className="bg-green-600 text-white rounded px-3 py-1 text-xs font-medium">Mark Paid</button>
+                  </div>
+                )}
+                {quote.balance_paid && <div className="text-xs text-green-600 font-medium">✓ Fully paid</div>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── MATERIALS ── */}
+        {quote.status === "approved" && (
+          <div className="rounded border">
+            <div className="flex items-center justify-between px-3 py-2 border-b">
+              <div className="font-semibold text-sm">
+                Materials
+                {materials.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-gray-400">
+                    {materials.filter(m => m.status === "received" || m.status === "staged").length}/{materials.length} received
+                  </span>
+                )}
+              </div>
+              <button onClick={() => setShowAddMat(true)} className="text-xs border rounded px-2 py-1 hover:bg-gray-50">+ Add Item</button>
+            </div>
+            {/* Ready to install banner */}
+            {materials.length > 0 && materials.every(m => m.status === "received" || m.status === "staged") && (
+              <div className="px-3 py-2 bg-green-50 border-b text-xs text-green-700 font-semibold">
+                ✓ All materials received — ready to schedule install
+              </div>
+            )}
+            {materials.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-gray-400">No materials tracked yet. Add items as you place orders.</div>
+            ) : (
+              <ul>
+                {materials.map(m => {
+                  const statusInfo = MATERIAL_STATUSES.find(s => s.value === m.status) ?? MATERIAL_STATUSES[0];
+                  return (
+                    <li key={m.id} className="border-b last:border-0 px-3 py-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{m.description}</div>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {m.vendor && <span className="text-xs text-gray-400">{m.vendor}</span>}
+                            {m.order_number && <span className="text-xs text-gray-400">#{m.order_number}</span>}
+                            {m.tracking_number && (
+                              <a href={`https://www.google.com/search?q=${encodeURIComponent(m.tracking_number)}`} target="_blank" rel="noreferrer"
+                                className="text-xs text-blue-600 hover:underline">Track {m.tracking_number}</a>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <select value={m.status} onChange={e => updateMaterialStatus(m.id, e.target.value)}
+                            className={`text-xs rounded px-1.5 py-0.5 border-0 font-medium ${statusInfo.color}`}>
+                            {MATERIAL_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                          </select>
+                          <button onClick={() => deleteMaterial(m.id)} className="text-xs text-gray-300 hover:text-red-400 ml-1">✕</button>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Send */}
         <div className="rounded border p-3 space-y-2">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Send Quote</div>
@@ -689,6 +905,42 @@ export default function QuotePage() {
             <div className="flex gap-2 pt-1">
               <button type="submit" className="flex-1 bg-black text-white rounded py-2 text-sm">Add Line</button>
               <button type="button" onClick={() => setShowAddLine(false)} className="border rounded py-2 px-4 text-sm">Cancel</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── ADD MATERIAL MODAL ── */}
+      {showAddMat && (
+        <Modal title="Add Material Item" onClose={() => setShowAddMat(false)}>
+          <form onSubmit={addMaterial} className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Description *</label>
+              <input value={matDesc} onChange={e => setMatDesc(e.target.value)} required
+                placeholder="e.g. Roller shades (12 units) — Hunter Douglas"
+                className="w-full border rounded px-2 py-1.5 text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Vendor</label>
+                <input value={matVendor} onChange={e => setMatVendor(e.target.value)}
+                  placeholder="e.g. Hunter Douglas"
+                  className="w-full border rounded px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Order #</label>
+                <input value={matOrderNum} onChange={e => setMatOrderNum(e.target.value)}
+                  placeholder="PO or order number"
+                  className="w-full border rounded px-2 py-1.5 text-sm" />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button type="submit" disabled={savingMat}
+                className="flex-1 bg-black text-white rounded py-2 text-sm disabled:opacity-50">
+                {savingMat ? "Saving…" : "Add Item"}
+              </button>
+              <button type="button" onClick={() => setShowAddMat(false)}
+                className="border rounded py-2 px-4 text-sm">Cancel</button>
             </div>
           </form>
         </Modal>

@@ -117,6 +117,7 @@ export default function HomePage() {
   const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
   const [workQueueLoading, setWorkQueueLoading] = useState(true);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
+  const [pipelineValue, setPipelineValue] = useState<Record<string, number>>({});
 
   // Add customer form
   const [showForm, setShowForm] = useState(false);
@@ -135,6 +136,7 @@ export default function HomePage() {
     loadCustomers();
     loadTasksDue();
     loadTodayAppts();
+    loadPipelineValue();
     loadWorkQueue();
   }, []);
 
@@ -233,6 +235,36 @@ export default function HomePage() {
       ...t,
       customer_name: custMap[t.customer_id] || "Unknown",
     })));
+  }
+
+  async function loadPipelineValue() {
+    // Load latest approved/sent/draft quote total per customer, keyed by customer lead_status
+    const { data: quotes } = await supabase
+      .from("quotes")
+      .select("customer_id, total, status")
+      .not("status", "eq", "rejected")
+      .gt("total", 0);
+    if (!quotes || quotes.length === 0) return;
+
+    // Get customer stages
+    const custIds = [...new Set(quotes.map((q: any) => q.customer_id))];
+    const { data: custs } = await supabase.from("customers").select("id, lead_status").in("id", custIds);
+    const stageMap: Record<string, string> = {};
+    (custs || []).forEach((c: any) => { stageMap[c.id] = c.lead_status ?? "New"; });
+
+    // Sum highest quote per customer per stage
+    const bestQuote: Record<string, number> = {};
+    (quotes as any[]).forEach(q => {
+      const key = q.customer_id;
+      if (!bestQuote[key] || q.total > bestQuote[key]) bestQuote[key] = q.total;
+    });
+
+    const valueByStage: Record<string, number> = {};
+    Object.entries(bestQuote).forEach(([custId, total]) => {
+      const stage = stageMap[custId] ?? "New";
+      valueByStage[stage] = (valueByStage[stage] || 0) + total;
+    });
+    setPipelineValue(valueByStage);
   }
 
   async function loadTodayAppts() {
@@ -431,14 +463,20 @@ export default function HomePage() {
   function PipelineCard({ stage }: { stage: string }) {
     const active = selectedStage === stage;
     const count  = stageCounts[stage] ?? 0;
+    const value  = pipelineValue[stage] ?? 0;
     return (
       <button
         type="button"
         onClick={() => setSelectedStage(active ? null : stage)}
-        className={`rounded border p-3 text-center w-full transition-colors ${active ? "bg-black text-white" : "bg-white hover:bg-gray-50"}`}
+        className={`rounded border p-2 text-center w-full transition-colors ${active ? "bg-black text-white" : "bg-white hover:bg-gray-50"}`}
       >
-        <div className={`text-2xl font-bold ${active ? "text-white" : STAGE_COLORS[stage] ?? "text-black"}`}>{count}</div>
-        <div className={`text-xs mt-1 ${active ? "text-gray-300" : "text-gray-500"}`}>{stage}</div>
+        <div className={`text-xl font-bold ${active ? "text-white" : STAGE_COLORS[stage] ?? "text-black"}`}>{count}</div>
+        <div className={`text-xs mt-0.5 ${active ? "text-gray-300" : "text-gray-500"} leading-tight`}>{stage}</div>
+        {value > 0 && (
+          <div className={`text-xs mt-0.5 font-medium ${active ? "text-green-300" : "text-green-600"}`}>
+            ${value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toFixed(0)}
+          </div>
+        )}
       </button>
     );
   }

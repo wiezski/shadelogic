@@ -79,6 +79,9 @@ export default function AnalyticsPage() {
   const [conversionRates, setConversionRates] = useState<{ from: string; to: string; rate: number }[]>([]);
   const [analyticsCusts, setAnalyticsCusts] = useState<{ id: string; first_name: string | null; last_name: string | null; lead_status: string | null; heat_score: string | null; last_activity_at: string | null }[]>([]);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
+  const [totalRevenue,  setTotalRevenue]  = useState(0);
+  const [pipelineTotal, setPipelineTotal] = useState(0);
+  const [avgDealSize,   setAvgDealSize]   = useState(0);
 
   useEffect(() => { loadStats(); loadCrmStats(); }, [range]);
 
@@ -303,6 +306,16 @@ export default function AnalyticsPage() {
     const TYPES = ["Call", "Text", "Email", "Note", "Visit"];
     setActivityTypeStats(TYPES.filter((t) => actCounts[t] > 0).map((t) => ({ type: t, count: actCounts[t] })));
 
+    // Revenue from quotes
+    const { data: quoteData } = await supabase
+      .from("quotes").select("total, status").gt("total", 0);
+    const quotes = (quoteData || []) as { total: number; status: string }[];
+    const sold = quotes.filter(q => q.status === "approved");
+    const pipeline = quotes.filter(q => q.status !== "rejected" && q.status !== "approved");
+    setTotalRevenue(sold.reduce((s, q) => s + q.total, 0));
+    setPipelineTotal(pipeline.reduce((s, q) => s + q.total, 0));
+    setAvgDealSize(sold.length > 0 ? sold.reduce((s, q) => s + q.total, 0) / sold.length : 0);
+
     setCrmLoading(false);
   }
 
@@ -433,6 +446,31 @@ export default function AnalyticsPage() {
 
             {crmLoading ? <p className="mb-6 text-sm text-gray-400">Loading CRM data...</p> : (
               <>
+                {/* ── Revenue summary ── */}
+                <div className="mb-4 grid grid-cols-3 gap-3">
+                  <div className="rounded border p-3 text-center">
+                    <div className="text-xl font-bold text-green-600">
+                      ${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">Revenue</div>
+                    <div className="text-xs text-gray-400">(approved quotes)</div>
+                  </div>
+                  <div className="rounded border p-3 text-center">
+                    <div className="text-xl font-bold text-blue-600">
+                      ${pipelineTotal >= 1000 ? (pipelineTotal / 1000).toFixed(1) + "k" : pipelineTotal.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">In Pipeline</div>
+                    <div className="text-xs text-gray-400">(sent / draft quotes)</div>
+                  </div>
+                  <div className="rounded border p-3 text-center">
+                    <div className="text-xl font-bold text-gray-700">
+                      ${avgDealSize >= 1000 ? (avgDealSize / 1000).toFixed(1) + "k" : avgDealSize.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">Avg Deal</div>
+                    <div className="text-xs text-gray-400">(closed jobs)</div>
+                  </div>
+                </div>
+
                 {/* ── Stage cards (clickable) ── */}
                 <div className="mb-4 rounded border p-4">
                   <div className="mb-3 flex items-center justify-between">

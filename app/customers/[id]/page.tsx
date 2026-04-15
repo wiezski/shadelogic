@@ -374,8 +374,13 @@ export default function CustomerPage() {
     if (!customer) return;
     setCreatingQuote(true);
     const title = `${customer.last_name ?? customer.first_name ?? "Quote"} - ${new Date().toISOString().slice(0, 10)}`;
+    // Auto-link the most recent measure job if one exists
+    const latestMeasure = jobs.filter(j => !j.install_mode)[0] ?? null;
     const { data, error } = await supabase.from("quotes")
-      .insert([{ customer_id: customerId, title, status: "draft" }])
+      .insert([{
+        customer_id: customerId, title, status: "draft",
+        linked_measure_id: latestMeasure?.id ?? null,
+      }])
       .select("id").single();
     setCreatingQuote(false);
     if (error || !data) { alert("Error: " + error?.message); return; }

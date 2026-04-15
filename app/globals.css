@@ -25,6 +25,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Hide scrollbar on nav while keeping scroll behavior */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Prevent iOS Smart Invert / Classic Invert from making the app look broken.
    Re-inverts the whole page so colors cancel back to normal.
    Images get a matching counter-invert so they also stay correct. */

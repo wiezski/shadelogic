@@ -318,6 +318,12 @@ export default function HomePage() {
           next_action: c.next_action, reason: `Quote sent ${daysInactive}d ago — follow up`, days_inactive: daysInactive, priority: 2 });
         return;
       }
+      // Priority 2: measured but quote not yet sent (still in Measured stage 2+ days)
+      if (c.lead_status === "Measured" && daysInactive >= 2) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Measured ${daysInactive}d ago — send the quote`, days_inactive: daysInactive, priority: 2 });
+        return;
+      }
       // Priority 2: measured but no quote yet
       if (c.lead_status === "Measured" && daysInactive >= 3) {
         items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,

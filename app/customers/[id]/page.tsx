@@ -34,7 +34,23 @@ type MeasureJob = {
   title: string;
   scheduled_at: string | null;
   install_mode: boolean;
+  linked_measure_id: string | null;
   created_at: string;
+};
+
+type Quote = {
+  id: string;
+  title: string | null;
+  status: string;
+  amount: string | null;
+  created_at: string;
+};
+
+const QUOTE_STATUS_BADGE: Record<string, string> = {
+  draft:    "bg-gray-100 text-gray-600",
+  sent:     "bg-blue-100 text-blue-700",
+  approved: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-600",
 };
 
 type Activity = {
@@ -243,6 +259,8 @@ export default function CustomerPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [phones, setPhones] = useState<CustomerPhone[]>([]);
   const [jobs, setJobs] = useState<MeasureJob[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [creatingQuote, setCreatingQuote] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [appts, setAppts] = useState<CustomerAppointment[]>([]);
@@ -320,9 +338,28 @@ export default function CustomerPage() {
 
   async function loadJobs() {
     const { data } = await supabase.from("measure_jobs")
-      .select("id, title, scheduled_at, install_mode, created_at")
+      .select("id, title, scheduled_at, install_mode, linked_measure_id, created_at")
       .eq("customer_id", customerId).order("created_at", { ascending: false });
     setJobs((data || []) as MeasureJob[]);
+  }
+
+  async function loadQuotes() {
+    const { data } = await supabase.from("quotes")
+      .select("id, title, status, amount, created_at")
+      .eq("customer_id", customerId).order("created_at", { ascending: false });
+    setQuotes((data || []) as Quote[]);
+  }
+
+  async function createQuote() {
+    if (!customer) return;
+    setCreatingQuote(true);
+    const title = `${customer.last_name ?? customer.first_name ?? "Quote"} - ${new Date().toISOString().slice(0, 10)}`;
+    const { data, error } = await supabase.from("quotes")
+      .insert([{ customer_id: customerId, title, status: "draft" }])
+      .select("id").single();
+    setCreatingQuote(false);
+    if (error || !data) { alert("Error: " + error?.message); return; }
+    window.location.href = `/quotes/${data.id}`;
   }
 
   async function loadActivities() {
@@ -352,7 +389,7 @@ export default function CustomerPage() {
 
   useEffect(() => {
     if (!customerId) return;
-    loadCustomer(); loadPhones(); loadJobs(); loadActivities(); loadTasks(); loadAppts();
+    loadCustomer(); loadPhones(); loadJobs(); loadQuotes(); loadActivities(); loadTasks(); loadAppts();
   }, [customerId]);
 
   // ── Customer saves ────────────────────────────────────────
@@ -987,26 +1024,88 @@ export default function CustomerPage() {
           )}
         </div>
 
-        {/* ── Measure Jobs ─────────────────────────────── */}
+        {/* ── Job Pipeline ─────────────────────────────── */}
+
+        {/* Quotes */}
         <div className="rounded border p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Measure Jobs</h2>
-            <button onClick={createJob} disabled={creating}
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Quotes</h2>
+            <button onClick={createQuote} disabled={creatingQuote}
               className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
-              {creating ? "Creating..." : "+ New Job"}
+              {creatingQuote ? "Creating…" : "+ New Quote"}
             </button>
           </div>
-          {jobs.length === 0 ? <p className="text-sm text-gray-400">No jobs yet.</p> : (
+          {quotes.length === 0 ? <p className="text-sm text-gray-400">No quotes yet.</p> : (
             <ul className="space-y-2">
-              {jobs.map((job) => (
-                <li key={job.id} className="flex items-center justify-between rounded border p-2.5">
-                  <Link href={`/measure-jobs/${job.id}`} className="text-sm font-medium text-blue-600 hover:underline">{job.title}</Link>
-                  <div className="flex items-center gap-2">
-                    {job.scheduled_at && <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>}
-                    <span className={`rounded px-1.5 py-0.5 text-xs ${job.install_mode ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
-                      {job.install_mode ? "Install" : "Measure"}
-                    </span>
-                  </div>
+              {quotes.map((q) => (
+                <li key={q.id}>
+                  <Link href={`/quotes/${q.id}`}
+                    className="flex items-center justify-between rounded border p-2.5 hover:bg-gray-50">
+                    <div>
+                      <div className="text-sm font-medium text-blue-600">{q.title ?? "Untitled Quote"}</div>
+                      {q.amount && <div className="text-xs text-gray-400">{q.amount}</div>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-gray-400">{q.created_at.slice(0, 10)}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${QUOTE_STATUS_BADGE[q.status] ?? "bg-gray-100 text-gray-600"}`}>
+                        {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Measures */}
+        <div className="rounded border p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Measures</h2>
+            <button onClick={createJob} disabled={creating}
+              className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              {creating ? "Creating…" : "+ New Measure"}
+            </button>
+          </div>
+          {jobs.filter(j => !j.install_mode).length === 0
+            ? <p className="text-sm text-gray-400">No measures yet.</p>
+            : (
+            <ul className="space-y-2">
+              {jobs.filter(j => !j.install_mode).map((job) => (
+                <li key={job.id}>
+                  <Link href={`/measure-jobs/${job.id}`}
+                    className="flex items-center justify-between rounded border p-2.5 hover:bg-gray-50">
+                    <div className="text-sm font-medium text-blue-600">{job.title}</div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {job.scheduled_at && <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>}
+                      <span className="rounded px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700">Measure</span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Installs */}
+        <div className="rounded border p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Installs</h2>
+          </div>
+          {jobs.filter(j => j.install_mode).length === 0
+            ? <p className="text-sm text-gray-400">No installs yet. Use "Convert to Install" inside a measure job once sold.</p>
+            : (
+            <ul className="space-y-2">
+              {jobs.filter(j => j.install_mode).map((job) => (
+                <li key={job.id}>
+                  <Link href={`/measure-jobs/${job.id}`}
+                    className="flex items-center justify-between rounded border p-2.5 hover:bg-gray-50">
+                    <div className="text-sm font-medium text-blue-600">{job.title}</div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {job.scheduled_at && <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>}
+                      <span className="rounded px-1.5 py-0.5 text-xs bg-green-100 text-green-700">Install</span>
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>

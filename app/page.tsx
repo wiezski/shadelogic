@@ -317,6 +317,18 @@ export default function HomePage() {
           next_action: c.next_action, reason: `Quote sent ${daysInactive}d ago — follow up`, days_inactive: daysInactive, priority: 2 });
         return;
       }
+      // Priority 2: measured but no install job yet, stuck 3+ days
+      if (c.lead_status === "Measured" && daysInactive >= 3) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Measured ${daysInactive}d ago — quote or install not started`, days_inactive: daysInactive, priority: 2 });
+        return;
+      }
+      // Priority 2: sold but no activity in 2+ days (install not scheduled)
+      if (c.lead_status === "Sold" && daysInactive >= 2) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Sold ${daysInactive}d ago — schedule the install`, days_inactive: daysInactive, priority: 2 });
+        return;
+      }
       // Priority 3: warm/cold stuck
       if (daysInactive >= stuckThreshold) {
         items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,

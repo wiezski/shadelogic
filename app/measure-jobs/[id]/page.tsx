@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
 type MeasureJob = {
@@ -14,6 +14,7 @@ type MeasureJob = {
   overall_notes: string | null;
   tallest_window: string | null;
   install_mode: boolean;
+  linked_measure_id: string | null;
 };
 
 type Customer = {
@@ -193,9 +194,11 @@ function csvEscape(value: string) {
 
 export default function MeasureJobPage() {
   const params = useParams();
+  const router = useRouter();
   const measureJobId = params.id as string;
 
   const [job, setJob] = useState<MeasureJob | null>(null);
+  const [convertingToInstall, setConvertingToInstall] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [windows, setWindows] = useState<WindowItem[]>([]);
@@ -223,7 +226,7 @@ export default function MeasureJobPage() {
 
       const { data: jobData, error: jobError } = await supabase
         .from("measure_jobs")
-        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode")
+        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, linked_measure_id")
         .eq("id", measureJobId)
         .single();
 
@@ -561,6 +564,31 @@ export default function MeasureJobPage() {
       updateJobLocal("install_mode", true);
       setMode("install");
     }
+  }
+
+  async function convertToInstall() {
+    if (!job) return;
+    if (!confirm("Create a separate Install job for this customer? The measure record will stay as-is.")) return;
+    setConvertingToInstall(true);
+    const installTitle = job.title.replace(/- \d{4}-\d{2}-\d{2}$/, "").trim()
+      + " - Install - " + new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from("measure_jobs")
+      .insert([{
+        customer_id: job.customer_id,
+        title: installTitle,
+        install_mode: true,
+        linked_measure_id: job.id,
+      }])
+      .select("id").single();
+    setConvertingToInstall(false);
+    if (error || !data) { alert("Error: " + error?.message); return; }
+    // Update customer lead status to Sold if not already
+    await supabase.from("customers")
+      .update({ lead_status: "Sold", last_activity_at: new Date().toISOString() })
+      .eq("id", job.customer_id)
+      .not("lead_status", "in", '("Sold","Installed")');
+    router.push(`/measure-jobs/${data.id}`);
   }
 
   async function setWindowInstallStatus(
@@ -973,14 +1001,18 @@ export default function MeasureJobPage() {
             </button>
           </div>
         ) : (
-          <div className="mb-3 flex items-center justify-between rounded border p-3">
-            <span className="text-sm text-gray-600">Measure only — ready to convert to install?</span>
+          <div className="mb-3 flex items-center justify-between rounded border border-green-200 bg-green-50 p-3 gap-3">
+            <div>
+              <div className="text-sm font-medium text-green-800">Job sold?</div>
+              <div className="text-xs text-green-600 mt-0.5">Creates a separate Install record linked to this measure.</div>
+            </div>
             <button
               type="button"
-              onClick={startInstall}
-              className="rounded bg-black px-3 py-1 text-sm text-white"
+              onClick={convertToInstall}
+              disabled={convertingToInstall}
+              className="shrink-0 rounded bg-green-700 px-3 py-1.5 text-sm text-white disabled:opacity-50"
             >
-              Start Install
+              {convertingToInstall ? "Creating…" : "Convert to Install →"}
             </button>
           </div>
         )}

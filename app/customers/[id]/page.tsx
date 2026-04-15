@@ -936,7 +936,9 @@ export default function CustomerPage() {
         <div className="rounded border p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Appointments</h2>
-            <Link href="/schedule" className="rounded bg-black px-3 py-1.5 text-sm text-white">
+            <Link
+              href={`/schedule?customerId=${customerId}&customerName=${encodeURIComponent([customer?.first_name, customer?.last_name].filter(Boolean).join(" "))}&customerAddress=${encodeURIComponent(customer?.address ?? "")}`}
+              className="rounded bg-black px-3 py-1.5 text-sm text-white">
               + Schedule
             </Link>
           </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -153,6 +154,11 @@ function apptH(appt: Appointment): number {
 // ── Page ───────────────────────────────────────────────────────
 
 export default function SchedulePage() {
+  const searchParams = useSearchParams();
+  const incomingCustomerId   = searchParams.get("customerId")   ?? "";
+  const incomingCustomerName = searchParams.get("customerName") ?? "";
+  const incomingCustomerAddr = searchParams.get("customerAddress") ?? "";
+
   const [view, setView]               = useState<"day" | "week">("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -189,6 +195,20 @@ export default function SchedulePage() {
 
   useEffect(() => { loadCustomers(); }, []);
   useEffect(() => { loadAppointments(); }, [dateKey, view]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If arriving from a customer page, pre-fill and open the create modal
+  useEffect(() => {
+    if (!incomingCustomerId) return;
+    setCustId(incomingCustomerId);
+    setCustSearch(incomingCustomerName);
+    setCreateAddr(parseAddressDisplay(incomingCustomerAddr) || incomingCustomerAddr);
+    setCreateDate(isoDate(new Date()));
+    setCreateTime("09:00");
+    setCreateType("sales_consultation");
+    setCreateMins(60);
+    setCreateNotes("");
+    setShowCreate(true);
+  }, [incomingCustomerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAppointments() {
     setLoading(true);

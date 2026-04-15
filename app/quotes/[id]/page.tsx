@@ -142,6 +142,14 @@ export default function QuotePage() {
           ← Back to {customerName}
         </Link>
 
+        {/* New quote banner */}
+        {(Date.now() - new Date(quote.created_at).getTime()) < 90000 && (
+          <div className="rounded-lg bg-orange-500 text-white px-4 py-3">
+            <div className="font-bold text-lg">📋 New Quote Created</div>
+            <div className="text-sm opacity-90 mt-0.5">Add the amount and notes, then mark it Sent when ready to share with the customer.</div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -214,13 +222,22 @@ export default function QuotePage() {
           />
         </div>
 
-        {/* Schedule link */}
-        <div className="rounded border p-3">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Actions</div>
+        {/* Send quote + actions */}
+        <div className="rounded border p-3 space-y-2">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Send Quote</div>
+          <a
+            href={`sms:?body=${encodeURIComponent(`Hi ${customerName.split(" ")[0]}! Your quote is ready. Amount: ${amount || "TBD"}. ${notes ? notes.slice(0, 120) : ""} Reply with any questions!`)}`}
+            className="flex items-center gap-2 w-full rounded border border-green-500 text-green-700 px-3 py-2 text-sm hover:bg-green-50">
+            💬 Send via Text
+          </a>
+          <a
+            href={`mailto:?subject=${encodeURIComponent(`Your Quote — ${title || "ShadeLogic"}`)}&body=${encodeURIComponent(`Hi ${customerName.split(" ")[0]},\n\nYour quote is ready!\n\nAmount: ${amount || "TBD"}\n\n${notes || ""}\n\nReply with any questions.\n\nThank you!`)}`}
+            className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
+            📧 Send via Email
+          </a>
           <Link
             href={`/schedule?customerId=${quote.customer_id}&customerName=${encodeURIComponent(customerName)}`}
-            className="inline-block rounded border px-3 py-2 text-sm hover:bg-gray-50"
-          >
+            className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
             📅 Schedule Appointment
           </Link>
         </div>

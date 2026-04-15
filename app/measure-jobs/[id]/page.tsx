@@ -15,6 +15,7 @@ type MeasureJob = {
   tallest_window: string | null;
   install_mode: boolean;
   linked_measure_id: string | null;
+  created_at: string;
 };
 
 type Customer = {
@@ -212,6 +213,11 @@ export default function MeasureJobPage() {
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [mode, setMode] = useState<"measure" | "install">("measure");
   const [installIssues, setInstallIssues] = useState<InstallIssue[]>([]);
+  const [submittingMeasure, setSubmittingMeasure] = useState(false);
+  const [measureSubmitted, setMeasureSubmitted] = useState(false);
+  const [installCompleting, setInstallCompleting] = useState(false);
+  const [installCompleted, setInstallCompleted] = useState(false);
+  const [showInstallDoneActions, setShowInstallDoneActions] = useState(false);
   const [expandedIssueForm, setExpandedIssueForm] = useState<Record<string, boolean>>({});
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -226,7 +232,7 @@ export default function MeasureJobPage() {
 
       const { data: jobData, error: jobError } = await supabase
         .from("measure_jobs")
-        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, linked_measure_id")
+        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, linked_measure_id, created_at")
         .eq("id", measureJobId)
         .single();
 
@@ -237,6 +243,8 @@ export default function MeasureJobPage() {
       }
 
       setJob(jobData);
+      // Converted installs always open in install mode
+      if (jobData.install_mode) setMode("install");
 
       const { data: customerData, error: customerError } = await supabase
         .from("customers")
@@ -580,6 +588,61 @@ export default function MeasureJobPage() {
       updateJobLocal("install_mode", true);
       setMode("install");
     }
+  }
+
+  async function submitMeasure() {
+    if (!job) return;
+    setSubmittingMeasure(true);
+    await supabase.from("customers")
+      .update({ lead_status: "Measured", last_activity_at: new Date().toISOString() })
+      .eq("id", job.customer_id)
+      .not("lead_status", "in", '("Quoted","Sold","Contact for Install","Installed","Complete")');
+    await supabase.from("activity_log").insert([{
+      customer_id: job.customer_id, type: "note",
+      notes: `Measure submitted: ${job.title}. ${windows.length} window${windows.length !== 1 ? "s" : ""} across ${rooms.length} room${rooms.length !== 1 ? "s" : ""}.`,
+      created_by: "ShadeLogic",
+    }]);
+    setSubmittingMeasure(false);
+    setMeasureSubmitted(true);
+  }
+
+  async function completeInstall(needsRework: boolean) {
+    if (!job) return;
+    setInstallCompleting(true);
+    if (!needsRework) {
+      await supabase.from("customers")
+        .update({ lead_status: "Installed", last_activity_at: new Date().toISOString() })
+        .eq("id", job.customer_id);
+      await supabase.from("activity_log").insert([{
+        customer_id: job.customer_id, type: "note",
+        notes: `Install completed: ${job.title}.`,
+        created_by: "ShadeLogic",
+      }]);
+      setInstallCompleted(true);
+      setShowInstallDoneActions(true);
+    } else {
+      // Create tasks for each issue
+      const issueWindows = windows.filter(w => w.install_status === "issue");
+      for (const w of issueWindows) {
+        const issues = installIssues.filter(i => i.window_id === w.id);
+        const issueDesc = issues.map(i => i.issue_type).join(", ") || "issue";
+        await supabase.from("tasks").insert([{
+          customer_id: job.customer_id,
+          title: `Rework needed — ${issueDesc} (${job.title})`,
+          due_date: null,
+        }]);
+      }
+      await supabase.from("customers")
+        .update({ next_action: `Rework needed on install: ${job.title}`, last_activity_at: new Date().toISOString() })
+        .eq("id", job.customer_id);
+      await supabase.from("activity_log").insert([{
+        customer_id: job.customer_id, type: "note",
+        notes: `Install marked needs rework: ${job.title}. ${issueWindows.length} window(s) with issues.`,
+        created_by: "ShadeLogic",
+      }]);
+      alert(`Rework tasks created for ${issueWindows.length} window(s) with issues. Check the customer's task list.`);
+    }
+    setInstallCompleting(false);
   }
 
   async function convertToInstall() {
@@ -984,6 +1047,20 @@ export default function MeasureJobPage() {
           )}
         </div>
 
+        {/* New record banner */}
+        {(Date.now() - new Date(job.created_at).getTime()) < 90000 && (
+          <div className={`mb-3 mt-2 rounded-lg px-4 py-3 ${job.install_mode ? "bg-green-600" : "bg-purple-600"} text-white`}>
+            <div className="font-bold text-lg">
+              {job.install_mode ? "✓ New Install Job Created" : "📐 New Measure Job Created"}
+            </div>
+            <div className="text-sm opacity-90 mt-0.5">
+              {job.install_mode
+                ? "Add windows as completed or flag issues as you go."
+                : "Start adding rooms and windows to record measurements."}
+            </div>
+          </div>
+        )}
+
         <h1 className="mb-2 mt-1 text-xl font-bold">{job.title}</h1>
 
         {loadError && (
@@ -1005,8 +1082,9 @@ export default function MeasureJobPage() {
           </div>
         )}
 
-        {/* Mode toggle */}
-        {job.install_mode ? (
+        {/* Mode toggle — only show for legacy installs (no linked_measure_id).
+            Converted installs go straight to install view. */}
+        {job.install_mode && !job.linked_measure_id ? (
           <div className="mb-3 flex rounded border overflow-hidden">
             <button
               type="button"
@@ -1022,6 +1100,14 @@ export default function MeasureJobPage() {
             >
               Install
             </button>
+          </div>
+        ) : job.install_mode && job.linked_measure_id ? (
+          // Converted install — install view only, no tab toggle
+          <div className="mb-3 rounded bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700 flex items-center justify-between">
+            <span>Install mode — tracking window completion</span>
+            <Link href={`/measure-jobs/${job.linked_measure_id}`} className="text-purple-600 hover:underline font-medium ml-3">
+              View measurements →
+            </Link>
           </div>
         ) : (
           <div className="mb-3 flex items-center justify-between rounded border border-green-200 bg-green-50 p-3 gap-3">
@@ -1435,6 +1521,26 @@ export default function MeasureJobPage() {
             </button>
           </div>
 
+          {/* Submit Measure */}
+          {windows.length > 0 && (
+            <div className="mt-4 border-t pt-4">
+              {measureSubmitted ? (
+                <div className="rounded bg-purple-600 text-white px-4 py-3 text-sm font-medium">
+                  ✓ Measure submitted — customer moved to Measured
+                </div>
+              ) : (
+                <button
+                  onClick={submitMeasure}
+                  disabled={submittingMeasure}
+                  className="w-full rounded bg-purple-600 text-white py-3 text-sm font-semibold disabled:opacity-50"
+                >
+                  {submittingMeasure ? "Submitting…" : "✓ Submit Measure"}
+                </button>
+              )}
+              <p className="mt-1 text-xs text-gray-400 text-center">Moves customer to Measured stage and logs activity</p>
+            </div>
+          )}
+
           {showSummary && (
             <div className="mt-3 overflow-x-auto">
               {summaryRows.length === 0 ? (
@@ -1503,11 +1609,13 @@ export default function MeasureJobPage() {
         {/* ── INSTALL MODE ── */}
         {mode === "install" && (
           <div>
-            {/* Progress summary */}
+            {/* Progress summary + completion */}
             {(() => {
-              const total = windows.length;
+              const total    = windows.length;
               const complete = windows.filter((w) => w.install_status === "complete").length;
-              const issues = windows.filter((w) => w.install_status === "issue").length;
+              const issues   = windows.filter((w) => w.install_status === "issue").length;
+              const pending  = windows.filter((w) => !w.install_status || w.install_status === "not_started").length;
+              const allAccountedFor = total > 0 && pending === 0;
               const pct = total > 0 ? Math.round((complete / total) * 100) : 0;
               return (
                 <div className="mb-3 rounded border p-3">
@@ -1518,11 +1626,43 @@ export default function MeasureJobPage() {
                     )}
                   </div>
                   <div className="h-2 w-full rounded bg-gray-200">
-                    <div
-                      className="h-2 rounded bg-green-500 transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className="h-2 rounded bg-green-500 transition-all" style={{ width: `${pct}%` }} />
                   </div>
+
+                  {/* Completion actions — appear when all windows are accounted for */}
+                  {allAccountedFor && !installCompleted && (
+                    <div className="mt-3 border-t pt-3 space-y-2">
+                      <p className="text-xs text-gray-500 font-medium">All windows marked — choose an outcome:</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => completeInstall(false)} disabled={installCompleting}
+                          className="flex-1 rounded bg-green-600 text-white py-2 text-sm font-semibold disabled:opacity-50">
+                          ✓ Mark Install Complete
+                        </button>
+                        {issues > 0 && (
+                          <button onClick={() => completeInstall(true)} disabled={installCompleting}
+                            className="flex-1 rounded bg-red-500 text-white py-2 text-sm font-semibold disabled:opacity-50">
+                            ⚠ Needs Rework
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Post-completion actions */}
+                  {installCompleted && showInstallDoneActions && job && (
+                    <div className="mt-3 border-t pt-3 space-y-2">
+                      <div className="rounded bg-green-600 text-white px-3 py-2 text-sm font-semibold">✓ Install Complete</div>
+                      <a
+                        href={`sms:?body=${encodeURIComponent(`Hi! Your window treatment installation is complete. Thank you for choosing us — we hope you love them! Reach out anytime if you need anything.`)}`}
+                        className="flex items-center justify-center gap-1.5 w-full rounded border border-blue-400 text-blue-700 py-2 text-sm hover:bg-blue-50">
+                        💬 Send Follow-up Text
+                      </a>
+                      <Link href={`/customers/${job.customer_id}`}
+                        className="flex items-center justify-center w-full rounded border py-2 text-sm hover:bg-gray-50">
+                        View Customer Record →
+                      </Link>
+                    </div>
+                  )}
                 </div>
               );
             })()}

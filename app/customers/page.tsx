@@ -63,8 +63,7 @@ function CustomersListInner() {
 
     let query = supabase
       .from("customers")
-      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, created_at, next_action")
-      .not("lead_status", "in", filter === "stuck" ? '("Complete","Installed")' : '()'); // don't filter unless stuck
+      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, created_at, next_action");
 
     if (heat)  query = query.eq("heat_score", heat);
     if (stage) query = query.eq("lead_status", stage);

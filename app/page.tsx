@@ -441,11 +441,8 @@ export default function HomePage() {
     <main className="min-h-screen bg-white p-4 text-black">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">ShadeLogic</h1>
-          <div className="flex items-center gap-3">
-            <Link href="/schedule" className="text-sm text-gray-600 hover:text-black font-medium">📅 Schedule</Link>
-            <Link href="/analytics" className="text-sm text-blue-600 hover:underline">Analytics</Link>
-          </div>
+          <h1 className="text-xl font-bold text-gray-700">Dashboard</h1>
+          <Link href="/analytics" className="text-sm text-blue-600 hover:underline">Analytics →</Link>
         </div>
 
         <div className="mb-4 flex rounded border overflow-hidden">

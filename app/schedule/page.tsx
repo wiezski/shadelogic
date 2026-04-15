@@ -59,15 +59,24 @@ type CustomerOption = {
 
 // ── Constants ──────────────────────────────────────────────────
 
-const APPT_TYPES: Record<AppointmentType, { label: string; color: string; bg: string; dot: string }> = {
-  sales_consultation: { label: "Sales Consult",  color: "text-blue-700",   bg: "bg-blue-100 border-blue-300",   dot: "bg-blue-500" },
-  measure:            { label: "Measure",         color: "text-purple-700", bg: "bg-purple-100 border-purple-300", dot: "bg-purple-500" },
-  install:            { label: "Install",          color: "text-green-700",  bg: "bg-green-100 border-green-300",  dot: "bg-green-500" },
-  service_call:       { label: "Service Call",    color: "text-orange-700", bg: "bg-orange-100 border-orange-300", dot: "bg-orange-500" },
-  repair:             { label: "Repair",           color: "text-amber-700",  bg: "bg-amber-100 border-amber-300",  dot: "bg-amber-500" },
-  site_walk:          { label: "Site Walk",        color: "text-teal-700",   bg: "bg-teal-100 border-teal-300",   dot: "bg-teal-500" },
-  punch:              { label: "Punch Visit",      color: "text-slate-700",  bg: "bg-slate-100 border-slate-300",  dot: "bg-slate-500" },
+const APPT_TYPES: Record<AppointmentType, { label: string; color: string; bg: string; dot: string; defaultMins: number }> = {
+  sales_consultation: { label: "Sales Consult",  color: "text-blue-700",   bg: "bg-blue-100 border-blue-300",    dot: "bg-blue-500",   defaultMins: 60  },
+  measure:            { label: "Measure",         color: "text-purple-700", bg: "bg-purple-100 border-purple-300", dot: "bg-purple-500", defaultMins: 90  },
+  install:            { label: "Install",         color: "text-green-700",  bg: "bg-green-100 border-green-300",   dot: "bg-green-500",  defaultMins: 120 },
+  service_call:       { label: "Service Call",    color: "text-orange-700", bg: "bg-orange-100 border-orange-300", dot: "bg-orange-500", defaultMins: 60  },
+  repair:             { label: "Repair",          color: "text-amber-700",  bg: "bg-amber-100 border-amber-300",   dot: "bg-amber-500",  defaultMins: 60  },
+  site_walk:          { label: "Site Walk",       color: "text-teal-700",   bg: "bg-teal-100 border-teal-300",     dot: "bg-teal-500",   defaultMins: 90  },
+  punch:              { label: "Punch Visit",     color: "text-slate-700",  bg: "bg-slate-100 border-slate-300",   dot: "bg-slate-500",  defaultMins: 45  },
 };
+
+const SECOND_VISIT_REASONS = [
+  "Missing parts",
+  "Customer not ready",
+  "Additional decisions needed",
+  "Measurement issue",
+  "Install incomplete",
+  "Other",
+] as const;
 
 const APPT_STATUSES: Record<AppointmentStatus, { label: string; badge: string }> = {
   scheduled:   { label: "Scheduled",   badge: "bg-gray-100 text-gray-600" },
@@ -167,7 +176,8 @@ function SchedulePageInner() {
   const incomingCustomerName = searchParams.get("customerName") ?? "";
   const incomingCustomerAddr = searchParams.get("customerAddress") ?? "";
 
-  const [view, setView]               = useState<"day" | "week">("week");
+  const [view, setView]               = useState<"day" | "week" | "month">("week");
+  const [monthDaySelected, setMonthDaySelected] = useState<Date | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -198,6 +208,13 @@ function SchedulePageInner() {
   const [outcome,      setOutcome]      = useState<AppointmentOutcome | null>(null);
   const [outcomeNotes, setOutcomeNotes] = useState("");
 
+  // Needs Second Visit sub-flow
+  const [showSecondVisit,   setShowSecondVisit]   = useState(false);
+  const [svReason,          setSvReason]          = useState(SECOND_VISIT_REASONS[0] as string);
+  const [svReasonCustom,    setSvReasonCustom]    = useState("");
+  const [svWhatNeeded,      setSvWhatNeeded]      = useState("");
+  const [svSaving,          setSvSaving]          = useState(false);
+
   // stable key to avoid Date object reference churn in useEffect
   const dateKey = isoDate(currentDate);
 
@@ -220,9 +237,17 @@ function SchedulePageInner() {
 
   async function loadAppointments() {
     setLoading(true);
-    const days = view === "week" ? getWeekDays(currentDate) : [currentDate];
-    const start = new Date(days[0]);       start.setHours(0, 0, 0, 0);
-    const end   = new Date(days[days.length - 1]); end.setHours(23, 59, 59, 999);
+    let start: Date, end: Date;
+    if (view === "month") {
+      start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      end   = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    } else {
+      const days = view === "week" ? getWeekDays(currentDate) : [currentDate];
+      start = new Date(days[0]);
+      end   = new Date(days[days.length - 1]);
+    }
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
 
     const { data: raw } = await supabase
       .from("appointments")
@@ -260,16 +285,24 @@ function SchedulePageInner() {
 
   function navigate(dir: -1 | 1) {
     const d = new Date(currentDate);
-    d.setDate(d.getDate() + dir * (view === "week" ? 7 : 1));
+    if (view === "month") d.setMonth(d.getMonth() + dir);
+    else d.setDate(d.getDate() + dir * (view === "week" ? 7 : 1));
     setCurrentDate(d);
+    setMonthDaySelected(null);
   }
 
   function openCreate(date: Date, hour: number) {
     setCreateDate(isoDate(date));
     setCreateTime(`${String(hour).padStart(2, "0")}:00`);
     setCustId(""); setCustSearch(""); setCreateType("sales_consultation");
-    setCreateMins(60); setCreateAddr(""); setCreateNotes("");
+    setCreateMins(APPT_TYPES.sales_consultation.defaultMins);
+    setCreateAddr(""); setCreateNotes("");
     setShowCreate(true);
+  }
+
+  function handleTypeChange(t: AppointmentType) {
+    setCreateType(t);
+    setCreateMins(APPT_TYPES[t].defaultMins);
   }
 
   function pickCustomer(c: CustomerOption) {
@@ -336,6 +369,15 @@ function SchedulePageInner() {
 
   async function completeWithOutcome() {
     if (!selectedAppt || !outcome) return;
+
+    // Needs Second Visit → open the sub-flow instead of completing directly
+    if (outcome === "needs_second_visit") {
+      setSvReason(SECOND_VISIT_REASONS[0]);
+      setSvReasonCustom(""); setSvWhatNeeded("");
+      setShowOutcome(false); setShowSecondVisit(true);
+      return;
+    }
+
     await supabase.from("appointments").update({
       status: "completed", outcome, outcome_notes: outcomeNotes || null,
     }).eq("id", selectedAppt.id);
@@ -351,6 +393,43 @@ function SchedulePageInner() {
     }]);
     await supabase.from("customers").update({ last_activity_at: new Date().toISOString() }).eq("id", selectedAppt.customer_id);
     setShowOutcome(false);
+    loadAppointments();
+  }
+
+  async function completeSecondVisit() {
+    if (!selectedAppt || !svWhatNeeded.trim()) return;
+    setSvSaving(true);
+    const reasonText = svReason === "Other" && svReasonCustom.trim() ? svReasonCustom.trim() : svReason;
+    const taskTitle  = `Return visit needed — ${reasonText}`;
+    const taskNotes  = svWhatNeeded.trim();
+
+    // Complete the appointment
+    await supabase.from("appointments").update({
+      status: "completed",
+      outcome: "needs_second_visit",
+      outcome_notes: `Reason: ${reasonText}. What's needed: ${taskNotes}`,
+    }).eq("id", selectedAppt.id);
+
+    // Create a task on the customer
+    await supabase.from("tasks").insert([{
+      customer_id: selectedAppt.customer_id,
+      title: taskTitle,
+      due_date: null,
+    }]);
+
+    // Log activity
+    await supabase.from("activity_log").insert([{
+      customer_id: selectedAppt.customer_id, type: "note",
+      notes: `Needs second visit after ${APPT_TYPES[selectedAppt.type].label}. Reason: ${reasonText}. What's needed: ${taskNotes}`,
+      created_by: "ShadeLogic",
+    }]);
+    await supabase.from("customers").update({
+      last_activity_at: new Date().toISOString(),
+      next_action: `Return visit: ${reasonText}`,
+    }).eq("id", selectedAppt.customer_id);
+
+    setSvSaving(false);
+    setShowSecondVisit(false);
     loadAppointments();
   }
 
@@ -395,14 +474,12 @@ function SchedulePageInner() {
           <h1 className="text-xl font-bold">Schedule</h1>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setView("day")}
-            className={`px-3 py-1 rounded text-sm ${view === "day" ? "bg-black text-white" : "border text-gray-600 hover:bg-gray-50"}`}>
-            Day
-          </button>
-          <button onClick={() => setView("week")}
-            className={`px-3 py-1 rounded text-sm ${view === "week" ? "bg-black text-white" : "border text-gray-600 hover:bg-gray-50"}`}>
-            Week
-          </button>
+          {(["day","week","month"] as const).map(v => (
+            <button key={v} onClick={() => { setView(v); setMonthDaySelected(null); }}
+              className={`px-3 py-1 rounded text-sm capitalize ${view === v ? "bg-black text-white" : "border text-gray-600 hover:bg-gray-50"}`}>
+              {v}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -410,7 +487,9 @@ function SchedulePageInner() {
       <div className="px-4 py-2 flex items-center justify-between border-b bg-white sticky top-[53px] z-10">
         <button onClick={() => navigate(-1)} className="text-xl text-gray-400 hover:text-black px-1 leading-none">‹</button>
         <div className="text-sm font-medium text-center">
-          {view === "week"
+          {view === "month"
+            ? currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+            : view === "week"
             ? `${weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${weekDays[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
             : currentDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
           }
@@ -443,6 +522,15 @@ function SchedulePageInner() {
       {/* ── Calendar ── */}
       {loading ? (
         <div className="text-center text-gray-400 py-12 text-sm">Loading…</div>
+      ) : view === "month" ? (
+        <MonthView
+          currentDate={currentDate} today={today}
+          getAppts={dayAppts}
+          selectedDay={monthDaySelected}
+          onDayClick={(d) => setMonthDaySelected(prev => prev && isSameDay(prev, d) ? null : d)}
+          onAppt={openDetail}
+          onNewAppt={(d) => openCreate(d, 9)}
+        />
       ) : view === "week" ? (
         <WeekView weekDays={weekDays} timeSlots={timeSlots} today={today}
           getAppts={dayAppts} onSlot={openCreate} onAppt={openDetail} />
@@ -480,7 +568,7 @@ function SchedulePageInner() {
             {/* Type */}
             <div>
               <label className="text-xs text-gray-500 block mb-1">Type</label>
-              <select value={createType} onChange={e => setCreateType(e.target.value as AppointmentType)}
+              <select value={createType} onChange={e => handleTypeChange(e.target.value as AppointmentType)}
                 className="w-full border rounded px-2 py-1.5 text-sm">
                 {Object.entries(APPT_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>{v.label}</option>
@@ -677,6 +765,9 @@ function SchedulePageInner() {
                     outcome === o.value ? "bg-black text-white border-black" : "hover:bg-gray-50"
                   }`}>
                   <span className="mr-1">{o.icon}</span>{o.label}
+                  {o.value === "needs_second_visit" && (
+                    <div className="text-xs opacity-60 mt-0.5">→ creates a task</div>
+                  )}
                 </button>
               ))}
             </div>
@@ -692,9 +783,71 @@ function SchedulePageInner() {
             <div className="flex gap-2">
               <button onClick={completeWithOutcome} disabled={!outcome}
                 className="flex-1 bg-black text-white rounded py-2 text-sm disabled:opacity-40">
-                Complete Appointment
+                {outcome === "needs_second_visit" ? "Next: Detail Return Visit →" : "Complete Appointment"}
               </button>
               <button onClick={() => setShowOutcome(false)}
+                className="border rounded py-2 px-4 text-sm">Back</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ══ SECOND VISIT MODAL ══ */}
+      {showSecondVisit && selectedAppt && (
+        <Modal title="Return Visit Details" onClose={() => setShowSecondVisit(false)}>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              This creates a task on <span className="font-medium text-black">{selectedAppt.customer_name}</span>'s record so the return visit doesn't get lost.
+            </p>
+
+            {/* Reason */}
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+                Reason for return
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {SECOND_VISIT_REASONS.map(r => (
+                  <button key={r} type="button" onClick={() => setSvReason(r)}
+                    className={`rounded border px-2 py-2 text-sm text-left transition-colors ${
+                      svReason === r ? "bg-black text-white border-black" : "hover:bg-gray-50"
+                    }`}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+              {svReason === "Other" && (
+                <input
+                  type="text" value={svReasonCustom} onChange={e => setSvReasonCustom(e.target.value)}
+                  placeholder="Describe the reason…"
+                  className="mt-2 w-full border rounded px-2 py-1.5 text-sm"
+                />
+              )}
+            </div>
+
+            {/* What needs to happen */}
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+                What needs to happen next *
+              </label>
+              <textarea
+                value={svWhatNeeded} onChange={e => setSvWhatNeeded(e.target.value)}
+                rows={3}
+                placeholder={'e.g. "Install 3 remaining shades"\n"Bring longer brackets"\n"Rewire window 2"'}
+                className="w-full border rounded px-2 py-1.5 text-sm"
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-700">
+              Will create a task: <strong>Return visit needed — {svReason === "Other" && svReasonCustom ? svReasonCustom : svReason}</strong>
+              <br />and set "Next Action" on the customer record.
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={completeSecondVisit} disabled={svSaving || !svWhatNeeded.trim()}
+                className="flex-1 bg-black text-white rounded py-2 text-sm disabled:opacity-40">
+                {svSaving ? "Saving…" : "Complete & Create Task"}
+              </button>
+              <button onClick={() => { setShowSecondVisit(false); setShowOutcome(true); }}
                 className="border rounded py-2 px-4 text-sm">Back</button>
             </div>
           </div>
@@ -719,6 +872,130 @@ function Modal({ title, onClose, children }: {
         </div>
         <div className="p-4">{children}</div>
       </div>
+    </div>
+  );
+}
+
+// ── Month view ─────────────────────────────────────────────────
+
+function MonthView({ currentDate, today, getAppts, selectedDay, onDayClick, onAppt, onNewAppt }: {
+  currentDate: Date;
+  today: Date;
+  getAppts: (d: Date) => Appointment[];
+  selectedDay: Date | null;
+  onDayClick: (d: Date) => void;
+  onAppt: (a: Appointment) => void;
+  onNewAppt: (d: Date) => void;
+}) {
+  const year  = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  // Build 6-week grid starting from the Sunday before the 1st
+  const firstDay = new Date(year, month, 1);
+  const startSun = new Date(firstDay);
+  startSun.setDate(firstDay.getDate() - firstDay.getDay());
+
+  const weeks: Date[][] = [];
+  let cursor = new Date(startSun);
+  for (let w = 0; w < 6; w++) {
+    const week: Date[] = [];
+    for (let d = 0; d < 7; d++) {
+      week.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+    // Stop if we've passed the month and filled at least 4 weeks
+    if (w >= 3 && cursor.getMonth() !== month) break;
+  }
+
+  const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  return (
+    <div className="px-2 pb-8">
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {DAY_LABELS.map(d => (
+          <div key={d} className="text-center text-xs text-gray-400 py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="border rounded overflow-hidden">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 border-b last:border-0">
+            {week.map((day, di) => {
+              const isThisMonth = day.getMonth() === month;
+              const isToday     = isSameDay(day, today);
+              const isSelected  = selectedDay ? isSameDay(day, selectedDay) : false;
+              const appts       = getAppts(day);
+
+              return (
+                <div key={di}
+                  onClick={() => onDayClick(day)}
+                  className={`border-r last:border-0 min-h-16 p-1 cursor-pointer transition-colors
+                    ${isSelected ? "bg-black" : isToday ? "bg-blue-50" : isThisMonth ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}`}>
+                  <div className={`text-xs font-semibold mb-0.5 w-6 h-6 flex items-center justify-center rounded-full
+                    ${isToday && !isSelected ? "bg-blue-600 text-white" : isSelected ? "text-white" : isThisMonth ? "text-gray-700" : "text-gray-300"}`}>
+                    {day.getDate()}
+                  </div>
+                  <div className="space-y-0.5">
+                    {appts.slice(0, 3).map(a => (
+                      <div key={a.id}
+                        onClick={e => { e.stopPropagation(); onAppt(a); }}
+                        className={`truncate text-xs rounded px-1 cursor-pointer ${APPT_TYPES[a.type]?.bg ?? "bg-gray-100"} ${
+                          a.status === "canceled" || a.status === "completed" ? "opacity-40" : ""
+                        }`}>
+                        <span className={APPT_TYPES[a.type]?.color ?? "text-gray-600"}>
+                          {fmtTime(a.scheduled_at).replace(":00","").replace(" ","")} {a.customer_name.split(" ")[0]}
+                        </span>
+                      </div>
+                    ))}
+                    {appts.length > 3 && (
+                      <div className={`text-xs ${isSelected ? "text-gray-300" : "text-gray-400"}`}>+{appts.length - 3} more</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Selected day detail */}
+      {selectedDay && (
+        <div className="mt-3 rounded border p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-medium text-sm">
+              {selectedDay.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            </span>
+            <button onClick={() => onNewAppt(selectedDay)}
+              className="text-xs bg-black text-white rounded px-2 py-1">+ Add</button>
+          </div>
+          {getAppts(selectedDay).length === 0 ? (
+            <p className="text-sm text-gray-400">Nothing scheduled.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {getAppts(selectedDay).map(a => {
+                const { bg, color, label } = APPT_TYPES[a.type];
+                return (
+                  <li key={a.id}>
+                    <button onClick={() => onAppt(a)} className="w-full text-left rounded border p-2 hover:bg-gray-50 flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${APPT_TYPES[a.type].dot}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{a.customer_name}</div>
+                        <div className="text-xs text-gray-500">{label} · {fmtTime(a.scheduled_at)}</div>
+                      </div>
+                      <span className={`text-xs rounded px-1.5 py-0.5 shrink-0 ${APPT_STATUSES[a.status]?.badge}`}>
+                        {APPT_STATUSES[a.status]?.label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

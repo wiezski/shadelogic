@@ -586,54 +586,80 @@ export default function HomePage() {
             )}
 
             {/* Today's appointments */}
-            {todayAppts.length > 0 && (
-              <div className="mb-4 rounded border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold">
-                    Today&apos;s Appointments
-                    <span className="ml-1.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{todayAppts.length}</span>
-                  </h2>
-                  <Link href="/schedule" className="text-xs text-blue-600 hover:underline">View calendar →</Link>
+            {todayAppts.length > 0 && (() => {
+              const now = new Date();
+              const nextAppt = todayAppts.find(a =>
+                new Date(a.scheduled_at) >= now && a.status !== "completed" && a.status !== "canceled"
+              ) ?? null;
+              const unconfirmed = todayAppts.filter(a => a.status === "scheduled");
+              const typeLabels: Record<string, string> = {
+                sales_consultation: "Sales Consult", measure: "Measure", install: "Install",
+                service_call: "Service Call", repair: "Repair", site_walk: "Site Walk", punch: "Punch Visit",
+              };
+              const typeColors: Record<string, string> = {
+                sales_consultation: "bg-blue-100 text-blue-700", measure: "bg-purple-100 text-purple-700",
+                install: "bg-green-100 text-green-700", service_call: "bg-orange-100 text-orange-700",
+                repair: "bg-amber-100 text-amber-700", site_walk: "bg-teal-100 text-teal-700", punch: "bg-slate-100 text-slate-600",
+              };
+              return (
+                <div className="mb-4 rounded border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-sm font-semibold">
+                      Today&apos;s Appointments
+                      <span className="ml-1.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{todayAppts.length}</span>
+                    </h2>
+                    <Link href="/schedule" className="text-xs text-blue-600 hover:underline">View calendar →</Link>
+                  </div>
+
+                  {/* Unconfirmed alert */}
+                  {unconfirmed.length > 0 && (
+                    <div className="mb-2 flex items-center gap-1.5 rounded bg-amber-50 border border-amber-200 px-2 py-1.5">
+                      <span className="text-amber-600 text-xs">⚠️</span>
+                      <span className="text-xs text-amber-700 font-medium">
+                        {unconfirmed.length} appointment{unconfirmed.length > 1 ? "s" : ""} not yet confirmed
+                      </span>
+                    </div>
+                  )}
+
+                  <ul className="space-y-1.5">
+                    {todayAppts.map((a) => {
+                      const dt = new Date(a.scheduled_at);
+                      const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                      const isNext  = nextAppt?.id === a.id;
+                      return (
+                        <li key={a.id}>
+                          <Link href={`/customers/${a.customer_id}`}
+                            className={`flex items-center justify-between rounded border p-2 hover:bg-gray-50 gap-2 ${isNext ? "border-blue-400 bg-blue-50" : ""}`}>
+                            <div className="min-w-0">
+                              {isNext && (
+                                <div className="text-xs text-blue-600 font-semibold mb-0.5">▶ Next up</div>
+                              )}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-xs rounded px-1.5 py-0.5 ${typeColors[a.type] ?? "bg-gray-100 text-gray-600"}`}>
+                                  {typeLabels[a.type] ?? a.type}
+                                </span>
+                                <span className="text-sm font-medium text-blue-600 truncate">{a.customer_name}</span>
+                              </div>
+                              {a.address && <div className="text-xs text-gray-400 truncate mt-0.5">📍 {a.address}</div>}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className={`text-sm font-medium ${isNext ? "text-blue-700" : ""}`}>{timeStr}</div>
+                              <div className={`text-xs ${
+                                a.status === "confirmed"   ? "text-blue-600" :
+                                a.status === "completed"   ? "text-green-600" :
+                                a.status === "scheduled"   ? "text-amber-500" : "text-gray-400"
+                              }`}>
+                                {a.status}
+                              </div>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-                <ul className="space-y-1.5">
-                  {todayAppts.map((a) => {
-                    const dt = new Date(a.scheduled_at);
-                    const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-                    const typeLabels: Record<string, string> = {
-                      sales_consultation: "Sales Consult", measure: "Measure", install: "Install",
-                      service_call: "Service Call", repair: "Repair", site_walk: "Site Walk", punch: "Punch Visit",
-                    };
-                    const typeColors: Record<string, string> = {
-                      sales_consultation: "bg-blue-100 text-blue-700", measure: "bg-purple-100 text-purple-700",
-                      install: "bg-green-100 text-green-700", service_call: "bg-orange-100 text-orange-700",
-                      repair: "bg-amber-100 text-amber-700", site_walk: "bg-teal-100 text-teal-700", punch: "bg-slate-100 text-slate-600",
-                    };
-                    return (
-                      <li key={a.id}>
-                        <Link href={`/customers/${a.customer_id}`}
-                          className="flex items-center justify-between rounded border p-2 hover:bg-gray-50 gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`text-xs rounded px-1.5 py-0.5 ${typeColors[a.type] ?? "bg-gray-100 text-gray-600"}`}>
-                                {typeLabels[a.type] ?? a.type}
-                              </span>
-                              <span className="text-sm font-medium text-blue-600 truncate">{a.customer_name}</span>
-                            </div>
-                            {a.address && <div className="text-xs text-gray-400 truncate mt-0.5">📍 {a.address}</div>}
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <div className="text-sm font-medium">{timeStr}</div>
-                            <div className={`text-xs ${a.status === "confirmed" ? "text-blue-600" : a.status === "completed" ? "text-green-600" : "text-gray-400"}`}>
-                              {a.status}
-                            </div>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Tasks due today / overdue */}
             {tasksDue.length > 0 && (

@@ -128,6 +128,71 @@ function stuckDays(heatScore: string): number {
   return 30;
 }
 
+function getSmsPreset(stage: string, firstName: string): string {
+  const n = firstName || "there";
+  switch (stage) {
+    case "New":
+      return `Hi ${n}, this is [your name] from [company]. I wanted to reach out about window treatments for your home. When would be a good time to chat?`;
+    case "Contacted":
+      return `Hi ${n}, just following up on our conversation about window treatments. Any questions I can help answer?`;
+    case "Scheduled":
+      return `Hi ${n}, just confirming your upcoming measure appointment. Let us know if anything changes!`;
+    case "Measured":
+      return `Hi ${n}, we've finished your measurements and are putting your quote together. We'll be in touch soon!`;
+    case "Quoted":
+      return `Hi ${n}, just checking in on the quote we sent over. Any questions I can help with?`;
+    case "Sold":
+      return `Hi ${n}, your order is confirmed! We'll reach out soon to schedule your installation.`;
+    case "Installed":
+      return `Hi ${n}, thank you for choosing us! We hope you're loving your new window treatments. Reach out anytime if you need anything.`;
+    default:
+      return `Hi ${n}, `;
+  }
+}
+
+function getEmailPreset(stage: string, firstName: string): { subject: string; body: string } {
+  const n = firstName || "there";
+  switch (stage) {
+    case "New":
+      return {
+        subject: "Window Treatment Options for Your Home",
+        body: `Hi ${n},\n\nI wanted to reach out about window treatments for your home. We'd love to help you find the perfect fit.\n\nWhen would be a good time to connect?\n\nThanks,\n[your name]`,
+      };
+    case "Contacted":
+      return {
+        subject: "Following Up — Window Treatments",
+        body: `Hi ${n},\n\nJust following up on our recent conversation. Do you have any questions I can answer?\n\nThanks,\n[your name]`,
+      };
+    case "Scheduled":
+      return {
+        subject: "Confirming Your Measure Appointment",
+        body: `Hi ${n},\n\nJust confirming your upcoming measure appointment. Please let us know if anything changes.\n\nLooking forward to it!\n\n[your name]`,
+      };
+    case "Measured":
+      return {
+        subject: "Your Quote Is Coming Together",
+        body: `Hi ${n},\n\nWe've completed your measurements and are putting your quote together. We'll have it over to you soon!\n\nThanks,\n[your name]`,
+      };
+    case "Quoted":
+      return {
+        subject: "Following Up on Your Quote",
+        body: `Hi ${n},\n\nJust checking in on the quote we sent over. Happy to answer any questions or walk you through the options.\n\nThanks,\n[your name]`,
+      };
+    case "Sold":
+      return {
+        subject: "Your Order Is Confirmed!",
+        body: `Hi ${n},\n\nGreat news — your order is confirmed and in production. We'll reach out soon to schedule your installation.\n\nThanks for choosing us!\n[your name]`,
+      };
+    case "Installed":
+      return {
+        subject: "Thank You — How Are Your New Window Treatments?",
+        body: `Hi ${n},\n\nThank you for choosing us for your window treatments! We hope you're loving them.\n\nIf you ever need anything or want to refer a friend, we'd love to hear from you.\n\nThanks,\n[your name]`,
+      };
+    default:
+      return { subject: "", body: `Hi ${n},\n\n` };
+  }
+}
+
 // ── Page ─────────────────────────────────────────────────────
 
 export default function CustomerPage() {
@@ -146,6 +211,12 @@ export default function CustomerPage() {
   const [city, setCity] = useState("");
   const [addrState, setAddrState] = useState("");
   const [zip, setZip] = useState("");
+
+  // Outreach composer
+  type ComposerMode = null | "sms1" | "sms2" | "email";
+  const [composer, setComposer] = useState<ComposerMode>(null);
+  const [composerMsg, setComposerMsg] = useState("");
+  const [composerSubject, setComposerSubject] = useState("");
 
   // New activity form
   const [actType, setActType] = useState<string>("Call");
@@ -297,6 +368,75 @@ export default function CustomerPage() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
+  // ── Outreach ──────────────────────────────────────────────
+
+  async function handleCall(phone: string) {
+    // Auto-log the call
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from("activity_log")
+      .insert([{ customer_id: customerId, type: "Call", notes: `Called ${phone}` }])
+      .select("id, type, notes, created_by, created_at").single();
+    if (data) {
+      setActivities((prev) => [data as Activity, ...prev]);
+      updateLocal("last_activity_at", now);
+      await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
+    }
+    window.location.href = `tel:${phone.replace(/\D/g, "")}`;
+  }
+
+  function openSmsComposer(mode: "sms1" | "sms2") {
+    if (!customer) return;
+    if (composer === mode) { setComposer(null); return; }
+    const preset = getSmsPreset(customer.lead_status, customer.first_name || "");
+    setComposerMsg(preset);
+    setComposer(mode);
+  }
+
+  function openEmailComposer() {
+    if (!customer) return;
+    if (composer === "email") { setComposer(null); return; }
+    const { subject, body } = getEmailPreset(customer.lead_status, customer.first_name || "");
+    setComposerSubject(subject);
+    setComposerMsg(body);
+    setComposer("email");
+  }
+
+  async function sendSms(phone: string) {
+    if (!composerMsg.trim()) return;
+    // Log as Text activity
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from("activity_log")
+      .insert([{ customer_id: customerId, type: "Text", notes: composerMsg.trim() }])
+      .select("id, type, notes, created_by, created_at").single();
+    if (data) {
+      setActivities((prev) => [data as Activity, ...prev]);
+      updateLocal("last_activity_at", now);
+      await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
+    }
+    const smsUrl = `sms:${phone.replace(/\D/g, "")}?body=${encodeURIComponent(composerMsg.trim())}`;
+    window.location.href = smsUrl;
+    setComposer(null);
+  }
+
+  async function sendEmail(email: string) {
+    if (!composerMsg.trim()) return;
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from("activity_log")
+      .insert([{ customer_id: customerId, type: "Email", notes: `Subject: ${composerSubject}\n\n${composerMsg.trim()}` }])
+      .select("id, type, notes, created_by, created_at").single();
+    if (data) {
+      setActivities((prev) => [data as Activity, ...prev]);
+      updateLocal("last_activity_at", now);
+      await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
+    }
+    const mailUrl = `mailto:${email}?subject=${encodeURIComponent(composerSubject)}&body=${encodeURIComponent(composerMsg.trim())}`;
+    window.location.href = mailUrl;
+    setComposer(null);
+  }
+
   // ── Create job ────────────────────────────────────────────
 
   async function createJob() {
@@ -435,33 +575,152 @@ export default function CustomerPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Phone</label>
-              <input type="tel" className="w-full rounded border px-3 py-2 text-sm"
+          {/* Phone 1 */}
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-gray-500">Phone</label>
+            <div className="flex gap-2">
+              <input type="tel" className="flex-1 rounded border px-3 py-2 text-sm"
                 value={customer.phone || ""}
                 onChange={(e) => updateLocal("phone", e.target.value)}
                 onBlur={(e) => saveField("phone", e.target.value || null)}
                 placeholder="801-555-1234" />
+              {customer.phone && (
+                <>
+                  <button onClick={() => handleCall(customer.phone!)}
+                    className="rounded border border-green-300 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-100">
+                    Call
+                  </button>
+                  <button onClick={() => openSmsComposer("sms1")}
+                    className={`rounded border px-3 py-2 text-xs font-medium ${composer === "sms1" ? "border-blue-400 bg-blue-500 text-white" : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
+                    Text
+                  </button>
+                </>
+              )}
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Phone 2</label>
-              <input type="tel" className="w-full rounded border px-3 py-2 text-sm"
+          </div>
+
+          {/* SMS composer for phone 1 */}
+          {composer === "sms1" && customer.phone && (
+            <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3">
+              <textarea
+                className="w-full rounded border px-3 py-2 text-sm"
+                rows={4}
+                value={composerMsg}
+                onChange={(e) => setComposerMsg(e.target.value)}
+                placeholder="Type your message..."
+                autoFocus
+              />
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => sendSms(customer.phone!)}
+                  disabled={!composerMsg.trim()}
+                  className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                  Open in Messages
+                </button>
+                <button onClick={() => setComposer(null)}
+                  className="rounded border px-3 py-1.5 text-sm text-gray-600">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Phone 2 */}
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-gray-500">Phone 2</label>
+            <div className="flex gap-2">
+              <input type="tel" className="flex-1 rounded border px-3 py-2 text-sm"
                 value={customer.phone2 || ""}
                 onChange={(e) => updateLocal("phone2", e.target.value)}
                 onBlur={(e) => saveField("phone2", e.target.value || null)}
                 placeholder="801-555-5678" />
+              {customer.phone2 && (
+                <>
+                  <button onClick={() => handleCall(customer.phone2!)}
+                    className="rounded border border-green-300 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-100">
+                    Call
+                  </button>
+                  <button onClick={() => openSmsComposer("sms2")}
+                    className={`rounded border px-3 py-2 text-xs font-medium ${composer === "sms2" ? "border-blue-400 bg-blue-500 text-white" : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
+                    Text
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
+          {/* SMS composer for phone 2 */}
+          {composer === "sms2" && customer.phone2 && (
+            <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3">
+              <textarea
+                className="w-full rounded border px-3 py-2 text-sm"
+                rows={4}
+                value={composerMsg}
+                onChange={(e) => setComposerMsg(e.target.value)}
+                placeholder="Type your message..."
+                autoFocus
+              />
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => sendSms(customer.phone2!)}
+                  disabled={!composerMsg.trim()}
+                  className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                  Open in Messages
+                </button>
+                <button onClick={() => setComposer(null)}
+                  className="rounded border px-3 py-1.5 text-sm text-gray-600">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Email */}
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium text-gray-500">Email</label>
-            <input type="email" className="w-full rounded border px-3 py-2 text-sm"
-              value={customer.email || ""}
-              onChange={(e) => updateLocal("email", e.target.value)}
-              onBlur={(e) => saveField("email", e.target.value || null)}
-              placeholder="john@example.com" />
+            <div className="flex gap-2">
+              <input type="email" className="flex-1 rounded border px-3 py-2 text-sm"
+                value={customer.email || ""}
+                onChange={(e) => updateLocal("email", e.target.value)}
+                onBlur={(e) => saveField("email", e.target.value || null)}
+                placeholder="john@example.com" />
+              {customer.email && (
+                <button onClick={openEmailComposer}
+                  className={`rounded border px-3 py-2 text-xs font-medium ${composer === "email" ? "border-purple-400 bg-purple-500 text-white" : "border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"}`}>
+                  Email
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Email composer */}
+          {composer === "email" && customer.email && (
+            <div className="mt-2 rounded border border-purple-200 bg-purple-50 p-3">
+              <input
+                className="mb-2 w-full rounded border px-3 py-2 text-sm"
+                placeholder="Subject"
+                value={composerSubject}
+                onChange={(e) => setComposerSubject(e.target.value)}
+                autoFocus
+              />
+              <textarea
+                className="w-full rounded border px-3 py-2 text-sm"
+                rows={6}
+                value={composerMsg}
+                onChange={(e) => setComposerMsg(e.target.value)}
+                placeholder="Type your message..."
+              />
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => sendEmail(customer.email!)}
+                  disabled={!composerMsg.trim()}
+                  className="rounded bg-purple-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                  Open in Mail
+                </button>
+                <button onClick={() => setComposer(null)}
+                  className="rounded border px-3 py-1.5 text-sm text-gray-600">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Activity & Tasks ──────────────────────────── */}

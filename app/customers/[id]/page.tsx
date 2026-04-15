@@ -54,6 +54,46 @@ type Task = {
   created_at: string;
 };
 
+type CustomerAppointment = {
+  id: string;
+  type: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: string;
+  outcome: string | null;
+  address: string | null;
+  notes: string | null;
+};
+
+const APPT_TYPE_LABELS: Record<string, string> = {
+  sales_consultation: "Sales Consult",
+  measure:            "Measure",
+  install:            "Install",
+  service_call:       "Service Call",
+  repair:             "Repair",
+  site_walk:          "Site Walk",
+  punch:              "Punch Visit",
+};
+
+const APPT_TYPE_COLORS: Record<string, string> = {
+  sales_consultation: "bg-blue-100 text-blue-700",
+  measure:            "bg-purple-100 text-purple-700",
+  install:            "bg-green-100 text-green-700",
+  service_call:       "bg-orange-100 text-orange-700",
+  repair:             "bg-amber-100 text-amber-700",
+  site_walk:          "bg-teal-100 text-teal-700",
+  punch:              "bg-slate-100 text-slate-600",
+};
+
+const OUTCOME_LABELS: Record<string, string> = {
+  measured:           "Measured",
+  quote_needed:       "Quote Needed",
+  sold_on_site:       "Sold on Site",
+  follow_up_later:    "Follow Up Later",
+  no_sale:            "No Sale",
+  needs_second_visit: "Needs Second Visit",
+};
+
 // ── Constants ────────────────────────────────────────────────
 
 const LEAD_STAGES = [
@@ -205,6 +245,7 @@ export default function CustomerPage() {
   const [jobs, setJobs] = useState<MeasureJob[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [appts, setAppts] = useState<CustomerAppointment[]>([]);
   const [creating, setCreating] = useState(false);
   const [crmTab, setCrmTab] = useState<"activity" | "tasks">("activity");
 
@@ -300,9 +341,18 @@ export default function CustomerPage() {
     setTasks((data || []) as Task[]);
   }
 
+  async function loadAppts() {
+    const { data } = await supabase
+      .from("appointments")
+      .select("id, type, scheduled_at, duration_minutes, status, outcome, address, notes")
+      .eq("customer_id", customerId)
+      .order("scheduled_at", { ascending: false });
+    setAppts((data || []) as CustomerAppointment[]);
+  }
+
   useEffect(() => {
     if (!customerId) return;
-    loadCustomer(); loadPhones(); loadJobs(); loadActivities(); loadTasks();
+    loadCustomer(); loadPhones(); loadJobs(); loadActivities(); loadTasks(); loadAppts();
   }, [customerId]);
 
   // ── Customer saves ────────────────────────────────────────
@@ -880,6 +930,59 @@ export default function CustomerPage() {
               </>
             )}
           </div>
+        </div>
+
+        {/* ── Appointments ─────────────────────────────── */}
+        <div className="rounded border p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Appointments</h2>
+            <Link href="/schedule" className="rounded bg-black px-3 py-1.5 text-sm text-white">
+              + Schedule
+            </Link>
+          </div>
+          {appts.length === 0 ? (
+            <p className="text-sm text-gray-400">No appointments yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {appts.map((a) => {
+                const isPast    = new Date(a.scheduled_at) < new Date();
+                const isCanceled = a.status === "canceled";
+                const isComplete = a.status === "completed";
+                const typeLabel  = APPT_TYPE_LABELS[a.type] ?? a.type;
+                const typeBadge  = APPT_TYPE_COLORS[a.type]  ?? "bg-gray-100 text-gray-600";
+                const dt = new Date(a.scheduled_at);
+                const dateStr = dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                return (
+                  <li key={a.id}
+                    className={`rounded border p-2.5 ${isCanceled ? "opacity-40" : isPast && !isComplete ? "opacity-60" : ""}`}>
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${typeBadge}`}>{typeLabel}</span>
+                        <span className="text-sm text-gray-700">{dateStr} at {timeStr}</span>
+                      </div>
+                      <span className={`text-xs rounded px-1.5 py-0.5 ${
+                        isComplete ? "bg-green-100 text-green-700" :
+                        isCanceled ? "bg-red-100 text-red-600" :
+                        a.status === "confirmed" ? "bg-blue-100 text-blue-700" :
+                        "bg-gray-100 text-gray-500"
+                      }`}>
+                        {a.status.replace("_", " ")}
+                      </span>
+                    </div>
+                    {a.outcome && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        Outcome: <span className="text-gray-700 font-medium">{OUTCOME_LABELS[a.outcome] ?? a.outcome}</span>
+                      </div>
+                    )}
+                    {a.address && (
+                      <div className="mt-1 text-xs text-gray-400 truncate">📍 {a.address}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
         {/* ── Measure Jobs ─────────────────────────────── */}

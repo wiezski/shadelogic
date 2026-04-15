@@ -16,6 +16,17 @@ type Customer = {
   last_activity_at: string | null;
 };
 
+type TodayAppt = {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  type: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: string;
+  address: string | null;
+};
+
 type TaskDue = {
   id: string;
   title: string;
@@ -102,6 +113,7 @@ export default function HomePage() {
   const [installsScheduled, setInstallsScheduled] = useState<DashboardJob[]>([]);
   const [issueJobs, setIssueJobs] = useState<DashboardJob[]>([]);
   const [tasksDue, setTasksDue] = useState<TaskDue[]>([]);
+  const [todayAppts, setTodayAppts] = useState<TodayAppt[]>([]);
   const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
   const [workQueueLoading, setWorkQueueLoading] = useState(true);
 
@@ -121,6 +133,7 @@ export default function HomePage() {
     loadDashboard();
     loadCustomers();
     loadTasksDue();
+    loadTodayAppts();
     loadWorkQueue();
   }, []);
 
@@ -219,6 +232,25 @@ export default function HomePage() {
       ...t,
       customer_name: custMap[t.customer_id] || "Unknown",
     })));
+  }
+
+  async function loadTodayAppts() {
+    const today = new Date();
+    const start = new Date(today); start.setHours(0, 0, 0, 0);
+    const end   = new Date(today); end.setHours(23, 59, 59, 999);
+    const { data: raw } = await supabase
+      .from("appointments")
+      .select("id, customer_id, type, scheduled_at, duration_minutes, status, address")
+      .gte("scheduled_at", start.toISOString())
+      .lte("scheduled_at", end.toISOString())
+      .not("status", "in", '("canceled","no_show")')
+      .order("scheduled_at", { ascending: true });
+    if (!raw || raw.length === 0) return;
+    const custIds = [...new Set(raw.map((a: any) => a.customer_id as string))];
+    const { data: cData } = await supabase.from("customers").select("id, first_name, last_name").in("id", custIds);
+    const cMap: Record<string, string> = {};
+    (cData || []).forEach((c: any) => { cMap[c.id] = [c.first_name, c.last_name].filter(Boolean).join(" "); });
+    setTodayAppts(raw.map((a: any) => ({ ...a, customer_name: cMap[a.customer_id] ?? "Unknown" })));
   }
 
   async function loadWorkQueue() {
@@ -359,7 +391,10 @@ export default function HomePage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">ShadeLogic</h1>
-          <Link href="/analytics" className="text-sm text-blue-600 hover:underline">Analytics</Link>
+          <div className="flex items-center gap-3">
+            <Link href="/schedule" className="text-sm text-gray-600 hover:text-black font-medium">📅 Schedule</Link>
+            <Link href="/analytics" className="text-sm text-blue-600 hover:underline">Analytics</Link>
+          </div>
         </div>
 
         <div className="mb-4 flex rounded border overflow-hidden">
@@ -452,6 +487,56 @@ export default function HomePage() {
                 {workQueue.length > 8 && (
                   <p className="mt-2 text-xs text-gray-400 text-center">+{workQueue.length - 8} more — check Customers tab</p>
                 )}
+              </div>
+            )}
+
+            {/* Today's appointments */}
+            {todayAppts.length > 0 && (
+              <div className="mb-4 rounded border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold">
+                    Today&apos;s Appointments
+                    <span className="ml-1.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{todayAppts.length}</span>
+                  </h2>
+                  <Link href="/schedule" className="text-xs text-blue-600 hover:underline">View calendar →</Link>
+                </div>
+                <ul className="space-y-1.5">
+                  {todayAppts.map((a) => {
+                    const dt = new Date(a.scheduled_at);
+                    const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                    const typeLabels: Record<string, string> = {
+                      sales_consultation: "Sales Consult", measure: "Measure", install: "Install",
+                      service_call: "Service Call", repair: "Repair", site_walk: "Site Walk", punch: "Punch Visit",
+                    };
+                    const typeColors: Record<string, string> = {
+                      sales_consultation: "bg-blue-100 text-blue-700", measure: "bg-purple-100 text-purple-700",
+                      install: "bg-green-100 text-green-700", service_call: "bg-orange-100 text-orange-700",
+                      repair: "bg-amber-100 text-amber-700", site_walk: "bg-teal-100 text-teal-700", punch: "bg-slate-100 text-slate-600",
+                    };
+                    return (
+                      <li key={a.id}>
+                        <Link href={`/customers/${a.customer_id}`}
+                          className="flex items-center justify-between rounded border p-2 hover:bg-gray-50 gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-xs rounded px-1.5 py-0.5 ${typeColors[a.type] ?? "bg-gray-100 text-gray-600"}`}>
+                                {typeLabels[a.type] ?? a.type}
+                              </span>
+                              <span className="text-sm font-medium text-blue-600 truncate">{a.customer_name}</span>
+                            </div>
+                            {a.address && <div className="text-xs text-gray-400 truncate mt-0.5">📍 {a.address}</div>}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="text-sm font-medium">{timeStr}</div>
+                            <div className={`text-xs ${a.status === "confirmed" ? "text-blue-600" : a.status === "completed" ? "text-green-600" : "text-gray-400"}`}>
+                              {a.status}
+                            </div>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             )}
 

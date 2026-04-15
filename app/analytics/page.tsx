@@ -37,6 +37,16 @@ type MeasurerStat = {
   windows: number;
 };
 
+type StageStat = {
+  stage: string;
+  count: number;
+};
+
+type ActivityTypeStat = {
+  type: string;
+  count: number;
+};
+
 export default function AnalyticsPage() {
   const [jobs, setJobs] = useState<JobStat[]>([]);
   const [windowCount, setWindowCount] = useState(0);
@@ -55,7 +65,18 @@ export default function AnalyticsPage() {
   const [installsScheduled, setInstallsScheduled] = useState(0);
   const [openIssues, setOpenIssues] = useState(0);
 
-  useEffect(() => { loadStats(); }, [range]);
+  // CRM stats
+  const [stageStats, setStageStats] = useState<StageStat[]>([]);
+  const [hotCount, setHotCount] = useState(0);
+  const [warmCount, setWarmCount] = useState(0);
+  const [coldCount, setColdCount] = useState(0);
+  const [stuckCount, setStuckCount] = useState(0);
+  const [activityTypeStats, setActivityTypeStats] = useState<ActivityTypeStat[]>([]);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [soldCount, setSoldCount] = useState(0);
+  const [crmLoading, setCrmLoading] = useState(true);
+
+  useEffect(() => { loadStats(); loadCrmStats(); }, [range]);
 
   async function loadStats() {
     setLoading(true);
@@ -189,6 +210,62 @@ export default function AnalyticsPage() {
     setLoading(false);
   }
 
+  async function loadCrmStats() {
+    setCrmLoading(true);
+
+    // All customers — pipeline + heat (always all-time, current state)
+    const { data: custData } = await supabase
+      .from("customers")
+      .select("id, lead_status, heat_score, last_activity_at");
+    const customers = (custData || []) as { id: string; lead_status: string | null; heat_score: string | null; last_activity_at: string | null }[];
+    setTotalCustomers(customers.length);
+
+    // Pipeline funnel
+    const STAGES = ["New", "Contacted", "Scheduled", "Measured", "Quoted", "Sold", "Installed", "Lost"];
+    const stageCounts: Record<string, number> = {};
+    STAGES.forEach((s) => { stageCounts[s] = 0; });
+    customers.forEach((c) => { const s = c.lead_status || "New"; if (stageCounts[s] !== undefined) stageCounts[s]++; });
+    setStageStats(STAGES.map((s) => ({ stage: s, count: stageCounts[s] })));
+    setSoldCount((stageCounts["Sold"] || 0) + (stageCounts["Installed"] || 0));
+
+    // Heat score
+    let hot = 0, warm = 0, cold = 0;
+    customers.forEach((c) => {
+      if (c.heat_score === "Hot") hot++;
+      else if (c.heat_score === "Cold") cold++;
+      else warm++;
+    });
+    setHotCount(hot); setWarmCount(warm); setColdCount(cold);
+
+    // Stuck leads
+    const now = Date.now();
+    const stuck = customers.filter((c) => {
+      const threshold = c.heat_score === "Hot" ? 5 : c.heat_score === "Cold" ? 30 : 14;
+      if (!c.last_activity_at) return true; // never contacted = stuck
+      const days = Math.floor((now - new Date(c.last_activity_at).getTime()) / (1000 * 60 * 60 * 24));
+      return days >= threshold;
+    });
+    // Exclude Installed and Lost from stuck
+    setStuckCount(stuck.filter((c) => c.lead_status !== "Installed" && c.lead_status !== "Lost").length);
+
+    // Activity log — filtered by date range
+    const nowDate = new Date();
+    let since: string | null = null;
+    if (range === "week") { const d = new Date(nowDate); d.setDate(d.getDate() - 7); since = d.toISOString(); }
+    else if (range === "month") { const d = new Date(nowDate); d.setDate(d.getDate() - 30); since = d.toISOString(); }
+
+    let actQuery = supabase.from("activity_log").select("type");
+    if (since) actQuery = actQuery.gte("created_at", since);
+    const { data: actData } = await actQuery;
+    const acts = (actData || []) as { type: string }[];
+    const actCounts: Record<string, number> = {};
+    acts.forEach((a) => { actCounts[a.type] = (actCounts[a.type] || 0) + 1; });
+    const TYPES = ["Call", "Text", "Email", "Note", "Visit"];
+    setActivityTypeStats(TYPES.filter((t) => actCounts[t] > 0).map((t) => ({ type: t, count: actCounts[t] })));
+
+    setCrmLoading(false);
+  }
+
   function toggleIssueExpand(issueType: string) {
     setIssueStats((prev) => prev.map((s) => s.issue_type === issueType ? { ...s, expanded: !s.expanded } : s));
   }
@@ -213,6 +290,12 @@ export default function AnalyticsPage() {
 
         {loading ? <p className="text-gray-500">Loading...</p> : (
           <>
+            {/* ── Operations Section ───────────────────── */}
+            <div className="mb-4 flex items-center gap-3">
+              <h2 className="text-lg font-bold">Operations</h2>
+              <div className="flex-1 border-t border-gray-200" />
+            </div>
+
             {/* Top stats — matches dashboard categories */}
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div className="rounded border p-4 text-center">
@@ -301,6 +384,108 @@ export default function AnalyticsPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {/* ── CRM Section ──────────────────────────── */}
+            <div className="mb-2 mt-8 flex items-center gap-3">
+              <h2 className="text-lg font-bold">CRM</h2>
+              <div className="flex-1 border-t border-gray-200" />
+            </div>
+
+            {crmLoading ? <p className="mb-6 text-sm text-gray-400">Loading CRM data...</p> : (
+              <>
+                {/* Lead pipeline funnel */}
+                {totalCustomers > 0 && (
+                  <div className="mb-6 rounded border p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="font-semibold">Lead Pipeline</h3>
+                      <span className="text-xs text-gray-400">{totalCustomers} total customers</span>
+                    </div>
+                    <div className="space-y-2">
+                      {stageStats.filter((s) => s.count > 0).map((s) => {
+                        const pct = Math.round((s.count / totalCustomers) * 100);
+                        const barColors: Record<string, string> = {
+                          New: "bg-gray-300", Contacted: "bg-blue-300", Scheduled: "bg-purple-300",
+                          Measured: "bg-amber-300", Quoted: "bg-orange-300", Sold: "bg-green-400",
+                          Installed: "bg-emerald-400", Lost: "bg-red-300",
+                        };
+                        return (
+                          <div key={s.stage} className="flex items-center gap-2">
+                            <div className="w-20 shrink-0 text-xs text-gray-600">{s.stage}</div>
+                            <div className="flex-1 rounded bg-gray-100">
+                              <div className={`h-5 rounded ${barColors[s.stage] || "bg-gray-300"} transition-all`}
+                                style={{ width: `${Math.max(4, pct)}%` }} />
+                            </div>
+                            <div className="w-8 text-right text-sm font-medium">{s.count}</div>
+                            <div className="w-8 text-right text-xs text-gray-400">{pct}%</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {soldCount > 0 && totalCustomers > 0 && (
+                      <div className="mt-3 text-xs text-gray-500">
+                        Close rate: <span className="font-semibold text-green-600">{Math.round((soldCount / totalCustomers) * 100)}%</span>
+                        <span className="ml-1">({soldCount} sold or installed of {totalCustomers} customers)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Heat score + stuck leads */}
+                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded border p-3 text-center">
+                    <div className="text-2xl font-bold text-red-500">{hotCount}</div>
+                    <div className="mt-1 text-xs text-gray-500">Hot</div>
+                  </div>
+                  <div className="rounded border p-3 text-center">
+                    <div className="text-2xl font-bold text-amber-400">{warmCount}</div>
+                    <div className="mt-1 text-xs text-gray-500">Warm</div>
+                  </div>
+                  <div className="rounded border p-3 text-center">
+                    <div className="text-2xl font-bold text-sky-400">{coldCount}</div>
+                    <div className="mt-1 text-xs text-gray-500">Cold</div>
+                  </div>
+                  <div className="rounded border p-3 text-center">
+                    <div className={`text-2xl font-bold ${stuckCount > 0 ? "text-amber-600" : "text-black"}`}>{stuckCount}</div>
+                    <div className="mt-1 text-xs text-gray-500">Stuck Leads</div>
+                  </div>
+                </div>
+
+                {/* Outreach activity */}
+                {activityTypeStats.length > 0 && (
+                  <div className="mb-6 rounded border p-4">
+                    <h3 className="mb-3 font-semibold">
+                      Outreach Activity
+                      <span className="ml-2 text-xs font-normal text-gray-400">
+                        {range === "week" ? "last 7 days" : range === "month" ? "last 30 days" : "all time"}
+                      </span>
+                    </h3>
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+                      {activityTypeStats.map((a) => {
+                        const colors: Record<string, string> = {
+                          Call: "text-green-600", Text: "text-blue-600",
+                          Email: "text-purple-600", Note: "text-gray-600", Visit: "text-amber-600",
+                        };
+                        return (
+                          <div key={a.type} className="rounded border p-3 text-center">
+                            <div className={`text-2xl font-bold ${colors[a.type] || "text-black"}`}>{a.count}</div>
+                            <div className="mt-1 text-xs text-gray-500">{a.type}s</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-400">
+                      Total: {activityTypeStats.reduce((sum, a) => sum + a.count, 0)} touchpoints
+                    </div>
+                  </div>
+                )}
+
+                {activityTypeStats.length === 0 && (
+                  <div className="mb-6 rounded border p-4 text-sm text-gray-400">
+                    No outreach activity logged in this period yet.
+                  </div>
+                )}
+              </>
             )}
 
             {/* Recent jobs */}

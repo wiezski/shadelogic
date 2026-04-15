@@ -7,8 +7,10 @@ import { supabase } from "../../lib/supabase";
 type JobStat = {
   id: string;
   title: string;
+  customer_id: string;
   measured_by: string | null;
   scheduled_at: string | null;
+  install_scheduled_at: string | null;
   install_mode: boolean;
   created_at: string;
 };
@@ -46,6 +48,13 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<"week" | "month" | "all">("month");
 
+  // Dashboard-matching 5-category counts
+  const [measuresToSchedule, setMeasuresToSchedule] = useState(0);
+  const [measuresDone, setMeasuresDone] = useState(0);
+  const [installsToSchedule, setInstallsToSchedule] = useState(0);
+  const [installsScheduled, setInstallsScheduled] = useState(0);
+  const [openIssues, setOpenIssues] = useState(0);
+
   useEffect(() => { loadStats(); }, [range]);
 
   async function loadStats() {
@@ -55,7 +64,7 @@ export default function AnalyticsPage() {
     if (range === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); since = d.toISOString(); }
     else if (range === "month") { const d = new Date(now); d.setDate(d.getDate() - 30); since = d.toISOString(); }
 
-    let jobQuery = supabase.from("measure_jobs").select("id, title, measured_by, scheduled_at, install_mode, created_at").order("created_at", { ascending: false });
+    let jobQuery = supabase.from("measure_jobs").select("id, title, customer_id, measured_by, scheduled_at, install_scheduled_at, install_mode, created_at").order("created_at", { ascending: false });
     if (since) jobQuery = jobQuery.gte("created_at", since);
     const { data: jobData } = await jobQuery;
     const loadedJobs = (jobData || []) as JobStat[];
@@ -80,6 +89,31 @@ export default function AnalyticsPage() {
       wins = (winData || []) as WinRow[];
     }
     setWindowCount(wins.length);
+
+    // 5-category dashboard stats
+    const roomsByJob: Record<string, string[]> = {};
+    rooms.forEach((r) => {
+      if (!roomsByJob[r.measure_job_id]) roomsByJob[r.measure_job_id] = [];
+      roomsByJob[r.measure_job_id].push(r.id);
+    });
+    const winCountByRoom: Record<string, number> = {};
+    const issueJobIds = new Set<string>();
+    wins.forEach((w) => {
+      winCountByRoom[w.room_id] = (winCountByRoom[w.room_id] || 0) + 1;
+      if (w.install_status === "issue") {
+        const jobId = Object.keys(roomsByJob).find((jid) => roomsByJob[jid].includes(w.room_id));
+        if (jobId) issueJobIds.add(jobId);
+      }
+    });
+    const hasWins = (jobId: string) =>
+      (roomsByJob[jobId] || []).some((rid) => (winCountByRoom[rid] || 0) > 0);
+
+    setMeasuresToSchedule(loadedJobs.filter((j) => !j.install_mode && !hasWins(j.id)).length);
+    setMeasuresDone(loadedJobs.filter((j) => !j.install_mode && hasWins(j.id)).length);
+    setInstallsToSchedule(loadedJobs.filter((j) => j.install_mode && !j.install_scheduled_at).length);
+    setInstallsScheduled(loadedJobs.filter((j) => j.install_mode && j.install_scheduled_at).length);
+    setOpenIssues(loadedJobs.filter((j) => issueJobIds.has(j.id)).length);
+
     const installWins = wins.filter((w) => {
       const jobId = roomById[w.room_id]?.measure_job_id;
       return jobId && loadedJobs.find((j) => j.id === jobId)?.install_mode;
@@ -97,7 +131,7 @@ export default function AnalyticsPage() {
     }
 
     // Customer names
-    const custIds = [...new Set(loadedJobs.map((j: JobStat & { customer_id?: string }) => (j as unknown as { customer_id: string }).customer_id).filter(Boolean))];
+    const custIds = [...new Set(loadedJobs.map((j) => j.customer_id).filter(Boolean))];
     const custMap: Record<string, string> = {};
     if (custIds.length > 0) {
       const { data: custData } = await supabase.from("customers").select("id, first_name, last_name").in("id", custIds);
@@ -116,11 +150,10 @@ export default function AnalyticsPage() {
       if (!room) return;
       const job = loadedJobs.find((j) => j.id === room.measure_job_id);
       if (!job) return;
-      const jobWithCust = job as JobStat & { customer_id?: string };
       counts[issue.issue_type].push({
         job_id: job.id,
         job_title: job.title,
-        customer_name: custMap[(jobWithCust as unknown as { customer_id: string }).customer_id] || "Unknown",
+        customer_name: custMap[job.customer_id] || "Unknown",
         room_name: room.name,
         window_label: `Window ${(win.sort_order ?? 0) + 1}`,
         notes: issue.notes,
@@ -180,23 +213,27 @@ export default function AnalyticsPage() {
 
         {loading ? <p className="text-gray-500">Loading...</p> : (
           <>
-            {/* Top stats */}
-            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* Top stats — matches dashboard categories */}
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold">{jobs.filter((j) => !j.install_mode).length}</div>
-                <div className="mt-1 text-xs text-gray-500">Measure Jobs</div>
+                <div className="text-3xl font-bold">{measuresToSchedule}</div>
+                <div className="mt-1 text-xs text-gray-500">Measures to Schedule</div>
               </div>
               <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold">{jobs.filter((j) => j.install_mode).length}</div>
-                <div className="mt-1 text-xs text-gray-500">Install Jobs</div>
+                <div className="text-3xl font-bold text-green-600">{measuresDone}</div>
+                <div className="mt-1 text-xs text-gray-500">Measures Done</div>
               </div>
               <div className="rounded border p-4 text-center">
-                <div className="text-3xl font-bold text-green-600">{installComplete}</div>
-                <div className="mt-1 text-xs text-gray-500">Windows Done</div>
+                <div className="text-3xl font-bold">{installsToSchedule}</div>
+                <div className="mt-1 text-xs text-gray-500">Installs to Schedule</div>
               </div>
               <div className="rounded border p-4 text-center">
-                <div className={`text-3xl font-bold ${installIssueCount > 0 ? "text-red-600" : "text-black"}`}>{installIssueCount}</div>
-                <div className="mt-1 text-xs text-gray-500">Install Issues</div>
+                <div className="text-3xl font-bold text-blue-600">{installsScheduled}</div>
+                <div className="mt-1 text-xs text-gray-500">Installs Scheduled</div>
+              </div>
+              <div className="rounded border p-4 text-center">
+                <div className={`text-3xl font-bold ${openIssues > 0 ? "text-red-600" : "text-black"}`}>{openIssues}</div>
+                <div className="mt-1 text-xs text-gray-500">Open Issues</div>
               </div>
             </div>
 

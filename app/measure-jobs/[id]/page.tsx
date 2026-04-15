@@ -290,6 +290,17 @@ export default function MeasureJobPage() {
       const loadedWindows = (windowData || []) as WindowItem[];
       setWindows(loadedWindows);
 
+      // Auto-advance customer to "Measured" once windows exist on a measure job
+      if (loadedWindows.length > 0 && !jobData.install_mode) {
+        const { data: custStatus } = await supabase
+          .from("customers").select("lead_status").eq("id", jobData.customer_id).single();
+        if (custStatus?.lead_status === "Measure Scheduled") {
+          await supabase.from("customers")
+            .update({ lead_status: "Measured", last_activity_at: new Date().toISOString() })
+            .eq("id", jobData.customer_id);
+        }
+      }
+
       if (loadedWindows.length === 0) {
         setPhotos([]);
         return;

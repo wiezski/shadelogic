@@ -318,16 +318,22 @@ export default function HomePage() {
           next_action: c.next_action, reason: `Quote sent ${daysInactive}d ago — follow up`, days_inactive: daysInactive, priority: 2 });
         return;
       }
-      // Priority 2: measured but no install job yet, stuck 3+ days
+      // Priority 2: measured but no quote yet
       if (c.lead_status === "Measured" && daysInactive >= 3) {
         items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Measured ${daysInactive}d ago — quote or install not started`, days_inactive: daysInactive, priority: 2 });
+          next_action: c.next_action, reason: `Measured ${daysInactive}d ago — send quote`, days_inactive: daysInactive, priority: 2 });
         return;
       }
-      // Priority 2: sold but no activity in 2+ days (install not scheduled)
+      // Priority 2: sold but hasn't moved to contact for install
       if (c.lead_status === "Sold" && daysInactive >= 2) {
         items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Sold ${daysInactive}d ago — schedule the install`, days_inactive: daysInactive, priority: 2 });
+          next_action: c.next_action, reason: `Sold ${daysInactive}d ago — contact to schedule install`, days_inactive: daysInactive, priority: 2 });
+        return;
+      }
+      // Priority 2: contact for install stuck
+      if (c.lead_status === "Contact for Install" && daysInactive >= 2) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Waiting to schedule install — ${daysInactive}d inactive`, days_inactive: daysInactive, priority: 2 });
         return;
       }
       // Priority 3: warm/cold stuck
@@ -400,11 +406,14 @@ export default function HomePage() {
   }
 
   const STAGE_COLORS: Record<string, string> = {
-    New: "text-gray-700", Contacted: "text-blue-600", Scheduled: "text-purple-600",
-    Measured: "text-amber-700", Quoted: "text-orange-600", Sold: "text-green-600",
-    Installed: "text-emerald-600", Lost: "text-red-600", "On Hold": "text-yellow-700", Waiting: "text-slate-500",
+    "New": "text-gray-700", "Contacted": "text-blue-600",
+    "Consult Scheduled": "text-indigo-600", "Measure Scheduled": "text-purple-600",
+    "Measured": "text-amber-700", "Quoted": "text-orange-600",
+    "Sold": "text-green-600", "Contact for Install": "text-teal-600",
+    "Installed": "text-emerald-600", "Complete": "text-lime-700",
+    "Lost": "text-red-600", "On Hold": "text-yellow-700", "Waiting": "text-slate-500",
   };
-  const ALL_STAGES = ["New","Contacted","Scheduled","Measured","Quoted","Sold","Installed","Lost","On Hold","Waiting"];
+  const ALL_STAGES = ["New","Contacted","Consult Scheduled","Measure Scheduled","Measured","Quoted","Sold","Contact for Install","Installed","Complete","Lost","On Hold","Waiting"];
   const stageCounts = ALL_STAGES.reduce((acc, s) => {
     acc[s] = customers.filter(c => c.lead_status === s).length;
     return acc;

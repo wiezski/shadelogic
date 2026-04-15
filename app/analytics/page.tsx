@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
     setAnalyticsCusts(customers);
 
     // Pipeline funnel
-    const STAGES = ["New", "Contacted", "Scheduled", "Measured", "Quoted", "Sold", "Installed", "Lost"];
+    const STAGES = ["New","Contacted","Consult Scheduled","Measure Scheduled","Measured","Quoted","Sold","Contact for Install","Installed","Complete","Lost"];
     const stageCounts: Record<string, number> = {};
     STAGES.forEach((s) => { stageCounts[s] = 0; });
     customers.forEach((c) => { const s = c.lead_status || "New"; if (stageCounts[s] !== undefined) stageCounts[s]++; });
@@ -450,12 +450,12 @@ export default function AnalyticsPage() {
                         {stageStats.map(s => {
                           const active = selectedStage === s.stage;
                           return (
-                            <button key={s.stage} type="button"
-                              onClick={() => setSelectedStage(active ? null : s.stage)}
-                              className={`rounded border p-2 text-center transition-colors ${active ? "bg-black text-white border-black" : "hover:bg-gray-50"}`}>
+                            <Link key={s.stage} href={`/customers?stage=${encodeURIComponent(s.stage)}`}
+                              onClick={(e) => { e.preventDefault(); setSelectedStage(active ? null : s.stage); }}
+                              className={`rounded border p-2 text-center transition-colors block ${active ? "bg-black text-white border-black" : "hover:bg-gray-50"}`}>
                               <div className={`text-xl font-bold ${active ? "text-white" : STAGE_COLORS[s.stage] ?? "text-black"}`}>{s.count}</div>
                               <div className={`text-xs mt-0.5 ${active ? "text-gray-300" : "text-gray-500"}`}>{s.stage}</div>
-                            </button>
+                            </Link>
                           );
                         })}
                       </div>
@@ -560,27 +560,24 @@ export default function AnalyticsPage() {
                   </div>
                 )}
 
-                {/* Heat score + stuck leads */}
+                {/* Heat score + stuck leads — clickable */}
                 <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="rounded border p-3 text-center">
-                    <div className="text-2xl font-bold text-red-500">{hotCount}</div>
-                    <div className="mt-1 text-xs text-gray-500">Hot</div>
-                  </div>
-                  <div className="rounded border p-3 text-center">
-                    <div className="text-2xl font-bold text-amber-400">{warmCount}</div>
-                    <div className="mt-1 text-xs text-gray-500">Warm</div>
-                  </div>
-                  <div className="rounded border p-3 text-center">
-                    <div className="text-2xl font-bold text-sky-400">{coldCount}</div>
-                    <div className="mt-1 text-xs text-gray-500">Cold</div>
-                  </div>
-                  <div className="rounded border p-3 text-center">
-                    <div className={`text-2xl font-bold ${stuckCount > 0 ? "text-amber-600" : "text-black"}`}>{stuckCount}</div>
-                    <div className="mt-1 text-xs text-gray-500">Stuck Leads</div>
-                  </div>
+                  {[
+                    { label: "Hot",         count: hotCount,   color: "text-red-500",                href: "/customers?heat=Hot" },
+                    { label: "Warm",        count: warmCount,  color: "text-amber-400",              href: "/customers?heat=Warm" },
+                    { label: "Cold",        count: coldCount,  color: "text-sky-400",                href: "/customers?heat=Cold" },
+                    { label: "Stuck Leads", count: stuckCount, color: stuckCount > 0 ? "text-amber-600" : "text-black", href: "/customers?filter=stuck" },
+                  ].map(({ label, count, color, href }) => (
+                    <Link key={label} href={href}
+                      className="rounded border p-3 text-center hover:bg-gray-50 transition-colors block">
+                      <div className={`text-2xl font-bold ${color}`}>{count}</div>
+                      <div className="mt-1 text-xs text-gray-500">{label}</div>
+                      <div className="mt-0.5 text-xs text-blue-500">View →</div>
+                    </Link>
+                  ))}
                 </div>
 
-                {/* Outreach activity */}
+                {/* Outreach activity — clickable */}
                 {activityTypeStats.length > 0 && (
                   <div className="mb-6 rounded border p-4">
                     <h3 className="mb-3 font-semibold">
@@ -596,10 +593,12 @@ export default function AnalyticsPage() {
                           Email: "text-purple-600", Note: "text-gray-600", Visit: "text-amber-600",
                         };
                         return (
-                          <div key={a.type} className="rounded border p-3 text-center">
+                          <Link key={a.type} href={`/customers?activity=${a.type}`}
+                            className="rounded border p-3 text-center hover:bg-gray-50 transition-colors block">
                             <div className={`text-2xl font-bold ${colors[a.type] || "text-black"}`}>{a.count}</div>
                             <div className="mt-1 text-xs text-gray-500">{a.type}s</div>
-                          </div>
+                            <div className="mt-0.5 text-xs text-blue-500">View →</div>
+                          </Link>
                         );
                       })}
                     </div>

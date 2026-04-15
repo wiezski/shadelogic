@@ -113,9 +113,26 @@ const OUTCOME_LABELS: Record<string, string> = {
 // ── Constants ────────────────────────────────────────────────
 
 const LEAD_STAGES = [
-  "New", "Contacted", "Scheduled", "Measured",
-  "Quoted", "Sold", "Installed", "Lost", "On Hold", "Waiting",
+  "New", "Contacted", "Consult Scheduled", "Measure Scheduled",
+  "Measured", "Quoted", "Sold", "Contact for Install",
+  "Installed", "Complete", "Lost", "On Hold", "Waiting",
 ] as const;
+
+const STAGE_NEXT_ACTION: Record<string, string> = {
+  "New":                  "Call or text to make first contact",
+  "Contacted":            "Schedule a sales consultation",
+  "Consult Scheduled":    "Confirm appointment · prep product samples",
+  "Measure Scheduled":    "Confirm measure appointment · verify address",
+  "Measured":             "Build and send quote",
+  "Quoted":               "Follow up on quote · answer questions",
+  "Sold":                 "Contact customer to schedule install",
+  "Contact for Install":  "Schedule the install appointment",
+  "Installed":            "Follow up · confirm satisfaction · request review",
+  "Complete":             "Request referral",
+  "On Hold":              "Check back in when timing is right",
+  "Waiting":              "Wait for customer update",
+  "Lost":                 "Note reason and archive",
+};
 
 const HEAT_SCORES = ["Hot", "Warm", "Cold"] as const;
 
@@ -124,16 +141,19 @@ const ACTIVITY_TYPES = ["Call", "Text", "Email", "Note", "Visit"] as const;
 const PHONE_LABELS = ["Mobile", "Home", "Work", "Spouse", "Builder", "Designer"] as const;
 
 const stageStyle: Record<string, string> = {
-  New:       "bg-gray-100 text-gray-700 border-gray-300",
-  Contacted: "bg-blue-100 text-blue-700 border-blue-300",
-  Scheduled: "bg-purple-100 text-purple-700 border-purple-300",
-  Measured:  "bg-amber-100 text-amber-800 border-amber-300",
-  Quoted:    "bg-orange-100 text-orange-700 border-orange-300",
-  Sold:      "bg-green-100 text-green-700 border-green-300",
-  Installed: "bg-emerald-100 text-emerald-700 border-emerald-300",
-  Lost:      "bg-red-100 text-red-700 border-red-300",
-  "On Hold": "bg-yellow-100 text-yellow-700 border-yellow-300",
-  Waiting:   "bg-slate-100 text-slate-600 border-slate-300",
+  "New":                  "bg-gray-100 text-gray-700 border-gray-300",
+  "Contacted":            "bg-blue-100 text-blue-700 border-blue-300",
+  "Consult Scheduled":    "bg-indigo-100 text-indigo-700 border-indigo-300",
+  "Measure Scheduled":    "bg-purple-100 text-purple-700 border-purple-300",
+  "Measured":             "bg-amber-100 text-amber-800 border-amber-300",
+  "Quoted":               "bg-orange-100 text-orange-700 border-orange-300",
+  "Sold":                 "bg-green-100 text-green-700 border-green-300",
+  "Contact for Install":  "bg-teal-100 text-teal-700 border-teal-300",
+  "Installed":            "bg-emerald-100 text-emerald-700 border-emerald-300",
+  "Complete":             "bg-lime-100 text-lime-700 border-lime-300",
+  "Lost":                 "bg-red-100 text-red-700 border-red-300",
+  "On Hold":              "bg-yellow-100 text-yellow-700 border-yellow-300",
+  "Waiting":              "bg-slate-100 text-slate-600 border-slate-300",
 };
 
 const heatStyle: Record<string, string> = {
@@ -649,6 +669,23 @@ export default function CustomerPage() {
             onBlur={(e) => saveField("next_action", e.target.value || null)}
             placeholder="e.g. Call to follow up on quote, Schedule measure..."
           />
+          {/* Stage-based suggestion */}
+          {!customer.next_action && customer.lead_status && STAGE_NEXT_ACTION[customer.lead_status] && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="text-xs text-amber-600">Suggested:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const suggestion = STAGE_NEXT_ACTION[customer.lead_status];
+                  updateLocal("next_action", suggestion);
+                  saveField("next_action", suggestion);
+                }}
+                className="text-xs text-amber-700 underline hover:text-amber-900"
+              >
+                {STAGE_NEXT_ACTION[customer.lead_status]}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Lead Status + Heat Score ─────────────────── */}

@@ -329,11 +329,11 @@ function SchedulePageInner() {
 
     // Auto-advance lead status based on appointment type
     // Only move forward — never downgrade
-    const STAGE_ORDER = ["New","Contacted","Scheduled","Measured","Quoted","Sold","Installed","Lost","On Hold","Waiting"];
+    const STAGE_ORDER = ["New","Contacted","Consult Scheduled","Measure Scheduled","Measured","Quoted","Sold","Contact for Install","Installed","Complete","Lost","On Hold","Waiting"];
     const statusMap: Partial<Record<AppointmentType, string>> = {
-      sales_consultation: "Contacted",
-      measure:            "Scheduled",
-      install:            "Sold",
+      sales_consultation: "Consult Scheduled",
+      measure:            "Measure Scheduled",
+      install:            "Contact for Install",
     };
     const targetStatus = statusMap[createType];
     if (targetStatus) {

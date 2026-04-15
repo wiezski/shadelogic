@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
@@ -154,6 +154,14 @@ function apptH(appt: Appointment): number {
 // ── Page ───────────────────────────────────────────────────────
 
 export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-gray-400 text-sm">Loading…</div>}>
+      <SchedulePageInner />
+    </Suspense>
+  );
+}
+
+function SchedulePageInner() {
   const searchParams = useSearchParams();
   const incomingCustomerId   = searchParams.get("customerId")   ?? "";
   const incomingCustomerName = searchParams.get("customerName") ?? "";

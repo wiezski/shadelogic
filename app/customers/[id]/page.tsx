@@ -12,12 +12,21 @@ type Customer = {
   first_name: string | null;
   last_name: string | null;
   address: string | null;
-  phone: string | null;
-  phone2: string | null;
+  phone: string | null;   // legacy — still saved for backwards compat
   email: string | null;
   lead_status: string;
   heat_score: string;
   last_activity_at: string | null;
+  preferred_contact: string | null;
+  next_action: string | null;
+  created_at: string;
+};
+
+type CustomerPhone = {
+  id: string;
+  phone: string;
+  label: string;
+  is_primary: boolean;
 };
 
 type MeasureJob = {
@@ -49,12 +58,14 @@ type Task = {
 
 const LEAD_STAGES = [
   "New", "Contacted", "Scheduled", "Measured",
-  "Quoted", "Sold", "Installed", "Lost",
+  "Quoted", "Sold", "Installed", "Lost", "On Hold", "Waiting",
 ] as const;
 
 const HEAT_SCORES = ["Hot", "Warm", "Cold"] as const;
 
 const ACTIVITY_TYPES = ["Call", "Text", "Email", "Note", "Visit"] as const;
+
+const PHONE_LABELS = ["Mobile", "Home", "Work", "Spouse", "Builder", "Designer"] as const;
 
 const stageStyle: Record<string, string> = {
   New:       "bg-gray-100 text-gray-700 border-gray-300",
@@ -65,6 +76,8 @@ const stageStyle: Record<string, string> = {
   Sold:      "bg-green-100 text-green-700 border-green-300",
   Installed: "bg-emerald-100 text-emerald-700 border-emerald-300",
   Lost:      "bg-red-100 text-red-700 border-red-300",
+  "On Hold": "bg-yellow-100 text-yellow-700 border-yellow-300",
+  Waiting:   "bg-slate-100 text-slate-600 border-slate-300",
 };
 
 const heatStyle: Record<string, string> = {
@@ -100,6 +113,11 @@ function daysAgo(dateStr: string | null): number | null {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function hoursAgo(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60));
+}
+
 function isOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false;
   return new Date(dueDate) < new Date(new Date().toDateString());
@@ -112,8 +130,7 @@ function isDueToday(dueDate: string | null): boolean {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatDateTime(dateStr: string): string {
@@ -128,25 +145,26 @@ function stuckDays(heatScore: string): number {
   return 30;
 }
 
+function formatSpeedToLead(hours: number): string {
+  if (hours < 1) return "< 1 hour";
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
 function getSmsPreset(stage: string, firstName: string): string {
   const n = firstName || "there";
   switch (stage) {
-    case "New":
-      return `Hi ${n}, this is [your name] from [company]. I wanted to reach out about window treatments for your home. When would be a good time to chat?`;
-    case "Contacted":
-      return `Hi ${n}, just following up on our conversation about window treatments. Any questions I can help answer?`;
-    case "Scheduled":
-      return `Hi ${n}, just confirming your upcoming measure appointment. Let us know if anything changes!`;
-    case "Measured":
-      return `Hi ${n}, we've finished your measurements and are putting your quote together. We'll be in touch soon!`;
-    case "Quoted":
-      return `Hi ${n}, just checking in on the quote we sent over. Any questions I can help with?`;
-    case "Sold":
-      return `Hi ${n}, your order is confirmed! We'll reach out soon to schedule your installation.`;
-    case "Installed":
-      return `Hi ${n}, thank you for choosing us! We hope you're loving your new window treatments. Reach out anytime if you need anything.`;
-    default:
-      return `Hi ${n}, `;
+    case "New":       return `Hi ${n}, this is [your name] from [company]. I wanted to reach out about window treatments for your home. When would be a good time to chat?`;
+    case "Contacted": return `Hi ${n}, just following up on our conversation about window treatments. Any questions I can help answer?`;
+    case "Scheduled": return `Hi ${n}, just confirming your upcoming measure appointment. Let us know if anything changes!`;
+    case "Measured":  return `Hi ${n}, we've finished your measurements and are putting your quote together. We'll be in touch soon!`;
+    case "Quoted":    return `Hi ${n}, just checking in on the quote we sent over. Any questions I can help with?`;
+    case "Sold":      return `Hi ${n}, your order is confirmed! We'll reach out soon to schedule your installation.`;
+    case "Installed": return `Hi ${n}, thank you for choosing us! We hope you're loving your new window treatments. Reach out anytime if you need anything.`;
+    case "On Hold":   return `Hi ${n}, just checking in — wanted to see if now is a better time to move forward with your window treatments.`;
+    case "Waiting":   return `Hi ${n}, just following up to see if you have any updates on your end. Happy to help whenever you're ready!`;
+    default:          return `Hi ${n}, `;
   }
 }
 
@@ -154,40 +172,23 @@ function getEmailPreset(stage: string, firstName: string): { subject: string; bo
   const n = firstName || "there";
   switch (stage) {
     case "New":
-      return {
-        subject: "Window Treatment Options for Your Home",
-        body: `Hi ${n},\n\nI wanted to reach out about window treatments for your home. We'd love to help you find the perfect fit.\n\nWhen would be a good time to connect?\n\nThanks,\n[your name]`,
-      };
+      return { subject: "Window Treatment Options for Your Home", body: `Hi ${n},\n\nI wanted to reach out about window treatments for your home. We'd love to help you find the perfect fit.\n\nWhen would be a good time to connect?\n\nThanks,\n[your name]` };
     case "Contacted":
-      return {
-        subject: "Following Up — Window Treatments",
-        body: `Hi ${n},\n\nJust following up on our recent conversation. Do you have any questions I can answer?\n\nThanks,\n[your name]`,
-      };
+      return { subject: "Following Up — Window Treatments", body: `Hi ${n},\n\nJust following up on our recent conversation. Do you have any questions I can answer?\n\nThanks,\n[your name]` };
     case "Scheduled":
-      return {
-        subject: "Confirming Your Measure Appointment",
-        body: `Hi ${n},\n\nJust confirming your upcoming measure appointment. Please let us know if anything changes.\n\nLooking forward to it!\n\n[your name]`,
-      };
+      return { subject: "Confirming Your Measure Appointment", body: `Hi ${n},\n\nJust confirming your upcoming measure appointment. Please let us know if anything changes.\n\nLooking forward to it!\n\n[your name]` };
     case "Measured":
-      return {
-        subject: "Your Quote Is Coming Together",
-        body: `Hi ${n},\n\nWe've completed your measurements and are putting your quote together. We'll have it over to you soon!\n\nThanks,\n[your name]`,
-      };
+      return { subject: "Your Quote Is Coming Together", body: `Hi ${n},\n\nWe've completed your measurements and are putting your quote together. We'll have it over to you soon!\n\nThanks,\n[your name]` };
     case "Quoted":
-      return {
-        subject: "Following Up on Your Quote",
-        body: `Hi ${n},\n\nJust checking in on the quote we sent over. Happy to answer any questions or walk you through the options.\n\nThanks,\n[your name]`,
-      };
+      return { subject: "Following Up on Your Quote", body: `Hi ${n},\n\nJust checking in on the quote we sent over. Happy to answer any questions or walk you through the options.\n\nThanks,\n[your name]` };
     case "Sold":
-      return {
-        subject: "Your Order Is Confirmed!",
-        body: `Hi ${n},\n\nGreat news — your order is confirmed and in production. We'll reach out soon to schedule your installation.\n\nThanks for choosing us!\n[your name]`,
-      };
+      return { subject: "Your Order Is Confirmed!", body: `Hi ${n},\n\nGreat news — your order is confirmed and in production. We'll reach out soon to schedule your installation.\n\nThanks for choosing us!\n[your name]` };
     case "Installed":
-      return {
-        subject: "Thank You — How Are Your New Window Treatments?",
-        body: `Hi ${n},\n\nThank you for choosing us for your window treatments! We hope you're loving them.\n\nIf you ever need anything or want to refer a friend, we'd love to hear from you.\n\nThanks,\n[your name]`,
-      };
+      return { subject: "Thank You — How Are Your New Window Treatments?", body: `Hi ${n},\n\nThank you for choosing us for your window treatments! We hope you're loving them.\n\nIf you ever need anything or want to refer a friend, we'd love to hear from you.\n\nThanks,\n[your name]` };
+    case "On Hold":
+      return { subject: "Checking In — Window Treatments", body: `Hi ${n},\n\nJust wanted to check in and see if now might be a better time to move forward with your window treatment project.\n\nNo pressure at all — just here when you're ready.\n\nThanks,\n[your name]` };
+    case "Waiting":
+      return { subject: "Following Up", body: `Hi ${n},\n\nJust following up to see if you have any updates on your end. Happy to pick up wherever we left off whenever you're ready.\n\nThanks,\n[your name]` };
     default:
       return { subject: "", body: `Hi ${n},\n\n` };
   }
@@ -200,6 +201,7 @@ export default function CustomerPage() {
   const customerId = params.id as string;
 
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [phones, setPhones] = useState<CustomerPhone[]>([]);
   const [jobs, setJobs] = useState<MeasureJob[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -212,18 +214,23 @@ export default function CustomerPage() {
   const [addrState, setAddrState] = useState("");
   const [zip, setZip] = useState("");
 
-  // Outreach composer
-  type ComposerMode = null | "sms1" | "sms2" | "email";
-  const [composer, setComposer] = useState<ComposerMode>(null);
+  // New phone form
+  const [newPhone, setNewPhone] = useState("");
+  const [newPhoneLabel, setNewPhoneLabel] = useState("Mobile");
+  const [addingPhone, setAddingPhone] = useState(false);
+
+  // Outreach composer: key = "sms-{phoneId}" or "email"
+  const [composer, setComposer] = useState<string | null>(null);
   const [composerMsg, setComposerMsg] = useState("");
   const [composerSubject, setComposerSubject] = useState("");
 
-  // New activity form
+  // Activity form
   const [actType, setActType] = useState<string>("Call");
   const [actNotes, setActNotes] = useState("");
   const [savingActivity, setSavingActivity] = useState(false);
+  const [listening, setListening] = useState(false);
 
-  // New task form
+  // Task form
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState("");
   const [savingTask, setSavingTask] = useState(false);
@@ -235,41 +242,57 @@ export default function CustomerPage() {
   async function loadCustomer() {
     const { data } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, address, phone, phone2, email, lead_status, heat_score, last_activity_at")
+      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at, preferred_contact, next_action, created_at")
       .eq("id", customerId)
       .single();
     if (data) {
       const c = data as Customer;
       setCustomer(c);
       const parsed = parseAddress(c.address);
-      setStreet(parsed.street);
-      setCity(parsed.city);
-      setAddrState(parsed.state);
-      setZip(parsed.zip);
+      setStreet(parsed.street); setCity(parsed.city); setAddrState(parsed.state); setZip(parsed.zip);
     }
   }
 
-  async function loadJobs() {
+  async function loadPhones() {
     const { data } = await supabase
-      .from("measure_jobs")
-      .select("id, title, scheduled_at, install_mode, created_at")
+      .from("customer_phones")
+      .select("id, phone, label, is_primary")
       .eq("customer_id", customerId)
-      .order("created_at", { ascending: false });
+      .order("is_primary", { ascending: false })
+      .order("created_at");
+    const loaded = (data || []) as CustomerPhone[];
+
+    // Migrate legacy phone field on first load if table is empty
+    if (loaded.length === 0) {
+      const { data: cData } = await supabase.from("customers").select("phone").eq("id", customerId).single();
+      if (cData?.phone) {
+        const { data: inserted } = await supabase
+          .from("customer_phones")
+          .insert([{ customer_id: customerId, phone: cData.phone, label: "Mobile", is_primary: true }])
+          .select("id, phone, label, is_primary").single();
+        if (inserted) setPhones([inserted as CustomerPhone]);
+        return;
+      }
+    }
+    setPhones(loaded);
+  }
+
+  async function loadJobs() {
+    const { data } = await supabase.from("measure_jobs")
+      .select("id, title, scheduled_at, install_mode, created_at")
+      .eq("customer_id", customerId).order("created_at", { ascending: false });
     setJobs((data || []) as MeasureJob[]);
   }
 
   async function loadActivities() {
-    const { data } = await supabase
-      .from("activity_log")
+    const { data } = await supabase.from("activity_log")
       .select("id, type, notes, created_by, created_at")
-      .eq("customer_id", customerId)
-      .order("created_at", { ascending: false });
+      .eq("customer_id", customerId).order("created_at", { ascending: false });
     setActivities((data || []) as Activity[]);
   }
 
   async function loadTasks() {
-    const { data } = await supabase
-      .from("tasks")
+    const { data } = await supabase.from("tasks")
       .select("id, title, due_date, completed, completed_at, created_at")
       .eq("customer_id", customerId)
       .order("completed")
@@ -279,13 +302,10 @@ export default function CustomerPage() {
 
   useEffect(() => {
     if (!customerId) return;
-    loadCustomer();
-    loadJobs();
-    loadActivities();
-    loadTasks();
+    loadCustomer(); loadPhones(); loadJobs(); loadActivities(); loadTasks();
   }, [customerId]);
 
-  // ── Customer field saves ──────────────────────────────────
+  // ── Customer saves ────────────────────────────────────────
 
   function updateLocal<K extends keyof Customer>(field: K, value: Customer[K]) {
     setCustomer((prev) => prev ? { ...prev, [field]: value } : prev);
@@ -303,12 +323,43 @@ export default function CustomerPage() {
 
   async function saveLeadStatus(status: string) {
     updateLocal("lead_status", status);
-    await saveField("lead_status", status);
+    await saveField("lead_status", status as Customer["lead_status"]);
   }
 
   async function saveHeatScore(heat: string) {
     updateLocal("heat_score", heat);
-    await saveField("heat_score", heat);
+    await saveField("heat_score", heat as Customer["heat_score"]);
+  }
+
+  // ── Phone CRUD ────────────────────────────────────────────
+
+  async function addPhone(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPhone.trim()) return;
+    setAddingPhone(true);
+    const isPrimary = phones.length === 0;
+    const { data } = await supabase.from("customer_phones")
+      .insert([{ customer_id: customerId, phone: newPhone.trim(), label: newPhoneLabel, is_primary: isPrimary }])
+      .select("id, phone, label, is_primary").single();
+    if (data) setPhones((prev) => [...prev, data as CustomerPhone]);
+    setNewPhone(""); setNewPhoneLabel("Mobile"); setAddingPhone(false);
+  }
+
+  async function updatePhoneField(id: string, field: "phone" | "label", value: string) {
+    setPhones((prev) => prev.map((p) => p.id === id ? { ...p, [field]: value } : p));
+    await supabase.from("customer_phones").update({ [field]: value }).eq("id", id);
+  }
+
+  async function setPrimary(id: string) {
+    // Clear all primary then set new one
+    await supabase.from("customer_phones").update({ is_primary: false }).eq("customer_id", customerId);
+    await supabase.from("customer_phones").update({ is_primary: true }).eq("id", id);
+    setPhones((prev) => prev.map((p) => ({ ...p, is_primary: p.id === id })));
+  }
+
+  async function deletePhone(id: string) {
+    await supabase.from("customer_phones").delete().eq("id", id);
+    setPhones((prev) => prev.filter((p) => p.id !== id));
   }
 
   // ── Activity ──────────────────────────────────────────────
@@ -318,24 +369,38 @@ export default function CustomerPage() {
     if (!actNotes.trim()) return;
     setSavingActivity(true);
     const now = new Date().toISOString();
-    const { data } = await supabase
-      .from("activity_log")
+    const { data } = await supabase.from("activity_log")
       .insert([{ customer_id: customerId, type: actType, notes: actNotes.trim() }])
-      .select("id, type, notes, created_by, created_at")
-      .single();
+      .select("id, type, notes, created_by, created_at").single();
     if (data) {
       setActivities((prev) => [data as Activity, ...prev]);
-      // Update last_activity_at locally + in DB
       updateLocal("last_activity_at", now);
       await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
     }
-    setActNotes("");
-    setSavingActivity(false);
+    setActNotes(""); setSavingActivity(false);
   }
 
   async function deleteActivity(id: string) {
     await supabase.from("activity_log").delete().eq("id", id);
     setActivities((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  function startVoiceInput() {
+    const SR = (window as unknown as { SpeechRecognition?: new() => SpeechRecognition; webkitSpeechRecognition?: new() => SpeechRecognition }).SpeechRecognition
+      || (window as unknown as { webkitSpeechRecognition?: new() => SpeechRecognition }).webkitSpeechRecognition;
+    if (!SR) { alert("Voice input not supported in this browser."); return; }
+    const rec = new SR();
+    rec.continuous = false;
+    rec.interimResults = false;
+    setListening(true);
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0][0].transcript;
+      setActNotes((prev) => prev ? prev + " " + transcript : transcript);
+      setListening(false);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
   }
 
   // ── Tasks ─────────────────────────────────────────────────
@@ -344,15 +409,11 @@ export default function CustomerPage() {
     e.preventDefault();
     if (!taskTitle.trim()) return;
     setSavingTask(true);
-    const { data } = await supabase
-      .from("tasks")
+    const { data } = await supabase.from("tasks")
       .insert([{ customer_id: customerId, title: taskTitle.trim(), due_date: taskDue || null }])
-      .select("id, title, due_date, completed, completed_at, created_at")
-      .single();
+      .select("id, title, due_date, completed, completed_at, created_at").single();
     if (data) setTasks((prev) => [data as Task, ...prev]);
-    setTaskTitle("");
-    setTaskDue("");
-    setSavingTask(false);
+    setTaskTitle(""); setTaskDue(""); setSavingTask(false);
     taskInputRef.current?.focus();
   }
 
@@ -371,10 +432,8 @@ export default function CustomerPage() {
   // ── Outreach ──────────────────────────────────────────────
 
   async function handleCall(phone: string) {
-    // Auto-log the call
     const now = new Date().toISOString();
-    const { data } = await supabase
-      .from("activity_log")
+    const { data } = await supabase.from("activity_log")
       .insert([{ customer_id: customerId, type: "Call", notes: `Called ${phone}` }])
       .select("id, type, notes, created_by, created_at").single();
     if (data) {
@@ -385,29 +444,25 @@ export default function CustomerPage() {
     window.location.href = `tel:${phone.replace(/\D/g, "")}`;
   }
 
-  function openSmsComposer(mode: "sms1" | "sms2") {
+  function openSmsComposer(phoneId: string) {
     if (!customer) return;
-    if (composer === mode) { setComposer(null); return; }
-    const preset = getSmsPreset(customer.lead_status, customer.first_name || "");
-    setComposerMsg(preset);
-    setComposer(mode);
+    const key = `sms-${phoneId}`;
+    if (composer === key) { setComposer(null); return; }
+    setComposerMsg(getSmsPreset(customer.lead_status, customer.first_name || ""));
+    setComposer(key);
   }
 
   function openEmailComposer() {
     if (!customer) return;
     if (composer === "email") { setComposer(null); return; }
     const { subject, body } = getEmailPreset(customer.lead_status, customer.first_name || "");
-    setComposerSubject(subject);
-    setComposerMsg(body);
-    setComposer("email");
+    setComposerSubject(subject); setComposerMsg(body); setComposer("email");
   }
 
   async function sendSms(phone: string) {
     if (!composerMsg.trim()) return;
-    // Log as Text activity
     const now = new Date().toISOString();
-    const { data } = await supabase
-      .from("activity_log")
+    const { data } = await supabase.from("activity_log")
       .insert([{ customer_id: customerId, type: "Text", notes: composerMsg.trim() }])
       .select("id, type, notes, created_by, created_at").single();
     if (data) {
@@ -415,16 +470,14 @@ export default function CustomerPage() {
       updateLocal("last_activity_at", now);
       await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
     }
-    const smsUrl = `sms:${phone.replace(/\D/g, "")}?body=${encodeURIComponent(composerMsg.trim())}`;
-    window.location.href = smsUrl;
+    window.location.href = `sms:${phone.replace(/\D/g, "")}?body=${encodeURIComponent(composerMsg.trim())}`;
     setComposer(null);
   }
 
   async function sendEmail(email: string) {
     if (!composerMsg.trim()) return;
     const now = new Date().toISOString();
-    const { data } = await supabase
-      .from("activity_log")
+    const { data } = await supabase.from("activity_log")
       .insert([{ customer_id: customerId, type: "Email", notes: `Subject: ${composerSubject}\n\n${composerMsg.trim()}` }])
       .select("id, type, notes, created_by, created_at").single();
     if (data) {
@@ -432,8 +485,7 @@ export default function CustomerPage() {
       updateLocal("last_activity_at", now);
       await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
     }
-    const mailUrl = `mailto:${email}?subject=${encodeURIComponent(composerSubject)}&body=${encodeURIComponent(composerMsg.trim())}`;
-    window.location.href = mailUrl;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(composerSubject)}&body=${encodeURIComponent(composerMsg.trim())}`;
     setComposer(null);
   }
 
@@ -445,11 +497,8 @@ export default function CustomerPage() {
     const todayString = new Date().toISOString().slice(0, 10);
     const lastName = (customer.last_name || "Customer").trim();
     const matching = jobs.filter((j) => j.title.startsWith(`${lastName} - ${todayString}`));
-    const title = matching.length === 0
-      ? `${lastName} - ${todayString}`
-      : `${lastName} - ${todayString} - ${matching.length + 1}`;
-    const { data } = await supabase
-      .from("measure_jobs")
+    const title = matching.length === 0 ? `${lastName} - ${todayString}` : `${lastName} - ${todayString} - ${matching.length + 1}`;
+    const { data } = await supabase.from("measure_jobs")
       .insert([{ customer_id: customerId, title, scheduled_at: `${todayString}T12:00:00` }])
       .select("id").single();
     setCreating(false);
@@ -462,63 +511,78 @@ export default function CustomerPage() {
   const doneTasks = tasks.filter((t) => t.completed);
   const stuckThreshold = customer ? stuckDays(customer.heat_score) : 14;
   const daysSinceActivity = daysAgo(customer?.last_activity_at ?? null);
-  const isStuck = daysSinceActivity !== null && daysSinceActivity >= stuckThreshold;
+  const isStuck = customer?.lead_status !== "Installed" && customer?.lead_status !== "Lost"
+    && daysSinceActivity !== null && daysSinceActivity >= stuckThreshold;
+
+  // Speed-to-lead: hours between customer created_at and earliest activity
+  const firstActivity = activities.length > 0 ? activities[activities.length - 1] : null;
+  const speedToLeadHours = customer && firstActivity
+    ? hoursAgo(customer.created_at) !== null
+      ? Math.max(0, Math.floor((new Date(firstActivity.created_at).getTime() - new Date(customer.created_at).getTime()) / (1000 * 60 * 60)))
+      : null
+    : null;
 
   if (!customer) return <div className="p-6 text-gray-500">Loading...</div>;
 
   const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+  const primaryPhone = phones.find((p) => p.is_primary) || phones[0];
 
   return (
     <main className="min-h-screen bg-white p-4 pb-12 text-black">
       <div className="mx-auto max-w-2xl">
-        <Link href="/" className="mb-4 inline-block text-sm text-blue-600 hover:underline">
-          ← Back
-        </Link>
+        <Link href="/" className="mb-4 inline-block text-sm text-blue-600 hover:underline">← Back</Link>
 
-        {/* ── Header ─────────────────────────────────────── */}
+        {/* ── Header ──────────────────────────────────────── */}
         <div className="mb-4">
           <h1 className="text-2xl font-bold">{fullName}</h1>
-          {isStuck && (
-            <div className="mt-1 text-xs font-medium text-amber-600">
-              No activity in {daysSinceActivity}d — follow up?
-            </div>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            {speedToLeadHours !== null && (
+              <span className={`font-medium ${speedToLeadHours <= 1 ? "text-green-600" : speedToLeadHours <= 24 ? "text-amber-600" : "text-red-500"}`}>
+                Speed-to-lead: {formatSpeedToLead(speedToLeadHours)}
+              </span>
+            )}
+            {isStuck && (
+              <span className="font-medium text-amber-600">
+                No activity in {daysSinceActivity}d — follow up?
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* ── Lead status + Heat score ─────────────────── */}
+        {/* ── Next Action ─────────────────────────────────── */}
+        <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-3">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-700">Next Action Required</label>
+          <input
+            className="w-full rounded border border-amber-200 bg-white px-3 py-2 text-sm placeholder-gray-400"
+            value={customer.next_action || ""}
+            onChange={(e) => updateLocal("next_action", e.target.value)}
+            onBlur={(e) => saveField("next_action", e.target.value || null)}
+            placeholder="e.g. Call to follow up on quote, Schedule measure..."
+          />
+        </div>
+
+        {/* ── Lead Status + Heat Score ─────────────────── */}
         <div className="mb-5 rounded border p-4">
           <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Lead Status</h2>
-            {/* Heat score */}
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Lead Status</h2>
             <div className="flex gap-1">
               {HEAT_SCORES.map((h) => (
-                <button
-                  key={h}
-                  onClick={() => saveHeatScore(h)}
-                  className={`rounded px-2.5 py-1 text-xs font-semibold transition-opacity ${
-                    customer.heat_score === h ? heatStyle[h] : "bg-gray-100 text-gray-500"
-                  }`}
-                >
+                <button key={h} onClick={() => saveHeatScore(h)}
+                  className={`rounded px-2.5 py-1 text-xs font-semibold ${customer.heat_score === h ? heatStyle[h] : "bg-gray-100 text-gray-500"}`}>
                   {h}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Pipeline stages — horizontal scroll on mobile */}
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {LEAD_STAGES.map((stage) => {
               const isActive = customer.lead_status === stage;
               return (
-                <button
-                  key={stage}
-                  onClick={() => saveLeadStatus(stage)}
+                <button key={stage} onClick={() => saveLeadStatus(stage)}
                   className={`shrink-0 rounded border px-3 py-1.5 text-xs font-medium transition-all ${
-                    isActive
-                      ? stageStyle[stage] + " border-current font-semibold"
-                      : "border-gray-200 bg-white text-gray-400 hover:border-gray-400 hover:text-gray-600"
-                  }`}
-                >
+                    isActive ? stageStyle[stage] + " border-current font-semibold"
+                    : "border-gray-200 bg-white text-gray-400 hover:border-gray-400 hover:text-gray-600"
+                  }`}>
                   {stage}
                 </button>
               );
@@ -526,28 +590,22 @@ export default function CustomerPage() {
           </div>
         </div>
 
-        {/* ── Contact info ─────────────────────────────── */}
+        {/* ── Contact Info ─────────────────────────────── */}
         <div className="mb-5 rounded border p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-600 uppercase tracking-wide">Contact Info</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">Contact Info</h2>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-500">First Name</label>
-              <input
-                className="w-full rounded border px-3 py-2 text-sm"
-                value={customer.first_name || ""}
+              <input className="w-full rounded border px-3 py-2 text-sm" value={customer.first_name || ""}
                 onChange={(e) => updateLocal("first_name", e.target.value)}
-                onBlur={(e) => saveField("first_name", e.target.value || null)}
-              />
+                onBlur={(e) => saveField("first_name", e.target.value || null)} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-500">Last Name</label>
-              <input
-                className="w-full rounded border px-3 py-2 text-sm"
-                value={customer.last_name || ""}
+              <input className="w-full rounded border px-3 py-2 text-sm" value={customer.last_name || ""}
                 onChange={(e) => updateLocal("last_name", e.target.value)}
-                onBlur={(e) => saveField("last_name", e.target.value || null)}
-              />
+                onBlur={(e) => saveField("last_name", e.target.value || null)} />
             </div>
           </div>
 
@@ -575,105 +633,79 @@ export default function CustomerPage() {
             </div>
           </div>
 
-          {/* Phone 1 */}
-          <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Phone</label>
-            <div className="flex gap-2">
-              <input type="tel" className="flex-1 rounded border px-3 py-2 text-sm"
-                value={customer.phone || ""}
-                onChange={(e) => updateLocal("phone", e.target.value)}
-                onBlur={(e) => saveField("phone", e.target.value || null)}
-                placeholder="801-555-1234" />
-              {customer.phone && (
-                <>
-                  <button onClick={() => handleCall(customer.phone!)}
-                    className="rounded border border-green-300 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-100">
-                    Call
-                  </button>
-                  <button onClick={() => openSmsComposer("sms1")}
-                    className={`rounded border px-3 py-2 text-xs font-medium ${composer === "sms1" ? "border-blue-400 bg-blue-500 text-white" : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
-                    Text
-                  </button>
-                </>
-              )}
+          {/* ── Phone Numbers ──────────────────────────── */}
+          <div className="mt-4">
+            <label className="mb-2 block text-xs font-medium text-gray-500">Phone Numbers</label>
+            <div className="space-y-2">
+              {phones.map((p) => (
+                <div key={p.id}>
+                  <div className="flex items-center gap-2">
+                    {/* Primary dot */}
+                    <button onClick={() => setPrimary(p.id)} title="Set as primary"
+                      className={`h-3 w-3 shrink-0 rounded-full border-2 ${p.is_primary ? "border-blue-500 bg-blue-500" : "border-gray-300 bg-white"}`} />
+                    {/* Label */}
+                    <select value={p.label} onChange={(e) => updatePhoneField(p.id, "label", e.target.value)}
+                      className="rounded border px-2 py-1.5 text-xs text-gray-600 w-24">
+                      {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
+                      <option value={p.label}>{PHONE_LABELS.includes(p.label as typeof PHONE_LABELS[number]) ? "" : p.label}</option>
+                    </select>
+                    {/* Phone input */}
+                    <input type="tel" className="flex-1 rounded border px-3 py-1.5 text-sm"
+                      value={p.phone}
+                      onChange={(e) => setPhones((prev) => prev.map((ph) => ph.id === p.id ? { ...ph, phone: e.target.value } : ph))}
+                      onBlur={(e) => updatePhoneField(p.id, "phone", e.target.value)}
+                      placeholder="801-555-1234" />
+                    {/* Call */}
+                    <button onClick={() => handleCall(p.phone)}
+                      className="rounded border border-green-300 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700">
+                      Call
+                    </button>
+                    {/* Text */}
+                    <button onClick={() => openSmsComposer(p.id)}
+                      className={`rounded border px-2.5 py-1.5 text-xs font-medium ${composer === `sms-${p.id}` ? "border-blue-400 bg-blue-500 text-white" : "border-blue-300 bg-blue-50 text-blue-700"}`}>
+                      Text
+                    </button>
+                    {/* Delete */}
+                    <button onClick={() => deletePhone(p.id)}
+                      className="text-xs text-gray-300 hover:text-red-400">✕</button>
+                  </div>
+
+                  {/* SMS composer inline */}
+                  {composer === `sms-${p.id}` && (
+                    <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3">
+                      <textarea className="w-full rounded border px-3 py-2 text-sm" rows={4}
+                        value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)}
+                        placeholder="Type your message..." autoFocus />
+                      <div className="mt-2 flex gap-2">
+                        <button onClick={() => sendSms(p.phone)} disabled={!composerMsg.trim()}
+                          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                          Open in Messages
+                        </button>
+                        <button onClick={() => setComposer(null)}
+                          className="rounded border px-3 py-1.5 text-sm text-gray-600">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+
+            {/* Add phone form */}
+            <form onSubmit={addPhone} className="mt-2 flex gap-2">
+              <select value={newPhoneLabel} onChange={(e) => setNewPhoneLabel(e.target.value)}
+                className="rounded border px-2 py-1.5 text-xs text-gray-600 w-24">
+                {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
+              </select>
+              <input type="tel" className="flex-1 rounded border px-3 py-1.5 text-sm"
+                value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Add phone number" />
+              <button type="submit" disabled={addingPhone || !newPhone.trim()}
+                className="rounded bg-gray-800 px-3 py-1.5 text-xs text-white disabled:opacity-40">
+                Add
+              </button>
+            </form>
           </div>
 
-          {/* SMS composer for phone 1 */}
-          {composer === "sms1" && customer.phone && (
-            <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3">
-              <textarea
-                className="w-full rounded border px-3 py-2 text-sm"
-                rows={4}
-                value={composerMsg}
-                onChange={(e) => setComposerMsg(e.target.value)}
-                placeholder="Type your message..."
-                autoFocus
-              />
-              <div className="mt-2 flex gap-2">
-                <button onClick={() => sendSms(customer.phone!)}
-                  disabled={!composerMsg.trim()}
-                  className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
-                  Open in Messages
-                </button>
-                <button onClick={() => setComposer(null)}
-                  className="rounded border px-3 py-1.5 text-sm text-gray-600">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Phone 2 */}
-          <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Phone 2</label>
-            <div className="flex gap-2">
-              <input type="tel" className="flex-1 rounded border px-3 py-2 text-sm"
-                value={customer.phone2 || ""}
-                onChange={(e) => updateLocal("phone2", e.target.value)}
-                onBlur={(e) => saveField("phone2", e.target.value || null)}
-                placeholder="801-555-5678" />
-              {customer.phone2 && (
-                <>
-                  <button onClick={() => handleCall(customer.phone2!)}
-                    className="rounded border border-green-300 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-100">
-                    Call
-                  </button>
-                  <button onClick={() => openSmsComposer("sms2")}
-                    className={`rounded border px-3 py-2 text-xs font-medium ${composer === "sms2" ? "border-blue-400 bg-blue-500 text-white" : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
-                    Text
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* SMS composer for phone 2 */}
-          {composer === "sms2" && customer.phone2 && (
-            <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3">
-              <textarea
-                className="w-full rounded border px-3 py-2 text-sm"
-                rows={4}
-                value={composerMsg}
-                onChange={(e) => setComposerMsg(e.target.value)}
-                placeholder="Type your message..."
-                autoFocus
-              />
-              <div className="mt-2 flex gap-2">
-                <button onClick={() => sendSms(customer.phone2!)}
-                  disabled={!composerMsg.trim()}
-                  className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
-                  Open in Messages
-                </button>
-                <button onClick={() => setComposer(null)}
-                  className="rounded border px-3 py-1.5 text-sm text-gray-600">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Email */}
+          {/* ── Email ──────────────────────────────────── */}
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium text-gray-500">Email</label>
             <div className="flex gap-2">
@@ -684,7 +716,7 @@ export default function CustomerPage() {
                 placeholder="john@example.com" />
               {customer.email && (
                 <button onClick={openEmailComposer}
-                  className={`rounded border px-3 py-2 text-xs font-medium ${composer === "email" ? "border-purple-400 bg-purple-500 text-white" : "border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"}`}>
+                  className={`rounded border px-3 py-2 text-xs font-medium ${composer === "email" ? "border-purple-400 bg-purple-500 text-white" : "border-purple-300 bg-purple-50 text-purple-700"}`}>
                   Email
                 </button>
               )}
@@ -694,52 +726,42 @@ export default function CustomerPage() {
           {/* Email composer */}
           {composer === "email" && customer.email && (
             <div className="mt-2 rounded border border-purple-200 bg-purple-50 p-3">
-              <input
-                className="mb-2 w-full rounded border px-3 py-2 text-sm"
-                placeholder="Subject"
-                value={composerSubject}
-                onChange={(e) => setComposerSubject(e.target.value)}
-                autoFocus
-              />
-              <textarea
-                className="w-full rounded border px-3 py-2 text-sm"
-                rows={6}
-                value={composerMsg}
-                onChange={(e) => setComposerMsg(e.target.value)}
-                placeholder="Type your message..."
-              />
+              <input className="mb-2 w-full rounded border px-3 py-2 text-sm" placeholder="Subject"
+                value={composerSubject} onChange={(e) => setComposerSubject(e.target.value)} autoFocus />
+              <textarea className="w-full rounded border px-3 py-2 text-sm" rows={6}
+                value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)} />
               <div className="mt-2 flex gap-2">
-                <button onClick={() => sendEmail(customer.email!)}
-                  disabled={!composerMsg.trim()}
+                <button onClick={() => sendEmail(customer.email!)} disabled={!composerMsg.trim()}
                   className="rounded bg-purple-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
                   Open in Mail
                 </button>
                 <button onClick={() => setComposer(null)}
-                  className="rounded border px-3 py-1.5 text-sm text-gray-600">
-                  Cancel
-                </button>
+                  className="rounded border px-3 py-1.5 text-sm text-gray-600">Cancel</button>
               </div>
             </div>
           )}
+
+          {/* ── Preferred Contact ──────────────────────── */}
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-gray-500">Preferred Contact Method / Notes</label>
+            <input className="w-full rounded border px-3 py-2 text-sm"
+              value={customer.preferred_contact || ""}
+              onChange={(e) => updateLocal("preferred_contact", e.target.value)}
+              onBlur={(e) => saveField("preferred_contact", e.target.value || null)}
+              placeholder="e.g. Text only, Call evenings, Contact spouse first" />
+          </div>
         </div>
 
         {/* ── Activity & Tasks ──────────────────────────── */}
         <div className="mb-5 rounded border">
-          {/* Tab bar */}
           <div className="flex border-b">
-            <button
-              onClick={() => setCrmTab("activity")}
-              className={`flex-1 py-2.5 text-sm font-medium ${crmTab === "activity" ? "border-b-2 border-black text-black" : "text-gray-400"}`}
-            >
+            <button onClick={() => setCrmTab("activity")}
+              className={`flex-1 py-2.5 text-sm font-medium ${crmTab === "activity" ? "border-b-2 border-black text-black" : "text-gray-400"}`}>
               Activity
-              {activities.length > 0 && (
-                <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{activities.length}</span>
-              )}
+              {activities.length > 0 && <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{activities.length}</span>}
             </button>
-            <button
-              onClick={() => setCrmTab("tasks")}
-              className={`flex-1 py-2.5 text-sm font-medium ${crmTab === "tasks" ? "border-b-2 border-black text-black" : "text-gray-400"}`}
-            >
+            <button onClick={() => setCrmTab("tasks")}
+              className={`flex-1 py-2.5 text-sm font-medium ${crmTab === "tasks" ? "border-b-2 border-black text-black" : "text-gray-400"}`}>
               Tasks
               {openTasks.length > 0 && (
                 <span className={`ml-1.5 rounded px-1.5 py-0.5 text-xs ${openTasks.some((t) => isOverdue(t.due_date)) ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"}`}>
@@ -750,62 +772,45 @@ export default function CustomerPage() {
           </div>
 
           <div className="p-4">
-            {/* ── Activity tab ─────────────────────────── */}
+            {/* ── Activity tab ──────────────────────────── */}
             {crmTab === "activity" && (
               <>
                 <form onSubmit={logActivity} className="mb-4">
-                  {/* Type selector */}
-                  <div className="mb-2 flex gap-1.5 flex-wrap">
+                  <div className="mb-2 flex flex-wrap gap-1.5">
                     {ACTIVITY_TYPES.map((t) => (
-                      <button
-                        key={t} type="button"
-                        onClick={() => setActType(t)}
-                        className={`rounded px-3 py-1 text-xs font-medium border ${
-                          actType === t ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300"
-                        }`}
-                      >
+                      <button key={t} type="button" onClick={() => setActType(t)}
+                        className={`rounded border px-3 py-1 text-xs font-medium ${actType === t ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300"}`}>
                         {t}
                       </button>
                     ))}
                   </div>
-                  <textarea
-                    className="w-full rounded border px-3 py-2 text-sm"
-                    rows={2}
-                    placeholder={`Log a ${actType.toLowerCase()}...`}
-                    value={actNotes}
-                    onChange={(e) => setActNotes(e.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    disabled={savingActivity || !actNotes.trim()}
-                    className="mt-2 rounded bg-black px-4 py-1.5 text-sm text-white disabled:opacity-40"
-                  >
+                  <div className="relative">
+                    <textarea className="w-full rounded border px-3 py-2 pr-10 text-sm" rows={2}
+                      placeholder={`Log a ${actType.toLowerCase()}...`}
+                      value={actNotes} onChange={(e) => setActNotes(e.target.value)} />
+                    {/* Voice-to-text mic button */}
+                    <button type="button" onClick={startVoiceInput}
+                      title="Voice input"
+                      className={`absolute right-2 top-2 rounded p-1 text-sm ${listening ? "text-red-500 animate-pulse" : "text-gray-400 hover:text-gray-700"}`}>
+                      {listening ? "●" : "🎤"}
+                    </button>
+                  </div>
+                  <button type="submit" disabled={savingActivity || !actNotes.trim()}
+                    className="mt-2 rounded bg-black px-4 py-1.5 text-sm text-white disabled:opacity-40">
                     {savingActivity ? "Saving..." : "Log"}
                   </button>
                 </form>
 
-                {activities.length === 0 ? (
-                  <p className="text-sm text-gray-400">No activity yet.</p>
-                ) : (
+                {activities.length === 0 ? <p className="text-sm text-gray-400">No activity yet.</p> : (
                   <ul className="space-y-2">
                     {activities.map((a) => (
                       <li key={a.id} className="flex gap-2 rounded border bg-gray-50 p-2.5">
-                        <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium self-start ${activityTypeStyle[a.type] || "bg-gray-100 text-gray-600"}`}>
-                          {a.type}
-                        </span>
+                        <span className={`shrink-0 self-start rounded px-2 py-0.5 text-xs font-medium ${activityTypeStyle[a.type] || "bg-gray-100 text-gray-600"}`}>{a.type}</span>
                         <div className="min-w-0 flex-1">
                           {a.notes && <p className="text-sm">{a.notes}</p>}
-                          <p className="mt-0.5 text-xs text-gray-400">
-                            {formatDateTime(a.created_at)}{a.created_by ? ` · ${a.created_by}` : ""}
-                          </p>
+                          <p className="mt-0.5 text-xs text-gray-400">{formatDateTime(a.created_at)}{a.created_by ? ` · ${a.created_by}` : ""}</p>
                         </div>
-                        <button
-                          onClick={() => deleteActivity(a.id)}
-                          className="shrink-0 text-xs text-gray-300 hover:text-red-400"
-                          aria-label="Delete"
-                        >
-                          ✕
-                        </button>
+                        <button onClick={() => deleteActivity(a.id)} className="shrink-0 text-xs text-gray-300 hover:text-red-400">✕</button>
                       </li>
                     ))}
                   </ul>
@@ -813,30 +818,17 @@ export default function CustomerPage() {
               </>
             )}
 
-            {/* ── Tasks tab ────────────────────────────── */}
+            {/* ── Tasks tab ─────────────────────────────── */}
             {crmTab === "tasks" && (
               <>
                 <form onSubmit={addTask} className="mb-4 flex gap-2">
-                  <input
-                    ref={taskInputRef}
-                    className="flex-1 rounded border px-3 py-2 text-sm"
-                    placeholder="Add a follow-up task..."
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                  />
-                  <input
-                    type="date"
-                    className="rounded border px-2 py-2 text-sm text-gray-600"
-                    value={taskDue}
-                    onChange={(e) => setTaskDue(e.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    disabled={savingTask || !taskTitle.trim()}
-                    className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-40"
-                  >
-                    Add
-                  </button>
+                  <input ref={taskInputRef} className="flex-1 rounded border px-3 py-2 text-sm"
+                    placeholder="Add a follow-up task..." value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)} />
+                  <input type="date" className="rounded border px-2 py-2 text-sm text-gray-600"
+                    value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
+                  <button type="submit" disabled={savingTask || !taskTitle.trim()}
+                    className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-40">Add</button>
                 </form>
 
                 {openTasks.length === 0 && doneTasks.length === 0 ? (
@@ -850,12 +842,8 @@ export default function CustomerPage() {
                           const today = isDueToday(t.due_date);
                           return (
                             <li key={t.id} className="flex items-center gap-2 rounded border bg-white p-2.5">
-                              <input
-                                type="checkbox"
-                                checked={false}
-                                onChange={() => toggleTask(t)}
-                                className="h-4 w-4 shrink-0 cursor-pointer rounded"
-                              />
+                              <input type="checkbox" checked={false} onChange={() => toggleTask(t)}
+                                className="h-4 w-4 shrink-0 cursor-pointer rounded" />
                               <span className="flex-1 text-sm">{t.title}</span>
                               {t.due_date && (
                                 <span className={`shrink-0 text-xs ${overdue ? "font-semibold text-red-600" : today ? "font-semibold text-amber-600" : "text-gray-400"}`}>
@@ -868,25 +856,16 @@ export default function CustomerPage() {
                         })}
                       </ul>
                     )}
-
                     {doneTasks.length > 0 && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600">
-                          {doneTasks.length} completed
-                        </summary>
+                        <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600">{doneTasks.length} completed</summary>
                         <ul className="mt-2 space-y-1.5">
                           {doneTasks.map((t) => (
                             <li key={t.id} className="flex items-center gap-2 rounded border bg-gray-50 p-2.5 opacity-60">
-                              <input
-                                type="checkbox"
-                                checked={true}
-                                onChange={() => toggleTask(t)}
-                                className="h-4 w-4 shrink-0 cursor-pointer rounded"
-                              />
+                              <input type="checkbox" checked={true} onChange={() => toggleTask(t)}
+                                className="h-4 w-4 shrink-0 cursor-pointer rounded" />
                               <span className="flex-1 text-sm line-through text-gray-500">{t.title}</span>
-                              {t.completed_at && (
-                                <span className="shrink-0 text-xs text-gray-400">{formatDate(t.completed_at)}</span>
-                              )}
+                              {t.completed_at && <span className="shrink-0 text-xs text-gray-400">{formatDate(t.completed_at)}</span>}
                               <button onClick={() => deleteTask(t.id)} className="shrink-0 text-xs text-gray-300 hover:text-red-400">✕</button>
                             </li>
                           ))}
@@ -903,29 +882,19 @@ export default function CustomerPage() {
         {/* ── Measure Jobs ─────────────────────────────── */}
         <div className="rounded border p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Measure Jobs</h2>
-            <button
-              onClick={createJob}
-              disabled={creating}
-              className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            >
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Measure Jobs</h2>
+            <button onClick={createJob} disabled={creating}
+              className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
               {creating ? "Creating..." : "+ New Job"}
             </button>
           </div>
-
-          {jobs.length === 0 ? (
-            <p className="text-sm text-gray-400">No jobs yet.</p>
-          ) : (
+          {jobs.length === 0 ? <p className="text-sm text-gray-400">No jobs yet.</p> : (
             <ul className="space-y-2">
               {jobs.map((job) => (
                 <li key={job.id} className="flex items-center justify-between rounded border p-2.5">
-                  <Link href={`/measure-jobs/${job.id}`} className="text-sm font-medium text-blue-600 hover:underline">
-                    {job.title}
-                  </Link>
+                  <Link href={`/measure-jobs/${job.id}`} className="text-sm font-medium text-blue-600 hover:underline">{job.title}</Link>
                   <div className="flex items-center gap-2">
-                    {job.scheduled_at && (
-                      <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>
-                    )}
+                    {job.scheduled_at && <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>}
                     <span className={`rounded px-1.5 py-0.5 text-xs ${job.install_mode ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
                       {job.install_mode ? "Install" : "Measure"}
                     </span>

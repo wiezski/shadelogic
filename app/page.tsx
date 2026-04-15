@@ -24,6 +24,17 @@ type TaskDue = {
   customer_name: string;
 };
 
+type WorkItem = {
+  customer_id: string;
+  customer_name: string;
+  lead_status: string;
+  heat_score: string;
+  next_action: string | null;
+  reason: string;
+  days_inactive: number | null;
+  priority: number; // 1 = highest
+};
+
 type DashboardJob = {
   id: string;
   title: string;
@@ -91,6 +102,8 @@ export default function HomePage() {
   const [installsScheduled, setInstallsScheduled] = useState<DashboardJob[]>([]);
   const [issueJobs, setIssueJobs] = useState<DashboardJob[]>([]);
   const [tasksDue, setTasksDue] = useState<TaskDue[]>([]);
+  const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
+  const [workQueueLoading, setWorkQueueLoading] = useState(true);
 
   // Add customer form
   const [showForm, setShowForm] = useState(false);
@@ -108,6 +121,7 @@ export default function HomePage() {
     loadDashboard();
     loadCustomers();
     loadTasksDue();
+    loadWorkQueue();
   }, []);
 
   async function loadDashboard() {
@@ -205,6 +219,83 @@ export default function HomePage() {
       ...t,
       customer_name: custMap[t.customer_id] || "Unknown",
     })));
+  }
+
+  async function loadWorkQueue() {
+    setWorkQueueLoading(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const now = Date.now();
+
+    // Load all active customers
+    const { data: custData } = await supabase
+      .from("customers")
+      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, next_action, created_at")
+      .not("lead_status", "in", '("Installed","Lost")')
+      .order("created_at", { ascending: false });
+    const customers = (custData || []) as {
+      id: string; first_name: string | null; last_name: string | null;
+      lead_status: string; heat_score: string; last_activity_at: string | null;
+      next_action: string | null; created_at: string;
+    }[];
+
+    // Load overdue tasks grouped by customer
+    const { data: taskData } = await supabase
+      .from("tasks").select("customer_id, title, due_date")
+      .eq("completed", false).lte("due_date", today);
+    const overdueByCustomer: Record<string, string[]> = {};
+    (taskData || []).forEach((t: { customer_id: string; title: string }) => {
+      if (!overdueByCustomer[t.customer_id]) overdueByCustomer[t.customer_id] = [];
+      overdueByCustomer[t.customer_id].push(t.title);
+    });
+
+    const items: WorkItem[] = [];
+
+    customers.forEach((c) => {
+      const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown";
+      const daysInactive = c.last_activity_at
+        ? Math.floor((now - new Date(c.last_activity_at).getTime()) / 86400000)
+        : Math.floor((now - new Date(c.created_at).getTime()) / 86400000);
+      const stuckThreshold = c.heat_score === "Hot" ? 5 : c.heat_score === "Cold" ? 30 : 14;
+      const overdueTasks = overdueByCustomer[c.id];
+
+      // Priority 1: overdue task
+      if (overdueTasks?.length) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Overdue: ${overdueTasks[0]}${overdueTasks.length > 1 ? ` +${overdueTasks.length - 1} more` : ""}`,
+          days_inactive: daysInactive, priority: 1 });
+        return;
+      }
+      // Priority 1: hot lead stuck
+      if (c.heat_score === "Hot" && daysInactive >= stuckThreshold) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Hot lead — no activity in ${daysInactive}d`, days_inactive: daysInactive, priority: 1 });
+        return;
+      }
+      // Priority 2: new lead, never contacted
+      if (c.lead_status === "New" && !c.last_activity_at) {
+        const hoursOld = Math.floor((now - new Date(c.created_at).getTime()) / 3600000);
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `New lead — not yet contacted (${hoursOld < 24 ? hoursOld + "h old" : daysInactive + "d old"})`,
+          days_inactive: daysInactive, priority: 2 });
+        return;
+      }
+      // Priority 2: quoted, no follow-up in 3+ days
+      if (c.lead_status === "Quoted" && daysInactive >= 3) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `Quote sent ${daysInactive}d ago — follow up`, days_inactive: daysInactive, priority: 2 });
+        return;
+      }
+      // Priority 3: warm/cold stuck
+      if (daysInactive >= stuckThreshold) {
+        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+          next_action: c.next_action, reason: `No activity in ${daysInactive}d`, days_inactive: daysInactive, priority: 3 });
+      }
+    });
+
+    // Sort by priority then days inactive desc
+    items.sort((a, b) => a.priority !== b.priority ? a.priority - b.priority : (b.days_inactive || 0) - (a.days_inactive || 0));
+    setWorkQueue(items);
+    setWorkQueueLoading(false);
   }
 
   async function addCustomer(e: React.FormEvent) {
@@ -323,6 +414,43 @@ export default function HomePage() {
                       </li>
                     ))}
                   </ul>
+                )}
+              </div>
+            )}
+
+            {/* Work Queue */}
+            {!workQueueLoading && workQueue.length > 0 && (
+              <div className="mb-4 rounded border p-3">
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                  Work Queue
+                  <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${workQueue.some((w) => w.priority === 1) ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                    {workQueue.length}
+                  </span>
+                </h2>
+                <ul className="space-y-1.5">
+                  {workQueue.slice(0, 8).map((w) => (
+                    <li key={w.customer_id}>
+                      <Link href={`/customers/${w.customer_id}`} className="flex items-start justify-between gap-2 rounded border p-2 hover:bg-gray-50">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-medium text-blue-600">{w.customer_name}</span>
+                            {w.heat_score && w.heat_score !== "Warm" && (
+                              <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${w.heat_score === "Hot" ? "bg-red-500 text-white" : "bg-sky-400 text-white"}`}>{w.heat_score}</span>
+                            )}
+                            <span className={`rounded px-1.5 py-0.5 text-xs ${stageStyle[w.lead_status] || "bg-gray-100 text-gray-600"}`}>{w.lead_status}</span>
+                          </div>
+                          <div className="mt-0.5 text-xs text-gray-500">{w.reason}</div>
+                          {w.next_action && <div className="mt-0.5 text-xs font-medium text-amber-700">→ {w.next_action}</div>}
+                        </div>
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${w.priority === 1 ? "bg-red-100 text-red-700" : w.priority === 2 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"}`}>
+                          {w.priority === 1 ? "Now" : w.priority === 2 ? "Today" : "Soon"}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                {workQueue.length > 8 && (
+                  <p className="mt-2 text-xs text-gray-400 text-center">+{workQueue.length - 8} more — check Customers tab</p>
                 )}
               </div>
             )}

@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "./auth-provider";
+// nav items filtered by permissions below
 import { supabase } from "../lib/supabase";
 
 export function NavBar() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, permissions } = useAuth();
   const [reminderCount, setReminderCount] = useState(0);
 
   useEffect(() => {
@@ -36,13 +37,13 @@ export function NavBar() {
         <Link href="/" className="font-bold text-white tracking-tight text-base shrink-0 mr-2">SL</Link>
         <span className="text-white/20 shrink-0 mr-0.5">|</span>
         {[
-          { href: "/",          label: "Home"      },
-          { href: "/schedule",  label: "Schedule"  },
-          { href: "/analytics", label: "Analytics" },
-          { href: "/products",  label: "Products"  },
-          { href: "/payments",  label: "Payments"  },
-          { href: "/settings",  label: "Settings"  },
-        ].map(({ href, label }) => (
+          { href: "/",          label: "Home",      show: true },
+          { href: "/schedule",  label: "Schedule",  show: permissions.manage_schedule || permissions.complete_installs },
+          { href: "/analytics", label: "Analytics", show: permissions.view_reports },
+          { href: "/products",  label: "Products",  show: permissions.access_settings },
+          { href: "/payments",  label: "Payments",  show: permissions.view_financials },
+          { href: "/settings",  label: "Settings",  show: permissions.access_settings },
+        ].filter(i => i.show).map(({ href, label }) => (
           <Link key={href} href={href}
             className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
             {label}

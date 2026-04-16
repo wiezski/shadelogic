@@ -4,6 +4,81 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
+// ── Unmatched email inbox ─────────────────────────────────────
+
+type UnmatchedEmail = {
+  id: string;
+  from_email: string | null;
+  subject: string | null;
+  order_number: string | null;
+  tracking_number: string | null;
+  detected_status: string | null;
+  created_at: string;
+};
+
+function UnmatchedEmailsSection() {
+  const [emails,   setEmails]   = useState<UnmatchedEmail[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await supabase.from("email_order_inbox")
+      .select("id, from_email, subject, order_number, tracking_number, detected_status, created_at")
+      .eq("reviewed", false).order("created_at", { ascending: false }).limit(20);
+    setEmails((data || []) as UnmatchedEmail[]);
+    setLoading(false);
+  }
+
+  async function dismiss(id: string) {
+    await supabase.from("email_order_inbox").update({ reviewed: true }).eq("id", id);
+    setEmails(prev => prev.filter(e => e.id !== id));
+  }
+
+  if (loading || emails.length === 0) return null;
+
+  const STATUS_BADGE: Record<string, string> = {
+    ordered:  "bg-blue-100 text-blue-700",
+    shipped:  "bg-amber-100 text-amber-700",
+    received: "bg-green-100 text-green-700",
+  };
+
+  return (
+    <section>
+      <button onClick={() => setExpanded(v => !v)}
+        className="flex items-center gap-2 mb-2 w-full text-left">
+        <h2 className="font-semibold text-sm text-purple-600">📦 Unmatched Order Emails</h2>
+        <span className="text-xs rounded bg-purple-100 text-purple-700 px-1.5 py-0.5">{emails.length}</span>
+        <span className="text-xs text-gray-400 ml-1">{expanded ? "▲" : "▼ tap to review"}</span>
+      </button>
+      {expanded && (
+        <ul className="space-y-2">
+          {emails.map(e => (
+            <li key={e.id} className="rounded border border-purple-200 bg-purple-50 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{e.subject ?? "(no subject)"}</div>
+                  <div className="text-xs text-gray-500">From: {e.from_email ?? "unknown"}</div>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {e.order_number && <span className="text-xs bg-white border rounded px-1.5 py-0.5">Order #{e.order_number}</span>}
+                    {e.tracking_number && <span className="text-xs bg-white border rounded px-1.5 py-0.5">Track: {e.tracking_number}</span>}
+                    {e.detected_status && <span className={`text-xs rounded px-1.5 py-0.5 ${STATUS_BADGE[e.detected_status] ?? "bg-gray-100 text-gray-600"}`}>{e.detected_status}</span>}
+                  </div>
+                  <div className="text-xs text-purple-600 mt-1">
+                    Add the order number to a quote's Materials tab to enable auto-matching next time.
+                  </div>
+                </div>
+                <button onClick={() => dismiss(e.id)} className="text-xs text-gray-400 hover:text-red-400 shrink-0">Dismiss</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 type Reminder = {
   id: string;
   type: "quote_expiring" | "deposit_overdue" | "balance_overdue" | "quote_followup" | "materials_not_ordered" | "stuck_lead" | "measured_no_quote";
@@ -213,6 +288,8 @@ export default function RemindersPage() {
           <h1 className="text-xl font-bold">Reminders</h1>
           <span className="text-xs text-gray-400">{loading ? "…" : `${reminders.length} items`}</span>
         </div>
+
+        <UnmatchedEmailsSection />
 
         {loading ? <p className="text-gray-400">Loading…</p> : reminders.length === 0 ? (
           <div className="rounded border p-8 text-center text-gray-400">

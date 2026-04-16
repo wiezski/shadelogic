@@ -6,7 +6,10 @@
    For white-label: override these variables per tenant via
    [data-tenant] attribute on <html>.
    ============================================================ */
-:root {
+/* Force light mode — color-scheme prevents browser dark mode override */
+html:root {
+  color-scheme: light;
+
   /* Brand Colors */
   --zr-orange:        #e63000;
   --zr-orange-hover:  #cc2900;

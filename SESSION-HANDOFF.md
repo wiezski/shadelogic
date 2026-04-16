@@ -50,7 +50,19 @@ Transactional email system using Resend (free tier: 100/day). Includes:
 - Quotes page: "Send Branded Email" button sends professional quote email with "View & Approve" link, auto-marks quote as sent
 - `supabase/phase8_email_outreach.sql` — email_log table with RLS, indexes, auto company_id trigger, email_opted_out column on customers
 
+### CRITICAL ISSUE — App Still Shows Dark Mode on Vercel
+The CSS variables in globals.css ARE set to light values (--zr-black: #ffffff, --zr-surface-1: #ffffff, etc.). All code is committed and pushed to origin/main. BUT the deployed app at https://shadelogic-git-main-wiezskis-projects.vercel.app still appears dark to the user. 
+
+Possible causes (investigate in order):
+1. **Vercel Deployment Protection** — `curl` to the Vercel URL returns "Authentication Required" SSO page instead of app content. This may be serving a cached/old build or blocking proper deployment.
+2. **Browser/PWA cache** — User may need to clear Safari cache and delete old PWA from home screen
+3. **Vercel build error** — Check Vercel deployment logs to see if the build actually succeeded
+4. **Vercel not rebuilding** — Even though git shows commits pushed, Vercel may not have triggered a new deployment
+
+First thing next session: Have user check Vercel dashboard → Deployments to see if the latest deploy succeeded. Also try incognito browser window. If those don't work, check for Deployment Protection settings in Vercel project settings.
+
 ### Next Up
+- **FIX DARK MODE** — #1 priority (see above)
 - Run `supabase/phase8_email_outreach.sql` in Supabase SQL editor (creates email_log table)
 - Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
 - User needs to delete old "ShadeLogic" PWA from home screen and re-add from Safari for new ZeroRemake icon
@@ -193,7 +205,7 @@ Transactional email system using Resend (free tier: 100/day). Includes:
 
 ### ZeroRemake Rebrand + White-Label (NEW)
 - **Full rebrand**: all references to "ShadeLogic" replaced with "ZeroRemake" across entire codebase
-- **Design system**: dark theme (#0c0c0c bg), orange primary (#e63000), Figtree font, DM Mono for labels
+- **Design system**: LIGHT MODE (white bg), orange primary (#e63000), Figtree font, DM Mono for labels
 - **CSS variables**: complete variable system (--zr-*) in globals.css — colors, surfaces, typography, spacing, radius, shadows
 - **SVG logo component**: `ZRLogo` component at 3 sizes (sm/md/lg) with "Z" mark + wordmark
 - **Login/signup pages**: rebranded with dark theme, ZeroRemake logo, orange CTA buttons

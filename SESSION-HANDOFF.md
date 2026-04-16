@@ -32,16 +32,31 @@ Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id t
 ### Phase 6 — Full Install Management — Complete ✓
 Quote→Install conversion, installer checklist system, materials packing list, customer sign-off with signature, enhanced completion flow. See details below.
 
-### Phase 7 — Rebrand to ZeroRemake + White-Label — Complete ✓ (NEW)
-Full rebrand from ShadeLogic to ZeroRemake. Dark theme with orange primary (#e63000), Figtree font, SVG logo component. White-label infrastructure: per-tenant branding via CSS custom properties, runtime injection from companies table, Settings UI for brand customization. See details below.
+### Phase 7 — Rebrand to ZeroRemake + White-Label — Complete ✓
+Full rebrand from ShadeLogic to ZeroRemake. Light mode with orange primary (#e63000), Figtree font, SVG logo component. White-label infrastructure: per-tenant branding via CSS custom properties, runtime injection from companies table, Settings UI for brand customization.
+
+### Phase 7.5 — Light Mode Switch — Complete ✓ (NEW)
+Switched entire app from dark theme to light mode. All CSS variables in globals.css flipped to white/light values. Every page that uses --zr-* vars automatically became light. ZRLogo SVG hardcoded to stay dark (#1a1a1a bg). Schedule/calendar page explicitly white. Text brightened for readability. Settings page auto-creates company_settings row if missing (was showing "Run phase9 SQL" error). New app icons generated.
+
+### Phase 8 — Automated Email Outreach with Resend — Complete ✓ (NEW)
+Transactional email system using Resend (free tier: 100/day). Includes:
+- `lib/email.ts` — Resend API integration, email logging, HTML layout wrapper
+- `lib/email-templates.ts` — 5 templates: appointment confirmation, appointment reminder, quote delivery, install follow-up, quote follow-up
+- `lib/use-email.ts` — client-side React hook for sending emails
+- `/api/send-email` — POST route that renders template + sends via Resend + logs to email_log table
+- `/api/cron/send-reminders` — GET route (Vercel Cron every 4hrs) finds appointments 18-30hrs away, sends reminder emails, deduplicates
+- `vercel.json` — cron config for automated reminders
+- Schedule page: "Email Confirmation" button in confirmation modal (shows when customer has email)
+- Quotes page: "Send Branded Email" button sends professional quote email with "View & Approve" link, auto-marks quote as sent
+- `supabase/phase8_email_outreach.sql` — email_log table with RLS, indexes, auto company_id trigger, email_opted_out column on customers
 
 ### Next Up
-- Run `supabase/phase6_install_management.sql` in Supabase SQL editor
-- Run `supabase/phase7_whitelabel.sql` in Supabase SQL editor
-- Go to Settings → Install Checklist → "Load Default Checklist" to seed your checklist items
-- `npm install pdf-parse` (required for server-side PDF parsing of order confirmations)
-- Create `order-documents` storage bucket in Supabase
-- Set up Postmark inbound email when ready to go live with email tracking
+- Run `supabase/phase8_email_outreach.sql` in Supabase SQL editor (creates email_log table)
+- Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
+- User needs to delete old "ShadeLogic" PWA from home screen and re-add from Safari for new ZeroRemake icon
+- Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
+- Still pending: Set up Postmark inbound email for order tracking
+- Still pending from phase 6/7: Run `supabase/phase6_install_management.sql` and `supabase/phase7_whitelabel.sql` if not already done
 
 ---
 

@@ -41,7 +41,7 @@ export function ZRLogo({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
   return (
     <span className="inline-flex items-center gap-3 no-underline select-none">
       <svg width={dims} height={dims} viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="90" height="90" rx="20" fill="var(--zr-dark, #1a1a1a)" />
+        <rect width="90" height="90" rx="20" fill="#1a1a1a" />
         <text x="45" y="63" fontFamily="'Lexend Exa', sans-serif" fontWeight="900" fontSize="54" fill="white" textAnchor="middle">{mark}</text>
         <rect x="5" y="41" width="80" height="8" rx="4" fill="var(--zr-orange, #e63000)" transform="rotate(-22 45 45)" />
       </svg>
@@ -58,7 +58,7 @@ export function ZRLogo({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
 export function ZRIcon({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="90" height="90" rx="20" fill="var(--zr-dark, #1a1a1a)" />
+      <rect width="90" height="90" rx="20" fill="#1a1a1a" />
       <text x="45" y="63" fontFamily="'Lexend Exa', sans-serif" fontWeight="900" fontSize="54" fill="white" textAnchor="middle">Z</text>
       <rect x="5" y="41" width="80" height="8" rx="4" fill="var(--zr-orange, #e63000)" transform="rotate(-22 45 45)" />
     </svg>

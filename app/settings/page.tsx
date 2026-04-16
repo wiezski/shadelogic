@@ -678,7 +678,17 @@ export default function SettingsPage() {
 
   async function load() {
     const { data } = await supabase.from("company_settings").select("*").maybeSingle();
-    if (data) setSettings(data as Settings);
+    if (data) {
+      setSettings(data as Settings);
+    } else {
+      // Auto-create a settings row if none exists
+      const { data: created } = await supabase
+        .from("company_settings")
+        .insert([{ name: "My Company" }])
+        .select("*")
+        .single();
+      if (created) setSettings(created as Settings);
+    }
     setLoading(false);
   }
 
@@ -713,7 +723,7 @@ export default function SettingsPage() {
   }
 
   if (loading) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Loading…</div>;
-  if (!settings) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>No settings found. Run the phase9 SQL first.</div>;
+  if (!settings) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Unable to load settings. Check that your company_settings table exists and RLS is configured.</div>;
 
   return (
     <PermissionGate require="access_settings">

@@ -11,31 +11,31 @@
   --zr-orange:        #e63000;
   --zr-orange-hover:  #cc2900;
   --zr-orange-light:  #ff4d1a;
-  --zr-black:         #0c0c0c;
-  --zr-dark:          #1a1a1a;
-  --zr-dark-2:        #242424;
-  --zr-dark-3:        #2e2e2e;
-  --zr-border:        #2a2a2a;
-  --zr-border-light:  #e8e3dc;
+  --zr-black:         #ffffff;
+  --zr-dark:          #f8f9fa;
+  --zr-dark-2:        #f1f3f5;
+  --zr-dark-3:        #e9ecef;
+  --zr-border:        #e5e7eb;
+  --zr-border-light:  #d1d5db;
 
   /* Text Colors */
-  --zr-text-primary:   #f0ede8;
-  --zr-text-secondary: #c0bbb5;
-  --zr-text-muted:     #888280;
-  --zr-text-dark:      #1a1a1a;
+  --zr-text-primary:   #111827;
+  --zr-text-secondary: #4b5563;
+  --zr-text-muted:     #9ca3af;
+  --zr-text-dark:      #111827;
 
   /* Surface Colors */
-  --zr-surface-1:  #161616;
-  --zr-surface-2:  #1e1e1e;
-  --zr-surface-3:  #262626;
+  --zr-surface-1:  #ffffff;
+  --zr-surface-2:  #f9fafb;
+  --zr-surface-3:  #f3f4f6;
   --zr-surface-light: #f0ede8;
-  --zr-surface-white: #faf8f5;
+  --zr-surface-white: #ffffff;
 
   /* Semantic Colors */
-  --zr-success:  #22c55e;
-  --zr-warning:  #f59e0b;
-  --zr-error:    #ef4444;
-  --zr-info:     #3b82f6;
+  --zr-success:  #16a34a;
+  --zr-warning:  #d97706;
+  --zr-error:    #dc2626;
+  --zr-info:     #2563eb;
 
   /* Typography */
   --zr-font-display: 'Figtree', sans-serif;
@@ -50,10 +50,10 @@
   --zr-radius-full: 9999px;
 
   /* Shadows */
-  --zr-shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
-  --zr-shadow-md:  0 4px 16px rgba(0,0,0,0.5);
-  --zr-shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
-  --zr-shadow-glow: 0 0 24px rgba(230,48,0,0.3);
+  --zr-shadow-sm:  0 1px 3px rgba(0,0,0,0.06);
+  --zr-shadow-md:  0 4px 12px rgba(0,0,0,0.08);
+  --zr-shadow-lg:  0 8px 24px rgba(0,0,0,0.1);
+  --zr-shadow-glow: 0 0 20px rgba(230,48,0,0.12);
 
   /* Transitions */
   --zr-transition: 150ms ease;

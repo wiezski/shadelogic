@@ -4,7 +4,7 @@
   "description": "Window treatment software — sale to install, done right",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c0c0c",
+  "background_color": "#ffffff",
   "theme_color": "#e63000",
   "orientation": "portrait-primary",
   "icons": [

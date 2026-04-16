@@ -167,7 +167,7 @@ function apptH(appt: Appointment): number {
 
 export default function SchedulePage() {
   return (
-    <Suspense fallback={<div style={{ background: "var(--zr-black)", color: "var(--zr-text-secondary)" }} className="min-h-screen flex items-center justify-center text-sm">Loading…</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm bg-white text-gray-400">Loading…</div>}>
       <SchedulePageInner />
     </Suspense>
   );
@@ -493,13 +493,13 @@ function SchedulePageInner() {
   return (
     <FeatureGate require="scheduling">
       <PermissionGate require={["manage_schedule", "complete_installs"]}>
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen">
+        <main className="min-h-screen" style={{ background: "#ffffff", color: "#1a1a1a" }}>
 
       {/* ── Top bar ── */}
       <div className="border-b px-4 py-3 flex items-center justify-between sticky top-0 bg-white z-20">
         <div className="flex items-center gap-3">
           <Link href="/" className="text-sm text-gray-400 hover:text-black">← Home</Link>
-          <h1 className="text-xl font-bold">Schedule</h1>
+          <h1 className="text-xl font-bold text-gray-900">Schedule</h1>
         </div>
         <div className="flex gap-1">
           {(["day","week","month"] as const).map(v => (
@@ -514,7 +514,7 @@ function SchedulePageInner() {
       {/* ── Date nav ── */}
       <div className="px-4 py-2 flex items-center justify-between border-b bg-white sticky top-[53px] z-10">
         <button onClick={() => navigate(-1)} className="text-xl text-gray-400 hover:text-black px-1 leading-none">‹</button>
-        <div className="text-sm font-medium text-center">
+        <div className="text-sm font-medium text-center text-gray-800">
           {view === "month"
             ? currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })
             : view === "week"
@@ -530,7 +530,7 @@ function SchedulePageInner() {
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="px-4 py-2 flex items-center justify-between">
+      <div className="px-4 py-2 flex items-center justify-between bg-white">
         {/* Legend */}
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {Object.entries(APPT_TYPES).map(([k, v]) => (
@@ -542,7 +542,8 @@ function SchedulePageInner() {
         </div>
         <button
           onClick={() => openCreate(view === "week" ? today : currentDate, 9)}
-          className="ml-4 shrink-0 bg-black text-white text-sm px-3 py-1.5 rounded">
+          className="ml-4 shrink-0 text-white text-sm px-3 py-1.5 rounded"
+          style={{ background: "var(--zr-orange)" }}>
           + New
         </button>
       </div>
@@ -1002,13 +1003,13 @@ function MonthView({ currentDate, today, getAppts, selectedDay, onDayClick, onAp
 
       {/* Selected day detail */}
       {selectedDay && (
-        <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mt-3 rounded p-3">
+        <div className="mt-3 bg-gray-50 border rounded p-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="font-medium text-sm">
+            <span className="font-medium text-sm text-gray-800">
               {selectedDay.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </span>
             <button onClick={() => onNewAppt(selectedDay)}
-              className="text-xs bg-black text-white rounded px-2 py-1">+ Add</button>
+              className="text-xs text-white rounded px-2 py-1" style={{ background: "var(--zr-orange)" }}>+ Add</button>
           </div>
           {getAppts(selectedDay).length === 0 ? (
             <p className="text-sm text-gray-400">Nothing scheduled.</p>
@@ -1018,10 +1019,10 @@ function MonthView({ currentDate, today, getAppts, selectedDay, onDayClick, onAp
                 const { bg, color, label } = APPT_TYPES[a.type];
                 return (
                   <li key={a.id}>
-                    <button onClick={() => onAppt(a)} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full text-left rounded p-2 hover:opacity-80 flex items-center gap-2">
+                    <button onClick={() => onAppt(a)} className="w-full text-left bg-white border rounded p-2 hover:bg-gray-50 flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${APPT_TYPES[a.type].dot}`} />
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{a.customer_name}</div>
+                        <div className="text-sm font-medium text-gray-800 truncate">{a.customer_name}</div>
                         <div className="text-xs text-gray-500">{label} · {fmtTime(a.scheduled_at)}</div>
                       </div>
                       <span className={`text-xs rounded px-1.5 py-0.5 shrink-0 ${APPT_STATUSES[a.status]?.badge}`}>

@@ -98,14 +98,4 @@ body {
   display: none;
 }
 
-/* Prevent iOS Smart Invert / Classic Invert from making the app look broken.
-   Re-inverts the whole page so colors cancel back to normal.
-   Images get a matching counter-invert so they also stay correct. */
-@media (inverted-colors: inverted) {
-  html {
-    filter: invert(1) hue-rotate(180deg);
-  }
-  img, video {
-    filter: invert(1) hue-rotate(180deg);
-  }
-}
+/* Note: removed iOS Smart Invert override — no longer needed in light mode */

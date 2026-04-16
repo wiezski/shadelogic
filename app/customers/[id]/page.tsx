@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { PermissionGate } from "../../permission-gate";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -648,8 +649,9 @@ export default function CustomerPage() {
   const primaryPhone = phones.find((p) => p.is_primary) || phones[0];
 
   return (
-    <main className="min-h-screen bg-white p-4 pb-12 text-black">
-      <div className="mx-auto max-w-2xl">
+    <PermissionGate require="view_customers">
+      <main className="min-h-screen bg-white p-4 pb-12 text-black">
+        <div className="mx-auto max-w-2xl">
         <Link href="/" className="mb-4 inline-block text-sm text-blue-600 hover:underline">← Back</Link>
 
         {/* ── Header ──────────────────────────────────────── */}
@@ -1280,7 +1282,8 @@ export default function CustomerPage() {
           })()}
         </div>
 
-      </div>
-    </main>
+        </div>
+      </main>
+    </PermissionGate>
   );
 }

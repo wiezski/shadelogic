@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import React from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { PermissionGate } from "../../permission-gate";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -791,8 +792,9 @@ export default function QuotePage() {
   const emailBody  = `Hi ${customerName.split(" ")[0]},\n\nYour quote is ready!\n\n${linesSummary ? linesSummary + "\n\n" : ""}Subtotal: ${fmtMoney(subtotal)}\nDiscount: -${fmtMoney(disc)}\nTotal: ${fmtMoney(total)}\n\nReply with any questions.\n\nThank you!`;
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm pb-16">
-      <div className="mx-auto max-w-3xl space-y-4">
+    <PermissionGate require={["create_quotes", "view_pricing"]}>
+      <main className="min-h-screen bg-white p-4 text-black text-sm pb-16">
+        <div className="mx-auto max-w-3xl space-y-4">
 
         <div className="flex items-center justify-between">
           <Link href={`/customers/${quote.customer_id}`} className="text-blue-600 hover:underline text-sm">
@@ -1624,6 +1626,7 @@ export default function QuotePage() {
         </Modal>
       )}
     </main>
+    </PermissionGate>
   );
 }
 

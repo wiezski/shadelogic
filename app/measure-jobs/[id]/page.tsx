@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { PermissionGate } from "../../permission-gate";
 
 type MeasureJob = {
   id: string;
@@ -1071,8 +1072,9 @@ export default function MeasureJobPage() {
   }
 
   return (
-    <main className="p-3 text-sm text-black">
-      <div className="mx-auto max-w-7xl">
+    <PermissionGate require="view_customers">
+      <main className="p-3 text-sm text-black">
+        <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 flex-wrap">
             <Link href={`/customers/${job.customer_id}`} className="text-blue-600 hover:underline">
@@ -1851,7 +1853,8 @@ export default function MeasureJobPage() {
             })}
           </div>
         )}
-      </div>
-    </main>
+        </div>
+      </main>
+    </PermissionGate>
   );
 }

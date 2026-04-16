@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
+import { PermissionGate } from "../permission-gate";
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 
 type Settings = {
@@ -333,8 +334,9 @@ export default function SettingsPage() {
   if (!settings) return <div className="p-4 text-sm text-gray-400">No settings found. Run the phase9 SQL first.</div>;
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm">
-      <div className="mx-auto max-w-2xl space-y-5">
+    <PermissionGate require="access_settings">
+      <main className="min-h-screen bg-white p-4 text-black text-sm">
+        <div className="mx-auto max-w-2xl space-y-5">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Company Settings</h1>
           {saved && <span className="text-xs text-green-600 font-medium">✓ Saved</span>}
@@ -403,7 +405,8 @@ export default function SettingsPage() {
         <TeamSection />
         <DataExportSection />
 
-      </div>
-    </main>
+        </div>
+      </main>
+    </PermissionGate>
   );
 }

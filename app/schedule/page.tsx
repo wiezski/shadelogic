@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { PermissionGate } from "../permission-gate";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -489,7 +490,8 @@ function SchedulePageInner() {
 
   // ── Render ─────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-white text-black">
+    <PermissionGate require={["manage_schedule", "complete_installs"]}>
+      <main className="min-h-screen bg-white text-black">
 
       {/* ── Top bar ── */}
       <div className="border-b px-4 py-3 flex items-center justify-between sticky top-0 bg-white z-20">
@@ -887,7 +889,8 @@ function SchedulePageInner() {
         </Modal>
       )}
 
-    </main>
+      </main>
+    </PermissionGate>
   );
 }
 

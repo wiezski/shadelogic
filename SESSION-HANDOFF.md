@@ -23,6 +23,9 @@ Quote builder, pricing engine, templates, e-signature, PDF print, customer appro
 ### Phase 14 — Product Catalog + Order/Package Tracking — Complete ✓ (NEW)
 Enhanced product catalog with manufacturer fields, CSV import, order PDF upload, package-level tracking. See details below.
 
+### Phase 15 — Permission Guards + Client Setup Guide — Complete ✓ (NEW)
+Page-level permission enforcement on all protected routes. Client-facing getting-started guide with step-by-step instructions.
+
 ### Next Up
 - `npm install pdf-parse` (required for server-side PDF parsing of order confirmations)
 - Run `supabase/phase14_product_orders.sql` in Supabase SQL editor
@@ -99,6 +102,25 @@ Enhanced product catalog with manufacturer fields, CSV import, order PDF upload,
   - Status dropdown per material (Not Ordered → Ordered → Shipped → Received → Staged)
   - "All materials received" green banner triggers ready-to-install flow
   - ETA display from email or PDF
+
+### Permission Guards (NEW)
+- `PermissionGate` component wraps every protected page
+- If user doesn't have the required permission, shows "Access Restricted" screen with back link
+- Owner role always has full access regardless of individual permissions
+- Supports single permission or array (any match grants access)
+- Pages guarded: analytics (view_reports), payments (view_financials), products (access_settings), settings (access_settings), schedule (manage_schedule OR complete_installs), customers (view_customers), quotes (create_quotes OR view_pricing), measure-jobs (view_customers)
+- Nav bar continues to hide links without permission (defense in depth)
+
+### Setup Guide (`/setup-guide`) (NEW)
+- Step-by-step getting-started guide for new clients
+- 8 steps: Add Products, First Customer, Measure Job, Build Quote, Schedule, Order Tracking (email forwarding), Invite Team, Company Settings
+- Each step expandable with detailed instructions
+- Checkable progress tracking with visual progress bar
+- Email forwarding instructions for Gmail and Outlook with company's unique email token
+- Role quick-reference table
+- FAQ section with 5 common questions
+- Visible in nav for users with access_settings or manage_team permission
+- Celebration screen when all steps marked done
 
 ### Analytics (`/analytics`)
 - **Operations section**: 5 category stats, install completion %, issues drill-down (tap to see jobs), by measurer table, recent jobs

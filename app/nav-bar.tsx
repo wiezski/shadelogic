@@ -43,6 +43,7 @@ export function NavBar() {
           { href: "/products",  label: "Products",  show: permissions.access_settings },
           { href: "/payments",  label: "Payments",  show: permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },
+          { href: "/setup-guide", label: "Setup Guide", show: permissions.access_settings || permissions.manage_team },
         ].filter(i => i.show).map(({ href, label }) => (
           <Link key={href} href={href}
             className="shrink-0 px-2.5 py-1.5 rounded text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">

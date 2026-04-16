@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../lib/supabase";
+import { PermissionGate } from "../permission-gate";
 
 type Product = {
   id: string;
@@ -293,8 +294,9 @@ export default function ProductsPage() {
   const manufacturers = [...new Set(active.map(p => p.manufacturer).filter(Boolean))] as string[];
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm">
-      <div className="mx-auto max-w-2xl">
+    <PermissionGate require="access_settings">
+      <main className="min-h-screen bg-white p-4 text-black text-sm">
+        <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -498,9 +500,9 @@ export default function ProductsPage() {
             )}
           </>
         )}
-      </div>
+        </div>
 
-      {/* ── Add / Edit modal ───────────────────────────────── */}
+        {/* ── Add / Edit modal ───────────────────────────────── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
           <div className="bg-white w-full sm:max-w-md sm:rounded-xl rounded-t-2xl max-h-[90vh] overflow-y-auto">
@@ -621,6 +623,7 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
-    </main>
+      </main>
+    </PermissionGate>
   );
 }

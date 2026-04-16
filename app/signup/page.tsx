@@ -53,7 +53,7 @@ function SignupInner() {
         id: userId, company_id: company.id,
         full_name: fullName.trim() || null, role: "owner",
       }]);
-      await supabase.from("company_settings").insert([{ name: companyName.trim() }]);
+      await supabase.from("company_settings").insert([{ name: companyName.trim(), company_id: company.id }]);
     }
 
     setLoading(false);

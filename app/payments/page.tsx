@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
 
 type PaymentQuote = {
@@ -105,9 +106,10 @@ export default function PaymentsPage() {
   }
 
   return (
-    <PermissionGate require="view_financials">
-      <main className="min-h-screen bg-white p-4 text-black text-sm">
-        <div className="mx-auto max-w-2xl space-y-5">
+    <FeatureGate require="quoting">
+      <PermissionGate require="view_financials">
+        <main className="min-h-screen bg-white p-4 text-black text-sm">
+          <div className="mx-auto max-w-2xl space-y-5">
         <h1 className="text-xl font-bold">Payments</h1>
 
         {/* Summary */}
@@ -169,9 +171,10 @@ export default function PaymentsPage() {
               }
             </section>
           </>
-        )}
-        </div>
-      </main>
-    </PermissionGate>
+          )}
+          </div>
+        </main>
+      </PermissionGate>
+    </FeatureGate>
   );
 }

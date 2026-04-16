@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { resolvePermissions, type Permissions } from "../lib/permissions";
+import { resolveFeatures, type Features } from "../lib/features";
 import type { User } from "@supabase/supabase-js";
 
 // Routes that don't require authentication
@@ -14,14 +15,17 @@ type AuthContextType = {
   companyId: string | null;
   role: string;
   permissions: Permissions;
+  features: Features;
+  plan: string;
   loading: boolean;
   signOut: () => Promise<void>;
 };
 
 const DEFAULT_PERMS = resolvePermissions("owner");
+const DEFAULT_FEATURES = resolveFeatures("trial");
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, companyId: null, role: "owner", permissions: DEFAULT_PERMS, loading: true, signOut: async () => {},
+  user: null, companyId: null, role: "owner", permissions: DEFAULT_PERMS, features: DEFAULT_FEATURES, plan: "trial", loading: true, signOut: async () => {},
 });
 
 export function useAuth() { return useContext(AuthContext); }
@@ -31,6 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [companyId,   setCompanyId]   = useState<string | null>(null);
   const [role,        setRole]        = useState<string>("owner");
   const [permissions, setPermissions] = useState<Permissions>(DEFAULT_PERMS);
+  const [features,    setFeatures]    = useState<Features>(DEFAULT_FEATURES);
+  const [plan,        setPlan]        = useState<string>("trial");
   const [loading,     setLoading]     = useState(true);
   const router   = useRouter();
   const pathname = usePathname();
@@ -44,6 +50,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const r = data?.role ?? "owner";
     setRole(r);
     setPermissions(resolvePermissions(r, data?.permissions ?? {}));
+
+    // Load company features
+    if (data?.company_id) {
+      const { data: company } = await supabase
+        .from("companies").select("plan, features").eq("id", data.company_id).single();
+      setPlan(company?.plan ?? "trial");
+      setFeatures(resolveFeatures(company?.plan ?? "trial", company?.features ?? {}));
+    } else {
+      // Default to trial if no company
+      setPlan("trial");
+      setFeatures(resolveFeatures("trial"));
+    }
   }
 
   useEffect(() => {
@@ -95,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, companyId, role, permissions, loading, signOut }}>
+    <AuthContext.Provider value={{ user, companyId, role, permissions, features, plan, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

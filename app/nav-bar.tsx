@@ -7,7 +7,7 @@ import { useAuth } from "./auth-provider";
 import { supabase } from "../lib/supabase";
 
 export function NavBar() {
-  const { user, signOut, permissions } = useAuth();
+  const { user, signOut, permissions, features } = useAuth();
   const [reminderCount, setReminderCount] = useState(0);
 
   useEffect(() => {
@@ -38,10 +38,10 @@ export function NavBar() {
         <span className="text-white/20 shrink-0 mr-0.5">|</span>
         {[
           { href: "/",          label: "Home",      show: true },
-          { href: "/schedule",  label: "Schedule",  show: permissions.manage_schedule || permissions.complete_installs },
-          { href: "/analytics", label: "Analytics", show: permissions.view_reports },
-          { href: "/products",  label: "Products",  show: permissions.access_settings },
-          { href: "/payments",  label: "Payments",  show: permissions.view_financials },
+          { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
+          { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
+          { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
+          { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },
           { href: "/setup-guide", label: "Setup Guide", show: permissions.access_settings || permissions.manage_team },
         ].filter(i => i.show).map(({ href, label }) => (

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
 
 type JobStat = {
@@ -366,8 +367,9 @@ export default function AnalyticsPage() {
   const installPct = installTotal > 0 ? Math.round((installComplete / installTotal) * 100) : null;
 
   return (
-    <PermissionGate require="view_reports">
-    <main className="min-h-screen bg-white p-6 text-black">
+    <FeatureGate require="analytics">
+      <PermissionGate require="view_reports">
+        <main className="min-h-screen bg-white p-6 text-black">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex items-center justify-between">
           <Link href="/" className="text-blue-600 hover:underline text-sm">← Back</Link>
@@ -771,8 +773,9 @@ export default function AnalyticsPage() {
             </div>
           </>
         )}
-      </div>
-    </main>
-    </PermissionGate>
+        </div>
+      </main>
+      </PermissionGate>
+    </FeatureGate>
   );
 }

@@ -23,12 +23,17 @@ Quote builder, pricing engine, templates, e-signature, PDF print, customer appro
 ### Phase 14 — Product Catalog + Order/Package Tracking — Complete ✓ (NEW)
 Enhanced product catalog with manufacturer fields, CSV import, order PDF upload, package-level tracking. See details below.
 
-### Phase 15 — Permission Guards + Client Setup Guide — Complete ✓ (NEW)
+### Phase 15 — Permission Guards + Client Setup Guide — Complete ✓
 Page-level permission enforcement on all protected routes. Client-facing getting-started guide with step-by-step instructions.
 
+### Phase 5 — Multi-User Auth + Multi-Tenancy + Feature Flags — Complete ✓ (NEW)
+Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id triggers, subscription plans (trial/basic/pro/enterprise), feature flags with per-company overrides, FeatureGate component. See details below.
+
 ### Next Up
+- Run `supabase/phase5_auth_multitenancy.sql` in Supabase SQL editor (MOST IMPORTANT — enables RLS)
+- Run `supabase/phase14_product_orders.sql` in Supabase SQL editor (if not already done)
 - `npm install pdf-parse` (required for server-side PDF parsing of order confirmations)
-- Run `supabase/phase14_product_orders.sql` in Supabase SQL editor
+- After running phase5 SQL, backfill existing data: `UPDATE customers SET company_id = 'YOUR_COMPANY_ID' WHERE company_id IS NULL;` (repeat for all tables)
 - Create `order-documents` storage bucket in Supabase
 - Set up Postmark inbound email when ready to go live with email tracking
 
@@ -122,11 +127,27 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 - Visible in nav for users with access_settings or manage_team permission
 - Celebration screen when all steps marked done
 
+### Auth + Multi-Tenancy (NEW)
+- **Supabase Auth**: login/signup pages, email+password, session management
+- **Profiles table**: id (= auth uid), company_id, full_name, role, permissions JSONB
+- **Companies table**: name, plan (trial/basic/pro/enterprise), features JSONB, trial_ends_at
+- **RLS on all 19 tables**: every table has SELECT/INSERT/UPDATE/DELETE policies filtered by company_id
+- **Auto-set company_id trigger**: `auto_set_company_id()` function runs BEFORE INSERT on every business table — front-end INSERTs don't need to pass company_id
+- **Helper functions**: `get_my_company_id()` (used in all RLS policies), `user_has_role()`
+- **Anonymous access**: public quote approval page (/q/[id]) and intake form (/intake) work without auth
+- **Team management**: invite via link (?company=id), role selector, per-user permission toggles in settings
+- **Feature flags**: 7 features (crm, scheduling, quoting, inventory, analytics, builder_portal, automation)
+- **Plan-based feature gating**: trial (all features 14 days), basic (measure+scheduling), pro (full), enterprise (everything)
+- **FeatureGate component**: wraps pages, shows "Feature Not Available" with plan info when disabled
+- **Plan management UI**: in Settings page — plan selector, trial countdown, feature toggle overrides for owners
+- **Nav bar**: hides links based on BOTH feature flags AND permissions (defense in depth)
+- **Pages with FeatureGate**: analytics (analytics), schedule (scheduling), products (inventory), payments (quoting)
+
 ### Analytics (`/analytics`)
 - **Operations section**: 5 category stats, install completion %, issues drill-down (tap to see jobs), by measurer table, recent jobs
 - **CRM section**: lead pipeline funnel with % bars + close rate, heat score counts, stuck leads count, outreach activity by type (date range aware)
 - Date range filter: 7 days / 30 days / All time
-- Architecture: sections gated by feature flags when multi-tenancy ships
+- Architecture: sections gated by feature flags
 
 ### Email Order Tracking (`/api/email-inbound`) — ENHANCED
 - Postmark inbound webhook receives forwarded emails from manufacturers
@@ -169,17 +190,26 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 - Bucket: `window-photos` (also stores order PDFs at `orders/{quoteId}/{materialId}/`)
 - Future: dedicated `order-documents` bucket
 
+### Auth tables (NEW)
+- `companies`: id, name, **plan** (trial/basic/pro/enterprise), **features** (JSONB), **trial_ends_at**, created_at
+- `profiles`: id (= auth.users.id), company_id, full_name, role, **permissions** (JSONB), **email**, **invited_by**, created_at
+- `company_settings`: id, name, phone, email, address, city, state, zip, website, license_number, tagline, google_review_link, default_deposit_pct, default_markup, default_quote_days, notify_on_shipped, notify_on_delivered, notify_channel, **company_id** (FK to companies)
+
 ### SQL migrations run
 - `supabase/phase2_crm.sql` — activity_log, tasks, CRM columns on customers, company_id stubs
 - `supabase/phase2_crm_v2.sql` — customer_phones table, preferred_contact + next_action on customers
 - `supabase/phase14_product_orders.sql` — manufacturer fields on product_catalog, package tracking fields on quote_materials, material_packages table (PENDING — needs to be run)
+- `supabase/phase5_auth_multitenancy.sql` — companies enhancements (plan, features, trial_ends_at), profiles enhancements (email, invited_by), company_settings company_id FK, RLS on all 19 tables, auto_set_company_id trigger, get_my_company_id() helper, anonymous access policies, performance indexes **(PENDING — needs to be run)**
 
 ---
 
 ## Key Behaviors / Gotchas
 - Address stored as `street|city|state|zip` pipe-separated, parsed on display
 - Fractions validated to 1/16" increments — invalid values cleared + field refocused
-- `company_id` is nullable on all tables — for future multi-tenancy, no current enforcement
+- `company_id` on all tables — auto-set by database trigger on INSERT, enforced by RLS on SELECT/UPDATE/DELETE
+- After running phase5 SQL, must backfill existing data with correct company_id (see SQL file comments)
+- RLS uses `get_my_company_id()` SECURITY DEFINER function — looks up company_id from profiles via auth.uid()
+- Feature flags resolved from plan defaults + per-company overrides in `features` JSONB
 - Smart Invert CSS fix in `globals.css` (inverted-colors media query)
 - Measure jobs start measure-only; "Start Install" unlocks install mode
 - Voice-to-text uses browser Speech API — works on mobile Chrome/Safari, uses `any` cast to avoid TS issues
@@ -191,8 +221,11 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 
 ## Architecture Decisions
 - All pages are `"use client"` components — no server components yet
-- Supabase client-side only (anon key) — RLS not enforced yet
-- Multi-tenancy: `company_id` stubbed everywhere, feature flags (`features` JSONB) planned on `companies` table
+- Supabase client-side (anon key) with RLS enforced — all data access filtered by company_id automatically
+- Multi-tenancy: RLS + auto_set_company_id trigger handles isolation; front-end doesn't need to pass company_id on inserts
+- Feature flags: `features` JSONB on `companies` table, resolved via plan defaults + overrides, exposed via AuthContext
+- Subscription plans: trial (14 days, all features) → basic → pro → enterprise — managed in Settings page
+- FeatureGate component wraps pages; PermissionGate wraps within that (double layer: feature + permission)
 - Analytics page: sectioned (Operations / CRM / Scheduling / Quoting), sections appear as modules are subscribed to
 - Outreach (call/text/email) is Level 1 only (user-initiated, opens native apps) — Level 2 automated (Twilio/Resend) planned
 - Postmark: one account owned by ShadeLogic, each client company gets unique inbound email address (token from company_id)
@@ -211,16 +244,16 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 ---
 
 ## Setup Steps for This Session's Changes
-1. Run `supabase/phase14_product_orders.sql` in Supabase SQL editor
-2. `npm install pdf-parse` on your local machine
-3. Optionally create `order-documents` storage bucket in Supabase
-4. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 14: Enhanced products + order/package tracking" && git push`
+1. Run `supabase/phase5_auth_multitenancy.sql` in Supabase SQL editor **(CRITICAL — enables RLS + multi-tenancy)**
+2. Run `supabase/phase14_product_orders.sql` in Supabase SQL editor (if not already done)
+3. Backfill existing data with company_id: sign up → get your company ID → run `UPDATE customers SET company_id = 'YOUR_ID' WHERE company_id IS NULL;` for all tables
+4. `npm install pdf-parse` on your local machine
+5. Optionally create `order-documents` storage bucket in Supabase
+6. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 5: Auth, multi-tenancy, RLS, feature flags" && git push`
 
 ---
 
 ## Backlog (not yet scheduled)
-- Multi-tenancy + auth (Supabase Auth, login page, RLS policies, company onboarding)
-- Feature flags UI (admin toggle per company for CRM, Scheduling, Quoting)
 - Personal branding per company (logo, colors, name)
 - Automated SMS (Twilio ~$0.01/msg)
 - Automated email (Resend, free tier) — appointment confirmations, reminders
@@ -229,4 +262,5 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 - Lead assignment (assigned_to field, filter work queue by user)
 - Follow-up sequences (auto-prepare next outreach, user approve/edit/send)
 - Manufacturer API integrations (when available)
-- Client setup guide / FAQ page for email forwarding setup
+- Stripe/payment integration for actual plan billing
+- Password reset flow

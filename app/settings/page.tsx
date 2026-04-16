@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
 import { PermissionGate } from "../permission-gate";
+import { PLAN_LABELS, PLAN_FEATURES, FEATURE_LABELS, type Plan, type FeatureKey } from "../../lib/features";
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 
 type Settings = {
@@ -27,6 +28,116 @@ type Settings = {
   default_quote_days: number;
 };
 
+// ── Plan & Features ───────────────────────────────────────────
+
+function PlanSection() {
+  const { companyId, plan, features, role } = useAuth();
+  const [trialEnds, setTrialEnds] = useState<string | null>(null);
+  const [localFeatures, setLocalFeatures] = useState(features);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setLocalFeatures(features);
+  }, [features]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    supabase.from("companies").select("trial_ends_at").eq("id", companyId).single()
+      .then(({ data }) => setTrialEnds(data?.trial_ends_at ?? null));
+  }, [companyId]);
+
+  async function toggleFeature(key: FeatureKey) {
+    if (role !== "owner") return;
+    const updated = { ...localFeatures, [key]: !localFeatures[key] };
+    setLocalFeatures(updated);
+    await supabase.from("companies").update({ features: updated }).eq("id", companyId);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function changePlan(newPlan: Plan) {
+    if (role !== "owner") return;
+    const planFeatures = PLAN_FEATURES[newPlan];
+    await supabase.from("companies").update({ plan: newPlan, features: planFeatures }).eq("id", companyId);
+    setLocalFeatures(planFeatures);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    // Reload to update context
+    window.location.reload();
+  }
+
+  const isOwner = role === "owner";
+  const daysLeft = trialEnds ? Math.max(0, Math.ceil((new Date(trialEnds).getTime() - Date.now()) / 86400000)) : null;
+
+  return (
+    <div className="rounded border p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Plan & Features</h2>
+        <span className={`text-xs rounded px-2 py-0.5 font-medium ${
+          plan === "enterprise" ? "bg-purple-100 text-purple-700" :
+          plan === "pro" ? "bg-blue-100 text-blue-700" :
+          plan === "basic" ? "bg-green-100 text-green-700" :
+          "bg-amber-100 text-amber-700"
+        }`}>
+          {PLAN_LABELS[plan as Plan] ?? plan}
+        </span>
+        {saved && <span className="text-xs text-green-600 font-medium">✓ Saved</span>}
+      </div>
+
+      {plan === "trial" && daysLeft !== null && (
+        <div className={`rounded p-3 text-sm ${daysLeft <= 3 ? "bg-red-50 text-red-700 border border-red-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+          {daysLeft > 0
+            ? <>{daysLeft} day{daysLeft !== 1 ? "s" : ""} left on your free trial. All features are unlocked during trial.</>
+            : <>Your trial has expired. Choose a plan to continue using ShadeLogic.</>}
+        </div>
+      )}
+
+      {/* Plan selector (owner only) */}
+      {isOwner && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-gray-500">Choose Plan</div>
+          <div className="grid grid-cols-2 gap-2">
+            {(["basic", "pro", "enterprise"] as Plan[]).map(p => (
+              <button key={p} onClick={() => p !== "enterprise" ? changePlan(p) : undefined}
+                className={`rounded border p-3 text-left transition-colors ${
+                  plan === p ? "border-blue-500 bg-blue-50" : "hover:border-gray-300"
+                } ${p === "enterprise" ? "col-span-2" : ""}`}>
+                <div className="font-medium text-sm">{PLAN_LABELS[p]}</div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {p === "basic" && "Measure + Scheduling — $29/user/mo"}
+                  {p === "pro" && "Full platform — $49/user/mo"}
+                  {p === "enterprise" && "Everything + Builder Portal + Automation — Contact sales"}
+                </div>
+                {plan === p && <div className="text-xs text-blue-600 font-medium mt-1">Current plan</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Feature toggles */}
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-gray-500">
+          {isOwner ? "Feature Toggles (override plan defaults)" : "Enabled Features"}
+        </div>
+        <div className="space-y-1.5">
+          {(Object.entries(FEATURE_LABELS) as [FeatureKey, { label: string; desc: string }][]).map(([key, { label, desc }]) => (
+            <label key={key} className={`flex items-start gap-2.5 p-2 rounded ${isOwner ? "cursor-pointer hover:bg-gray-50" : ""}`}>
+              <input type="checkbox" checked={localFeatures[key]} disabled={!isOwner}
+                onChange={() => toggleFeature(key)}
+                className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <div className={`text-sm ${localFeatures[key] ? "text-gray-800 font-medium" : "text-gray-400"}`}>{label}</div>
+                <div className="text-xs text-gray-400">{desc}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Email order tracking ──────────────────────────────────────
 
 function EmailTrackingSection() {
@@ -38,7 +149,7 @@ function EmailTrackingSection() {
   const inbound = token ? `orders-${token}@inbound.postmarkapp.com` : "";
 
   useEffect(() => {
-    supabase.from("company_settings").select("notify_on_shipped, notify_on_delivered, notify_channel").limit(1).single()
+    supabase.from("company_settings").select("notify_on_shipped, notify_on_delivered, notify_channel").maybeSingle()
       .then(({ data }) => { if (data) setSettings(data as any); });
   }, []);
 
@@ -296,7 +407,7 @@ export default function SettingsPage() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const { data } = await supabase.from("company_settings").select("*").limit(1).single();
+    const { data } = await supabase.from("company_settings").select("*").maybeSingle();
     if (data) setSettings(data as Settings);
     setLoading(false);
   }
@@ -401,6 +512,7 @@ export default function SettingsPage() {
           <p className="text-xs text-gray-400">These pre-fill on every new quote but can be changed per job.</p>
         </div>
 
+        <PlanSection />
         <EmailTrackingSection />
         <TeamSection />
         <DataExportSection />

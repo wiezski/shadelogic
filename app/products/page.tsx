@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../lib/supabase";
+import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
 
 type Product = {
@@ -294,9 +295,10 @@ export default function ProductsPage() {
   const manufacturers = [...new Set(active.map(p => p.manufacturer).filter(Boolean))] as string[];
 
   return (
-    <PermissionGate require="access_settings">
-      <main className="min-h-screen bg-white p-4 text-black text-sm">
-        <div className="mx-auto max-w-2xl">
+    <FeatureGate require="inventory">
+      <PermissionGate require="access_settings">
+        <main className="min-h-screen bg-white p-4 text-black text-sm">
+          <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -622,8 +624,9 @@ export default function ProductsPage() {
             </form>
           </div>
         </div>
-      )}
-      </main>
-    </PermissionGate>
+        )}
+        </main>
+      </PermissionGate>
+    </FeatureGate>
   );
 }

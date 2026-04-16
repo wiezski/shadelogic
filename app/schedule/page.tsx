@@ -367,7 +367,7 @@ function SchedulePageInner() {
     if (!selectedAppt) return;
     await supabase.from("activity_log").insert([{
       customer_id: selectedAppt.customer_id, type: "text",
-      notes: `[Confirmation] ${confirmMsg}`, created_by: "ShadeLogic",
+      notes: `[Confirmation] ${confirmMsg}`, created_by: "ZeroRemake",
     }]);
     await supabase.from("appointments").update({ confirmation_sent: true }).eq("id", selectedAppt.id);
     await supabase.from("customers").update({ last_activity_at: new Date().toISOString() }).eq("id", selectedAppt.customer_id);
@@ -413,7 +413,7 @@ function SchedulePageInner() {
     await supabase.from("activity_log").insert([{
       customer_id: selectedAppt.customer_id, type: "note",
       notes: `Appointment completed (${APPT_TYPES[selectedAppt.type].label}). Outcome: ${OUTCOMES.find(o => o.value === outcome)?.label}${outcomeNotes ? " — " + outcomeNotes : ""}`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
     await supabase.from("customers").update({ last_activity_at: new Date().toISOString() }).eq("id", selectedAppt.customer_id);
     setShowOutcome(false);
@@ -445,7 +445,7 @@ function SchedulePageInner() {
     await supabase.from("activity_log").insert([{
       customer_id: selectedAppt.customer_id, type: "note",
       notes: `Needs second visit after ${APPT_TYPES[selectedAppt.type].label}. Reason: ${reasonText}. What's needed: ${taskNotes}`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
     await supabase.from("customers").update({
       last_activity_at: new Date().toISOString(),

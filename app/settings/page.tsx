@@ -88,7 +88,7 @@ function PlanSection() {
         <div className={`rounded p-3 text-sm ${daysLeft <= 3 ? "bg-red-50 text-red-700 border border-red-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
           {daysLeft > 0
             ? <>{daysLeft} day{daysLeft !== 1 ? "s" : ""} left on your free trial. All features are unlocked during trial.</>
-            : <>Your trial has expired. Choose a plan to continue using ShadeLogic.</>}
+            : <>Your trial has expired. Choose a plan to continue using ZeroRemake.</>}
         </div>
       )}
 
@@ -176,7 +176,7 @@ function EmailTrackingSection() {
       </div>
 
       <p className="text-xs text-gray-500">
-        Forward manufacturer order emails to your unique address and ShadeLogic automatically updates order status — shipped, delivered, tracking numbers — without you lifting a finger.
+        Forward manufacturer order emails to your unique address and ZeroRemake automatically updates order status — shipped, delivered, tracking numbers — without you lifting a finger.
       </p>
 
       {/* Inbound address */}
@@ -456,6 +456,129 @@ function ChecklistSection() {
   );
 }
 
+// ── Branding / White-Label ────────────────────────────────────
+
+function BrandingSection() {
+  const { companyId, role, branding } = useAuth();
+  const [slug,         setSlug]         = useState(branding?.slug ?? "");
+  const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor ?? "");
+  const [primaryHover, setPrimaryHover] = useState(branding?.primaryHover ?? "");
+  const [darkColor,    setDarkColor]    = useState(branding?.darkColor ?? "");
+  const [font,         setFont]         = useState(branding?.font ?? "");
+  const [logoUrl,      setLogoUrl]      = useState(branding?.logoUrl ?? "");
+  const [logoMark,     setLogoMark]     = useState(branding?.logoMark ?? "");
+  const [saved,        setSaved]        = useState(false);
+
+  useEffect(() => {
+    if (branding) {
+      setSlug(branding.slug ?? "");
+      setPrimaryColor(branding.primaryColor ?? "");
+      setPrimaryHover(branding.primaryHover ?? "");
+      setDarkColor(branding.darkColor ?? "");
+      setFont(branding.font ?? "");
+      setLogoUrl(branding.logoUrl ?? "");
+      setLogoMark(branding.logoMark ?? "");
+    }
+  }, [branding]);
+
+  async function saveBranding() {
+    if (!companyId || role !== "owner") return;
+    await supabase.from("companies").update({
+      brand_slug:          slug.trim() || null,
+      brand_primary_color: primaryColor.trim() || null,
+      brand_primary_hover: primaryHover.trim() || null,
+      brand_dark_color:    darkColor.trim() || null,
+      brand_font:          font.trim() || null,
+      brand_logo_url:      logoUrl.trim() || null,
+      brand_logo_mark:     logoMark.trim() || null,
+    }).eq("id", companyId);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    // Reload to apply new branding via auth-provider
+    window.location.reload();
+  }
+
+  if (role !== "owner") return null;
+
+  return (
+    <div className="rounded border p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Branding / White-Label</h2>
+        {saved && <span className="text-xs text-green-600 font-medium">✓ Saved</span>}
+      </div>
+      <p className="text-xs text-gray-400">
+        Customize your app appearance. Leave fields blank to use ZeroRemake defaults.
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Brand Slug</label>
+          <input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            placeholder="acme-blinds" className="w-full border rounded px-2 py-1.5 text-sm" />
+          <p className="text-xs text-gray-400 mt-0.5">Lowercase, hyphens only. Used for white-label CSS targeting.</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Primary Color</label>
+            <div className="flex gap-2 items-center">
+              <input type="color" value={primaryColor || "#e63000"}
+                onChange={e => setPrimaryColor(e.target.value)}
+                className="w-8 h-8 rounded cursor-pointer border-0 p-0" />
+              <input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
+                placeholder="#e63000" className="flex-1 border rounded px-2 py-1.5 text-sm font-mono" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Hover Color</label>
+            <input value={primaryHover} onChange={e => setPrimaryHover(e.target.value)}
+              placeholder="#cc2900" className="w-full border rounded px-2 py-1.5 text-sm font-mono" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Dark BG Color</label>
+            <input value={darkColor} onChange={e => setDarkColor(e.target.value)}
+              placeholder="#1a1a1a" className="w-full border rounded px-2 py-1.5 text-sm font-mono" />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Custom Font (Google Fonts name)</label>
+          <input value={font} onChange={e => setFont(e.target.value)}
+            placeholder="Inter, Poppins, Roboto…" className="w-full border rounded px-2 py-1.5 text-sm" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Logo URL</label>
+            <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)}
+              placeholder="https://…/logo.svg" className="w-full border rounded px-2 py-1.5 text-sm" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Logo Mark (letter)</label>
+            <input value={logoMark} onChange={e => setLogoMark(e.target.value.slice(0, 2))}
+              placeholder="Z" maxLength={2} className="w-full border rounded px-2 py-1.5 text-sm" />
+          </div>
+        </div>
+
+        {/* Preview */}
+        {primaryColor && (
+          <div className="rounded p-3 text-xs flex items-center gap-3" style={{ background: darkColor || "#1a1a1a", border: "1px solid #333" }}>
+            <div className="w-6 h-6 rounded" style={{ background: primaryColor }} />
+            <span style={{ color: "#fff", fontFamily: font ? `'${font}', sans-serif` : "inherit" }}>
+              Preview — your primary color on dark background
+            </span>
+          </div>
+        )}
+
+        <button onClick={saveBranding}
+          className="rounded bg-black text-white px-4 py-2 text-sm font-medium hover:bg-gray-800">
+          Save Branding & Reload
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Data export ───────────────────────────────────────────────
 
 function DataExportSection() {
@@ -488,7 +611,7 @@ function DataExportSection() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = `shadelogic-export-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `zeroremake-export-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     setExporting(false);
@@ -630,6 +753,7 @@ export default function SettingsPage() {
         </div>
 
         <PlanSection />
+        <BrandingSection />
         <EmailTrackingSection />
         <TeamSection />
         <ChecklistSection />

@@ -42,7 +42,7 @@ export default function SetupGuidePage() {
       content: (
         <div className="space-y-3 text-sm">
           <p className="text-gray-600">
-            Your product catalog is the foundation of ShadeLogic. Add the products you sell
+            Your product catalog is the foundation of ZeroRemake. Add the products you sell
             so they auto-fill on every quote with your cost and markup.
           </p>
           <div className="rounded bg-gray-50 p-3 space-y-2">
@@ -98,7 +98,7 @@ export default function SetupGuidePage() {
       content: (
         <div className="space-y-3 text-sm">
           <p className="text-gray-600">
-            Measure jobs are the core of ShadeLogic. Every window gets measured with fraction validation
+            Measure jobs are the core of ZeroRemake. Every window gets measured with fraction validation
             so bad numbers can't be entered.
           </p>
           <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
@@ -204,7 +204,7 @@ export default function SetupGuidePage() {
             <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
               <li>Open Outlook → Settings → Mail → Rules</li>
               <li>Click "+ Add new rule"</li>
-              <li>Name it "ShadeLogic Order Tracking"</li>
+              <li>Name it "ZeroRemake Order Tracking"</li>
               <li>Condition: "From" contains your manufacturer's email</li>
               <li>Action: "Forward to" → paste: <code className="bg-white border rounded px-1 font-mono">orders-{emailToken}@inbound.postmarkapp.com</code></li>
               <li>Save the rule. Done!</li>
@@ -216,7 +216,7 @@ export default function SetupGuidePage() {
             <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
               <li>You place an order with the manufacturer (by phone, web, etc.)</li>
               <li>Upload the order confirmation PDF in your quote's Materials tab</li>
-              <li>ShadeLogic extracts the order number and expected packages</li>
+              <li>ZeroRemake extracts the order number and expected packages</li>
               <li>When shipping/delivery emails come in, they auto-match to your order</li>
               <li>Package status updates automatically: Ordered → Shipped → Received</li>
               <li>When all packages arrive, you get a "Ready to schedule install" alert</li>
@@ -304,7 +304,7 @@ export default function SetupGuidePage() {
           <Link href="/" className="text-blue-600 hover:underline text-xs">← Home</Link>
           <h1 className="text-xl font-bold mt-2">Getting Started</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            Follow these steps to get your ShadeLogic account up and running.
+            Follow these steps to get your ZeroRemake account up and running.
           </p>
         </div>
 
@@ -365,7 +365,7 @@ export default function SetupGuidePage() {
             <div className="text-2xl">🎉</div>
             <div className="font-bold text-green-800">You're all set!</div>
             <p className="text-xs text-green-600">
-              Your ShadeLogic account is fully configured. You can always come back here if you need a refresher.
+              Your ZeroRemake account is fully configured. You can always come back here if you need a refresher.
             </p>
             <Link href="/" className="inline-block text-sm text-green-700 font-medium hover:underline mt-1">
               Go to Dashboard →
@@ -379,7 +379,7 @@ export default function SetupGuidePage() {
           <div className="space-y-2">
             {[
               { q: "Can my team see each other's data?", a: "Everyone on your team shares the same customer and job data. Permissions control what features they can access (e.g. installers can't see pricing), but all team members work from the same pool of customers and jobs." },
-              { q: "How does the email order tracking work?", a: "You set up email forwarding rules in your Gmail or Outlook so that manufacturer emails get forwarded to your unique ShadeLogic address. The system reads the emails and auto-updates your order status. You never need to manually check tracking." },
+              { q: "How does the email order tracking work?", a: "You set up email forwarding rules in your Gmail or Outlook so that manufacturer emails get forwarded to your unique ZeroRemake address. The system reads the emails and auto-updates your order status. You never need to manually check tracking." },
               { q: "Can I change a team member's permissions?", a: "Yes. Go to Settings → Team → click Edit on any user. You can change their role (which sets preset permissions) or toggle individual permissions on/off." },
               { q: "What happens if I enter a wrong measurement?", a: "Measurements are validated to 1/16\" increments — bad fractions get rejected immediately. If you need to fix a measurement after the fact, you can edit it and the change is tracked." },
               { q: "How do I get my products into the system fast?", a: "Use CSV Import on the Products page. Export your manufacturer price list as a CSV, upload it, and products are created in bulk. You can also download our CSV template to see the expected format." },

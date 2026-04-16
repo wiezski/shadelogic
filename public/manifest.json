@@ -1,7 +1,7 @@
 {
-  "name": "ShadeLogic",
-  "short_name": "ShadeLogic",
-  "description": "Window treatment CRM, scheduling, and quoting",
+  "name": "ZeroRemake",
+  "short_name": "ZeroRemake",
+  "description": "Window treatment software — sale to install, done right",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

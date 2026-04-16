@@ -1,27 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "./auth-provider";
 import { NavBar } from "./nav-bar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "ShadeLogic",
-  description: "Window treatment CRM & scheduling",
+  title: "ZeroRemake",
+  description: "Window treatment software — sale to install, done right.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "ShadeLogic",
+    title: "ZeroRemake",
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -34,11 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--zr-font-body)" }}>
         <AuthProvider>
           <NavBar />
           {children}

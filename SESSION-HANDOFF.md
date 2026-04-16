@@ -1,7 +1,7 @@
-# ShadeLogic — Session Handoff
+# ZeroRemake — Session Handoff
 
 ## How to Resume
-Start new session with: "continuing ShadeLogic — read SESSION-HANDOFF.md, MASTER-SPEC.md, and MVP-BUILD-PLAN.md before doing anything."
+Start new session with: "continuing ZeroRemake — read SESSION-HANDOFF.md, MASTER-SPEC.md, and MVP-BUILD-PLAN.md before doing anything."
 Read this file + MASTER-SPEC.md + MVP-BUILD-PLAN.md before touching any code.
 
 ---
@@ -29,11 +29,15 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 ### Phase 5 — Multi-User Auth + Multi-Tenancy + Feature Flags — Complete ✓
 Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id triggers, subscription plans (trial/basic/pro/enterprise), feature flags with per-company overrides, FeatureGate component. See details below.
 
-### Phase 6 — Full Install Management — Complete ✓ (NEW)
+### Phase 6 — Full Install Management — Complete ✓
 Quote→Install conversion, installer checklist system, materials packing list, customer sign-off with signature, enhanced completion flow. See details below.
+
+### Phase 7 — Rebrand to ZeroRemake + White-Label — Complete ✓ (NEW)
+Full rebrand from ShadeLogic to ZeroRemake. Dark theme with orange primary (#e63000), Figtree font, SVG logo component. White-label infrastructure: per-tenant branding via CSS custom properties, runtime injection from companies table, Settings UI for brand customization. See details below.
 
 ### Next Up
 - Run `supabase/phase6_install_management.sql` in Supabase SQL editor
+- Run `supabase/phase7_whitelabel.sql` in Supabase SQL editor
 - Go to Settings → Install Checklist → "Load Default Checklist" to seed your checklist items
 - `npm install pdf-parse` (required for server-side PDF parsing of order confirmations)
 - Create `order-documents` storage bucket in Supabase
@@ -172,6 +176,24 @@ Quote→Install conversion, installer checklist system, materials packing list, 
 - **Nav bar**: hides links based on BOTH feature flags AND permissions (defense in depth)
 - **Pages with FeatureGate**: analytics (analytics), schedule (scheduling), products (inventory), payments (quoting)
 
+### ZeroRemake Rebrand + White-Label (NEW)
+- **Full rebrand**: all references to "ShadeLogic" replaced with "ZeroRemake" across entire codebase
+- **Design system**: dark theme (#0c0c0c bg), orange primary (#e63000), Figtree font, DM Mono for labels
+- **CSS variables**: complete variable system (--zr-*) in globals.css — colors, surfaces, typography, spacing, radius, shadows
+- **SVG logo component**: `ZRLogo` component at 3 sizes (sm/md/lg) with "Z" mark + wordmark
+- **Login/signup pages**: rebranded with dark theme, ZeroRemake logo, orange CTA buttons
+- **Nav bar**: uses ZRLogo, dark theme surfaces, --zr-* colors
+- **White-label infrastructure**:
+  - Companies table: brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark
+  - Auth-provider: loads branding on login, injects `data-tenant` attribute + --tenant-* CSS vars on `<html>`
+  - CSS: `[data-tenant]` rule in globals.css picks up --tenant-* vars and overrides --zr-* defaults
+  - Custom Google Font loading at runtime
+  - ZRLogo: auto-swaps to tenant logo image when brand_logo_url is set
+  - Settings → Branding: owner can set slug, colors (with color picker), font, logo URL, logo mark
+  - Preview swatch in settings shows color on dark background
+  - Default: no branding = ZeroRemake orange/dark theme
+- **SQL migration**: `supabase/phase7_whitelabel.sql` adds branding columns to companies table
+
 ### Analytics (`/analytics`)
 - **Operations section**: 5 category stats, install completion %, issues drill-down (tap to see jobs), by measurer table, recent jobs
 - **CRM section**: lead pipeline funnel with % bars + close rate, heat score counts, stuck leads count, outreach activity by type (date range aware)
@@ -232,6 +254,7 @@ Quote→Install conversion, installer checklist system, materials packing list, 
 - `supabase/phase14_product_orders.sql` — manufacturer fields on product_catalog, package tracking fields on quote_materials, material_packages table (PENDING — needs to be run)
 - `supabase/phase5_auth_multitenancy.sql` — companies enhancements (plan, features, trial_ends_at), profiles enhancements (email, invited_by), company_settings company_id FK, RLS on all 19 tables, auto_set_company_id trigger, get_my_company_id() helper, anonymous access policies, performance indexes ✓
 - `supabase/phase6_install_management.sql` — install_checklist_items + install_checklist_completions tables, measure_jobs enhancements (quote_id, signature, install status, materials confirmation), quotes install_job_id back-link, RLS + triggers + indexes **(PENDING — needs to be run)**
+- `supabase/phase7_whitelabel.sql` — branding columns on companies table (brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark) **(PENDING — needs to be run)**
 
 ---
 
@@ -260,7 +283,7 @@ Quote→Install conversion, installer checklist system, materials packing list, 
 - FeatureGate component wraps pages; PermissionGate wraps within that (double layer: feature + permission)
 - Analytics page: sectioned (Operations / CRM / Scheduling / Quoting), sections appear as modules are subscribed to
 - Outreach (call/text/email) is Level 1 only (user-initiated, opens native apps) — Level 2 automated (Twilio/Resend) planned
-- Postmark: one account owned by ShadeLogic, each client company gets unique inbound email address (token from company_id)
+- Postmark: one account owned by ZeroRemake, each client company gets unique inbound email address (token from company_id)
 - CSV import uses browser-native FileReader — no additional npm package needed
 - Product catalog CSV column mapping is flexible — handles common naming variations
 
@@ -270,21 +293,21 @@ Quote→Install conversion, installer checklist system, materials packing list, 
 - Stack: Next.js 16 App Router + TypeScript + Supabase + Vercel + Tailwind CSS 4
 - Push to GitHub → Vercel auto-deploys
 - Git auth: token stored in remote URL (already configured)
-- To push: `cd ~/shadelogic && git push`
+- To push: `cd ~/zeroremake && git push`
 - **AGENTS.md warning**: read `node_modules/next/dist/docs/` before writing any new Next.js code
 
 ---
 
 ## Setup Steps for This Session's Changes
 1. Run `supabase/phase6_install_management.sql` in Supabase SQL editor
-2. Go to Settings → Install Checklist → click "Load Default Checklist" to seed checklist items
-3. `npm install pdf-parse` on your local machine (if not already done)
-4. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 6: Full install management" && git push`
+2. Run `supabase/phase7_whitelabel.sql` in Supabase SQL editor
+3. Go to Settings → Install Checklist → click "Load Default Checklist" to seed checklist items
+4. `npm install pdf-parse` on your local machine (if not already done)
+5. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 7: ZeroRemake rebrand + white-label" && git push`
 
 ---
 
 ## Backlog (not yet scheduled)
-- Personal branding per company (logo, colors, name)
 - Automated SMS (Twilio ~$0.01/msg)
 - Automated email (Resend, free tier) — appointment confirmations, reminders
 - Pricing intelligence: scrape Blinds.com, SelectBlinds for retail price anchors

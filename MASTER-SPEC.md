@@ -1,4 +1,4 @@
-# ShadeLogic — Master Product Spec
+# ZeroRemake — Master Product Spec
 
 ## What This Is
 A modular SaaS platform for window treatment companies (sales, install, or both).

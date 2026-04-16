@@ -137,7 +137,7 @@ function CustomerQuoteInner() {
     await supabase.from("activity_log").insert([{
       customer_id: quote.customer_id, type: "note",
       notes: `Quote approved & signed by customer (${signedName.trim()}). Total: ${fmtMoney(quote.total || 0)}`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
     setSaving(false);
     setDone(true);
@@ -183,7 +183,7 @@ function CustomerQuoteInner() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-4 py-4 text-center">
-        <div className="font-bold text-xl">{company?.name ?? "ShadeLogic"}</div>
+        <div className="font-bold text-xl">{company?.name ?? "ZeroRemake"}</div>
         {company?.tagline && <div className="text-xs text-gray-400 mt-0.5">{company.tagline}</div>}
         {company?.phone && (
           <a href={`tel:${company.phone.replace(/\D/g,"")}`} className="text-xs text-blue-600 mt-1 block">{company.phone}</a>

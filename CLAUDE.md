@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# ShadeLogic — Session Setup
+# ZeroRemake — Session Setup
 
 **Before writing any code or making changes, ALWAYS read these files first:**
 1. `SESSION-HANDOFF.md` — current build status, what's done, what's next, key gotchas

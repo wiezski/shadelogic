@@ -162,7 +162,7 @@ function PrintQuoteInner() {
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <div className="text-2xl font-bold tracking-tight text-gray-900">{company?.name ?? "ShadeLogic"}</div>
+            <div className="text-2xl font-bold tracking-tight text-gray-900">{company?.name ?? "ZeroRemake"}</div>
             {company?.tagline && <div className="text-xs text-gray-400 mt-0.5">{company.tagline}</div>}
             {company?.phone  && <div className="text-xs text-gray-500 mt-0.5">{company.phone}</div>}
             {company?.email  && <div className="text-xs text-gray-500">{company.email}</div>}

@@ -417,7 +417,7 @@ export default function QuotePage() {
       await supabase.from("activity_log").insert([{
         customer_id: quote.customer_id, type: "note",
         notes: `Quote ${newStatus === "sent" ? "sent to customer" : newStatus}. Total: ${fmtMoney(quote.total || 0)}`,
-        created_by: "ShadeLogic",
+        created_by: "ZeroRemake",
       }]);
     }
     // Auto-create follow-up tasks
@@ -468,7 +468,7 @@ export default function QuotePage() {
     await supabase.from("activity_log").insert([{
       customer_id: quote.customer_id, type: "note",
       notes: `Quote approved & signed by ${signedName.trim()}. Total: ${fmtMoney(quote.total || 0)}`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
     setQuote(prev => prev ? { ...prev, status: "approved", signature_data: sigData, signed_at: now, signed_name: signedName.trim() } : prev);
     setShowSignature(false);
@@ -559,7 +559,7 @@ export default function QuotePage() {
       customer_id: quote.customer_id,
       type: "note",
       notes: `Install job created from quote. ${lines.length} window(s) across ${Object.keys(roomGroups).length} room(s).`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
 
     setSaving(false);
@@ -638,7 +638,7 @@ export default function QuotePage() {
     const updates = { deposit_paid: true, deposit_paid_at: new Date().toISOString(), deposit_amount: depAmt, deposit_pct: parseFloat(depositPct), payment_method: payMethod, payment_notes: payNotes || null };
     await supabase.from("quotes").update(updates).eq("id", quoteId);
     setQuote(prev => prev ? { ...prev, ...updates } : prev);
-    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Deposit received: ${fmtMoney(depAmt)} (${payMethod})`, created_by: "ShadeLogic" }]);
+    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Deposit received: ${fmtMoney(depAmt)} (${payMethod})`, created_by: "ZeroRemake" }]);
     await supabase.from("customers").update({ last_activity_at: new Date().toISOString() }).eq("id", quote.customer_id);
     // Auto-task: order materials now that deposit is in
     await supabase.from("tasks").insert([{
@@ -654,7 +654,7 @@ export default function QuotePage() {
     await supabase.from("quotes").update(updates).eq("id", quoteId);
     setQuote(prev => prev ? { ...prev, ...updates } : prev);
     const balAmt = (quote.total || 0) - (quote.deposit_amount || 0);
-    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Balance received: ${fmtMoney(balAmt)} (${payMethod}). Job fully paid.`, created_by: "ShadeLogic" }]);
+    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "note", notes: `Balance received: ${fmtMoney(balAmt)} (${payMethod}). Job fully paid.`, created_by: "ZeroRemake" }]);
     await supabase.from("customers").update({ last_activity_at: new Date().toISOString(), lead_status: "Installed" }).eq("id", quote.customer_id);
   }
 
@@ -856,7 +856,7 @@ export default function QuotePage() {
         await supabase.from("activity_log").insert([{
           customer_id: quote.customer_id, type: "note",
           notes: `📄 Order confirmation PDF uploaded for ${materials.find(m => m.id === materialId)?.description || "material"}`,
-          created_by: "ShadeLogic",
+          created_by: "ZeroRemake",
         }]);
       }
     } catch (err) {
@@ -1536,7 +1536,7 @@ export default function QuotePage() {
             className="flex items-center gap-2 w-full rounded border border-green-500 text-green-700 px-3 py-2 text-sm hover:bg-green-50">
             💬 Send via Text {customer?.phone ? `(${customer.phone})` : ""}
           </a>
-          <a href={`mailto:${customer?.email ?? ""}?subject=${encodeURIComponent(`Your Quote — ${title || "ShadeLogic"}`)}&body=${encodeURIComponent(emailBody)}`}
+          <a href={`mailto:${customer?.email ?? ""}?subject=${encodeURIComponent(`Your Quote — ${title || "ZeroRemake"}`)}&body=${encodeURIComponent(emailBody)}`}
             className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
             📧 Send via Email {customer?.email ? `(${customer.email})` : ""}
           </a>

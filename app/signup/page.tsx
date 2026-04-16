@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { ZRLogo } from "../zr-logo";
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "var(--zr-black)" }} />}>
       <SignupInner />
     </Suspense>
   );
@@ -60,54 +61,57 @@ function SignupInner() {
     router.replace("/");
   }
 
+  const inputStyle = { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", color: "var(--zr-text-primary)" };
+
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--zr-black)" }}>
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">ShadeLogic</h1>
-          <p className="text-gray-400 text-sm mt-1">
+        <div className="text-center mb-8 flex flex-col items-center gap-3">
+          <ZRLogo size="lg" />
+          <p style={{ color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)", fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase" }}>
             {isInvite ? "You've been invited to join a team" : "Start your free account"}
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-bold mb-5">
+        <div className="p-6" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-xl)" }}>
+          <h2 className="text-xl font-bold mb-5" style={{ color: "var(--zr-text-primary)" }}>
             {isInvite ? "Create your account" : "Create account"}
           </h2>
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</div>
+            <div className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "var(--zr-error)" }}>{error}</div>
           )}
           <form onSubmit={handleSignup} className="space-y-4">
             {!isInvite && (
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Company Name *</label>
+                <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Company Name *</label>
                 <input value={companyName} onChange={e => setCompanyName(e.target.value)} required autoFocus
-                  placeholder="Aspen Blinds" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
+                  placeholder="Aspen Blinds" className="w-full px-3 py-2.5 text-sm outline-none" style={inputStyle} />
               </div>
             )}
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Your Name</label>
+              <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Your Name</label>
               <input value={fullName} onChange={e => setFullName(e.target.value)}
-                placeholder="Steve Smith" className="w-full border rounded-xl px-3 py-2.5 text-sm"
+                placeholder="Steve Smith" className="w-full px-3 py-2.5 text-sm outline-none" style={inputStyle}
                 autoFocus={isInvite} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Email *</label>
+              <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Email *</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                placeholder="you@example.com" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
+                placeholder="you@example.com" className="w-full px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Password *</label>
+              <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Password *</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                placeholder="6+ characters" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
+                placeholder="6+ characters" className="w-full px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </div>
             <button type="submit" disabled={loading}
-              className="w-full bg-black text-white rounded-xl py-3 font-semibold disabled:opacity-50">
-              {loading ? "Creating account…" : isInvite ? "Join Team →" : "Create Account →"}
+              className="w-full py-3 font-bold text-white disabled:opacity-50 cursor-pointer"
+              style={{ background: "var(--zr-orange)", borderRadius: "var(--zr-radius-md)", border: "none" }}>
+              {loading ? "Creating account..." : isInvite ? "Join Team" : "Create Account"}
             </button>
           </form>
-          <div className="mt-4 text-center text-xs text-gray-400">
+          <div className="mt-4 text-center text-xs" style={{ color: "var(--zr-text-muted)" }}>
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 hover:underline font-medium">Sign in</Link>
+            <Link href="/login" className="font-medium hover:underline" style={{ color: "var(--zr-orange)" }}>Sign in</Link>
           </div>
         </div>
       </div>

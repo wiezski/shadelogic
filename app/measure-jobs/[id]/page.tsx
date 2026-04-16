@@ -652,7 +652,7 @@ export default function MeasureJobPage() {
     await supabase.from("activity_log").insert([{
       customer_id: job.customer_id, type: "note",
       notes: `Measure submitted: ${job.title}. ${windows.length} window${windows.length !== 1 ? "s" : ""} across ${rooms.length} room${rooms.length !== 1 ? "s" : ""}.`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
     setSubmittingMeasure(false);
     setMeasureSubmitted(true);
@@ -668,7 +668,7 @@ export default function MeasureJobPage() {
       await supabase.from("activity_log").insert([{
         customer_id: job.customer_id, type: "note",
         notes: `Install completed: ${job.title}.`,
-        created_by: "ShadeLogic",
+        created_by: "ZeroRemake",
       }]);
       setInstallCompleted(true);
       setShowInstallDoneActions(true);
@@ -690,7 +690,7 @@ export default function MeasureJobPage() {
       await supabase.from("activity_log").insert([{
         customer_id: job.customer_id, type: "note",
         notes: `Install marked needs rework: ${job.title}. ${issueWindows.length} window(s) with issues.`,
-        created_by: "ShadeLogic",
+        created_by: "ZeroRemake",
       }]);
       alert(`Rework tasks created for ${issueWindows.length} window(s) with issues. Check the customer's task list.`);
     }
@@ -741,7 +741,7 @@ export default function MeasureJobPage() {
       customer_id: job.customer_id,
       type: "note",
       notes: `Install completed with customer sign-off by ${signOffName.trim()}. Job: ${job.title}`,
-      created_by: "ShadeLogic",
+      created_by: "ZeroRemake",
     }]);
 
     setShowSignOff(false);

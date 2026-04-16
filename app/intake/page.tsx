@@ -107,7 +107,7 @@ export default function IntakePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b px-4 py-4 text-center">
-        <div className="font-bold text-xl">{company?.name ?? "ShadeLogic"}</div>
+        <div className="font-bold text-xl">{company?.name ?? "ZeroRemake"}</div>
         {company?.tagline && <div className="text-xs text-gray-400 mt-0.5">{company.tagline}</div>}
       </div>
 

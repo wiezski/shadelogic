@@ -339,6 +339,123 @@ function TeamSection() {
   );
 }
 
+// ── Install checklist ─────────────────────────────────────────
+
+type ChecklistItem = {
+  id: string;
+  label: string;
+  sort_order: number;
+  required: boolean;
+  locked: boolean;
+  active: boolean;
+};
+
+const DEFAULT_CHECKLIST = [
+  "Verify all materials match order",
+  "Protect floors and furniture",
+  "Remove old treatments (if applicable)",
+  "Install brackets/hardware",
+  "Mount treatments",
+  "Test operation (raise/lower/tilt)",
+  "Test motorization (if applicable)",
+  "Clean up workspace",
+  "Walk through with customer",
+  "Collect sign-off",
+];
+
+function ChecklistSection() {
+  const { role } = useAuth();
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newLabel, setNewLabel] = useState("");
+
+  useEffect(() => { loadItems(); }, []);
+
+  async function loadItems() {
+    const { data } = await supabase.from("install_checklist_items")
+      .select("*").eq("active", true).order("sort_order");
+    setItems((data || []) as ChecklistItem[]);
+    setLoading(false);
+  }
+
+  async function addItem() {
+    if (!newLabel.trim()) return;
+    const { data } = await supabase.from("install_checklist_items")
+      .insert([{ label: newLabel.trim(), sort_order: items.length, required: true }])
+      .select("*").single();
+    if (data) setItems(prev => [...prev, data as ChecklistItem]);
+    setNewLabel("");
+  }
+
+  async function removeItem(id: string) {
+    await supabase.from("install_checklist_items").update({ active: false }).eq("id", id);
+    setItems(prev => prev.filter(i => i.id !== id));
+  }
+
+  async function toggleRequired(id: string) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    await supabase.from("install_checklist_items").update({ required: !item.required }).eq("id", id);
+    setItems(prev => prev.map(i => i.id === id ? { ...i, required: !i.required } : i));
+  }
+
+  async function loadDefaults() {
+    if (!confirm("Add the default checklist items? Existing items will not be removed.")) return;
+    const inserts = DEFAULT_CHECKLIST.map((label, i) => ({ label, sort_order: items.length + i, required: true }));
+    const { data } = await supabase.from("install_checklist_items").insert(inserts).select("*");
+    if (data) setItems(prev => [...prev, ...(data as ChecklistItem[])]);
+  }
+
+  if (role !== "owner") return null;
+
+  return (
+    <div className="rounded border p-4 space-y-4">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Install Checklist</h2>
+      <p className="text-xs text-gray-400">
+        Define the checklist your installers must complete on every job. Required items must be checked before the job can be marked done.
+      </p>
+
+      {loading ? <p className="text-xs text-gray-400">Loading…</p> : items.length === 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400">No checklist items yet.</p>
+          <button onClick={loadDefaults} className="text-xs bg-blue-600 text-white rounded px-2.5 py-1">
+            Load Default Checklist
+          </button>
+        </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map(item => (
+            <li key={item.id} className="flex items-center justify-between gap-2 py-1 border-b border-gray-100">
+              <span className="text-sm">{item.label}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="flex items-center gap-1 text-xs cursor-pointer">
+                  <input type="checkbox" checked={item.required} onChange={() => toggleRequired(item.id)} className="h-3.5 w-3.5" />
+                  <span className="text-gray-500">Required</span>
+                </label>
+                <button onClick={() => removeItem(item.id)} className="text-xs text-red-400 hover:text-red-600">✕</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-2">
+        <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && addItem()}
+          placeholder="Add checklist item…" className="flex-1 border rounded px-2 py-1.5 text-sm" />
+        <button onClick={addItem} disabled={!newLabel.trim()}
+          className="rounded bg-black text-white px-3 py-1.5 text-sm disabled:opacity-50">Add</button>
+      </div>
+
+      {items.length > 0 && (
+        <button onClick={loadDefaults} className="text-xs text-blue-600 hover:underline">
+          + Add default items
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Data export ───────────────────────────────────────────────
 
 function DataExportSection() {
@@ -515,6 +632,7 @@ export default function SettingsPage() {
         <PlanSection />
         <EmailTrackingSection />
         <TeamSection />
+        <ChecklistSection />
         <DataExportSection />
 
         </div>

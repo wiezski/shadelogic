@@ -26,14 +26,16 @@ Enhanced product catalog with manufacturer fields, CSV import, order PDF upload,
 ### Phase 15 — Permission Guards + Client Setup Guide — Complete ✓
 Page-level permission enforcement on all protected routes. Client-facing getting-started guide with step-by-step instructions.
 
-### Phase 5 — Multi-User Auth + Multi-Tenancy + Feature Flags — Complete ✓ (NEW)
+### Phase 5 — Multi-User Auth + Multi-Tenancy + Feature Flags — Complete ✓
 Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id triggers, subscription plans (trial/basic/pro/enterprise), feature flags with per-company overrides, FeatureGate component. See details below.
 
+### Phase 6 — Full Install Management — Complete ✓ (NEW)
+Quote→Install conversion, installer checklist system, materials packing list, customer sign-off with signature, enhanced completion flow. See details below.
+
 ### Next Up
-- Run `supabase/phase5_auth_multitenancy.sql` in Supabase SQL editor (MOST IMPORTANT — enables RLS)
-- Run `supabase/phase14_product_orders.sql` in Supabase SQL editor (if not already done)
+- Run `supabase/phase6_install_management.sql` in Supabase SQL editor
+- Go to Settings → Install Checklist → "Load Default Checklist" to seed your checklist items
 - `npm install pdf-parse` (required for server-side PDF parsing of order confirmations)
-- After running phase5 SQL, backfill existing data: `UPDATE customers SET company_id = 'YOUR_COMPANY_ID' WHERE company_id IS NULL;` (repeat for all tables)
 - Create `order-documents` storage bucket in Supabase
 - Set up Postmark inbound email when ready to go live with email tracking
 
@@ -143,6 +145,33 @@ Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id t
 - **Nav bar**: hides links based on BOTH feature flags AND permissions (defense in depth)
 - **Pages with FeatureGate**: analytics (analytics), schedule (scheduling), products (inventory), payments (quoting)
 
+### Full Install Management (NEW)
+- **Quote→Install conversion**: button on approved quotes creates install job with all windows from line items, stamps checklist
+- **Install checklist system**:
+  - Company-defined checklist items (Settings → Install Checklist)
+  - Default template with 10 items (load with one click)
+  - Required/optional per item
+  - Stamped onto each install job at creation
+  - Installer checks off items as they go
+  - Required items must be completed before marking job done
+- **Materials packing list**:
+  - Auto-loaded from quote materials when install job has a quote_id
+  - Shows each material with status badge, vendor, package counts
+  - "Confirm Materials Loaded" button before heading to job
+- **Customer sign-off**:
+  - Signature canvas (touch + mouse support) with customer name
+  - Captures signature as base64 data URL
+  - Stores signed_off_at timestamp and signed_off_name
+  - Two completion paths: "Complete with Sign-Off" and "Complete (No Sign-Off)"
+  - Sign-off auto-updates customer status to Installed
+- **Enhanced completion flow**:
+  - Checks all required checklist items before allowing completion
+  - "Needs Rework" creates tasks for each issue window
+  - Post-completion: review request text, follow-up text, view customer link
+- **Settings → Install Checklist**: owner can add/remove items, toggle required, load defaults
+- **Nav bar**: hides links based on BOTH feature flags AND permissions (defense in depth)
+- **Pages with FeatureGate**: analytics (analytics), schedule (scheduling), products (inventory), payments (quoting)
+
 ### Analytics (`/analytics`)
 - **Operations section**: 5 category stats, install completion %, issues drill-down (tap to see jobs), by measurer table, recent jobs
 - **CRM section**: lead pipeline funnel with % bars + close rate, heat score counts, stuck leads count, outreach activity by type (date range aware)
@@ -173,7 +202,7 @@ Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id t
 
 ### Existing tables
 - `customers`: id, first_name, last_name, address (pipe-separated: `street|city|state|zip`), phone (legacy), email, lead_status, heat_score, lead_source, last_activity_at, preferred_contact, next_action, company_id, created_at
-- `measure_jobs`: id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, install_scheduled_at, company_id
+- `measure_jobs`: id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, install_scheduled_at, **quote_id, customer_signature, signed_off_at, signed_off_name, installed_by, install_started_at, install_completed_at, install_status, materials_confirmed, materials_confirmed_at, materials_confirmed_by**, company_id
 - `rooms`: id, measure_job_id, name, room_notes, sort_order, company_id
 - `windows`: id, room_id, sort_order, product, lift_system, width, height, mount_type, casing_depth, control_side, hold_downs, metal_or_concrete, over_10_ft, takedown, notes, install_status, company_id
 - `window_photos`: id, window_id, file_path, caption, company_id
@@ -185,6 +214,8 @@ Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id t
 - `quote_materials`: id, quote_id, description, status, vendor, order_number, tracking_number, ordered_at, shipped_at, received_at, notes, auto_updated, last_email_at, last_email_subject, **expected_packages, received_packages, order_pdf_path, order_pdf_text, eta**, company_id
 - `material_packages` (NEW): id, material_id, tracking_number, status (pending/shipped/received), description, received_at, received_by, notes, company_id
 - `email_order_inbox`: id, company_id, from_email, subject, order_number, tracking_number, detected_status, email_body, reviewed, matched_material
+- `install_checklist_items` (NEW): id, company_id, label, sort_order, required, locked, active, created_at
+- `install_checklist_completions` (NEW): id, job_id, checklist_item_id, label, required, completed, completed_at, completed_by, sort_order, company_id
 
 ### Storage
 - Bucket: `window-photos` (also stores order PDFs at `orders/{quoteId}/{materialId}/`)
@@ -199,7 +230,8 @@ Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id t
 - `supabase/phase2_crm.sql` — activity_log, tasks, CRM columns on customers, company_id stubs
 - `supabase/phase2_crm_v2.sql` — customer_phones table, preferred_contact + next_action on customers
 - `supabase/phase14_product_orders.sql` — manufacturer fields on product_catalog, package tracking fields on quote_materials, material_packages table (PENDING — needs to be run)
-- `supabase/phase5_auth_multitenancy.sql` — companies enhancements (plan, features, trial_ends_at), profiles enhancements (email, invited_by), company_settings company_id FK, RLS on all 19 tables, auto_set_company_id trigger, get_my_company_id() helper, anonymous access policies, performance indexes **(PENDING — needs to be run)**
+- `supabase/phase5_auth_multitenancy.sql` — companies enhancements (plan, features, trial_ends_at), profiles enhancements (email, invited_by), company_settings company_id FK, RLS on all 19 tables, auto_set_company_id trigger, get_my_company_id() helper, anonymous access policies, performance indexes ✓
+- `supabase/phase6_install_management.sql` — install_checklist_items + install_checklist_completions tables, measure_jobs enhancements (quote_id, signature, install status, materials confirmation), quotes install_job_id back-link, RLS + triggers + indexes **(PENDING — needs to be run)**
 
 ---
 
@@ -244,12 +276,10 @@ Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id t
 ---
 
 ## Setup Steps for This Session's Changes
-1. Run `supabase/phase5_auth_multitenancy.sql` in Supabase SQL editor **(CRITICAL — enables RLS + multi-tenancy)**
-2. Run `supabase/phase14_product_orders.sql` in Supabase SQL editor (if not already done)
-3. Backfill existing data with company_id: sign up → get your company ID → run `UPDATE customers SET company_id = 'YOUR_ID' WHERE company_id IS NULL;` for all tables
-4. `npm install pdf-parse` on your local machine
-5. Optionally create `order-documents` storage bucket in Supabase
-6. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 5: Auth, multi-tenancy, RLS, feature flags" && git push`
+1. Run `supabase/phase6_install_management.sql` in Supabase SQL editor
+2. Go to Settings → Install Checklist → click "Load Default Checklist" to seed checklist items
+3. `npm install pdf-parse` on your local machine (if not already done)
+4. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 6: Full install management" && git push`
 
 ---
 

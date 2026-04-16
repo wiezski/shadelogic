@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { PermissionGate } from "../../permission-gate";
 
@@ -21,6 +21,7 @@ type Quote = {
   sent_at: string | null;
   created_at: string;
   linked_measure_id: string | null;
+  install_job_id: string | null;
   default_multiplier: number;
   discount_amount: number;
   tax_pct: number;
@@ -148,6 +149,7 @@ function fmtMoney(n: number) { return "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(
 export default function QuotePage() {
   const params  = useParams();
   const quoteId = params.id as string;
+  const router  = useRouter();
 
   const [quote,       setQuote]       = useState<Quote | null>(null);
   const [customer,    setCustomer]    = useState<Customer | null>(null);
@@ -471,6 +473,97 @@ export default function QuotePage() {
     setQuote(prev => prev ? { ...prev, status: "approved", signature_data: sigData, signed_at: now, signed_name: signedName.trim() } : prev);
     setShowSignature(false);
     setSavingSig(false);
+  }
+
+  async function convertToInstallJob() {
+    if (!quote || !customer) return;
+    if (!confirm("Create an Install Job from this quote? This pulls all line items as windows to track.")) return;
+    setSaving(true);
+
+    const installTitle = `Install - ${[customer.first_name, customer.last_name].filter(Boolean).join(" ")} - ${new Date().toISOString().slice(0, 10)}`;
+
+    // 1. Create the install job linked to this quote
+    const { data: newJob, error } = await supabase
+      .from("measure_jobs")
+      .insert([{
+        customer_id: quote.customer_id,
+        title: installTitle,
+        install_mode: true,
+        quote_id: quoteId,
+        install_status: "pending",
+      }])
+      .select("id").single();
+
+    if (error || !newJob) { alert("Error creating install job: " + error?.message); setSaving(false); return; }
+
+    // 2. Group line items by room and create rooms + windows
+    const roomGroups: Record<string, typeof lines> = {};
+    for (const line of lines) {
+      const rn = line.room_name || "Main";
+      if (!roomGroups[rn]) roomGroups[rn] = [];
+      roomGroups[rn].push(line);
+    }
+
+    let sortIdx = 0;
+    for (const [roomName, roomLines] of Object.entries(roomGroups)) {
+      const { data: newRoom } = await supabase
+        .from("rooms")
+        .insert([{ measure_job_id: newJob.id, name: roomName, sort_order: sortIdx++ }])
+        .select("id").single();
+      if (!newRoom) continue;
+
+      await supabase.from("windows").insert(
+        roomLines.map((l, i) => ({
+          room_id: newRoom.id,
+          sort_order: i,
+          product: l.product_name,
+          width: l.width || null,
+          height: l.height || null,
+          mount_type: l.mount_type || null,
+          notes: l.notes || null,
+          install_status: "not_started",
+        }))
+      );
+    }
+
+    // 3. Stamp install checklist
+    const { data: checklistItems } = await supabase
+      .from("install_checklist_items")
+      .select("id, label, sort_order, required")
+      .eq("active", true)
+      .order("sort_order");
+
+    if (checklistItems && checklistItems.length > 0) {
+      await supabase.from("install_checklist_completions").insert(
+        checklistItems.map(item => ({
+          job_id: newJob.id,
+          checklist_item_id: item.id,
+          label: item.label,
+          required: item.required,
+          sort_order: item.sort_order,
+        }))
+      );
+    }
+
+    // 4. Link quote → install job
+    await supabase.from("quotes").update({ install_job_id: newJob.id }).eq("id", quoteId);
+
+    // 5. Update customer status
+    await supabase.from("customers").update({
+      lead_status: "Sold",
+      last_activity_at: new Date().toISOString(),
+    }).eq("id", quote.customer_id);
+
+    // 6. Log activity
+    await supabase.from("activity_log").insert([{
+      customer_id: quote.customer_id,
+      type: "note",
+      notes: `Install job created from quote. ${lines.length} window(s) across ${Object.keys(roomGroups).length} room(s).`,
+      created_by: "ShadeLogic",
+    }]);
+
+    setSaving(false);
+    router.push(`/measure-jobs/${newJob.id}`);
   }
 
   async function quickAddProduct(p: Product) {
@@ -1186,6 +1279,27 @@ export default function QuotePage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── CONVERT TO INSTALL JOB ── */}
+        {quote.status === "approved" && !quote.install_job_id && (
+          <div className="rounded border border-green-200 bg-green-50 p-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-green-800">Ready to install?</div>
+              <div className="text-xs text-green-600">Creates an install job with all windows from this quote. Checklist and packing list included.</div>
+            </div>
+            <button onClick={convertToInstallJob} disabled={saving}
+              className="shrink-0 rounded bg-green-700 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-green-800">
+              {saving ? "Creating…" : "Create Install Job →"}
+            </button>
+          </div>
+        )}
+
+        {quote.install_job_id && (
+          <Link href={`/measure-jobs/${quote.install_job_id}`}
+            className="block rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700 hover:bg-green-100">
+            ✓ Install job created — <span className="font-medium underline">View Install Job →</span>
+          </Link>
         )}
 
         {/* ── MATERIALS ── */}

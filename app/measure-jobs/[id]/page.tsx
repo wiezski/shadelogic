@@ -17,6 +17,12 @@ type MeasureJob = {
   install_mode: boolean;
   linked_measure_id: string | null;
   created_at: string;
+  quote_id: string | null;
+  materials_confirmed: boolean;
+  install_status: string | null;
+  customer_signature: string | null;
+  signed_off_at: string | null;
+  signed_off_name: string | null;
 };
 
 type Customer = {
@@ -26,6 +32,23 @@ type Customer = {
   address: string | null;
   phone: string | null;
   email: string | null;
+};
+
+type ChecklistCompletion = {
+  id: string;
+  label: string;
+  required: boolean;
+  completed: boolean;
+  completed_at: string | null;
+};
+
+type PackingItem = {
+  id: string;
+  description: string;
+  status: string;
+  vendor: string | null;
+  expected_packages: number | null;
+  received_packages: number | null;
 };
 
 function parseAddress(addr: string | null) {
@@ -221,11 +244,17 @@ export default function MeasureJobPage() {
   const [installCompleted, setInstallCompleted] = useState(false);
   const [showInstallDoneActions, setShowInstallDoneActions] = useState(false);
   const [expandedIssueForm, setExpandedIssueForm] = useState<Record<string, boolean>>({});
+  const [checklist, setChecklist] = useState<ChecklistCompletion[]>([]);
+  const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
+  const [materialsConfirmed, setMaterialsConfirmed] = useState(false);
+  const [showSignOff, setShowSignOff] = useState(false);
+  const [signOffName, setSignOffName] = useState("");
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const measureInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const tallestWindowRef = useRef<HTMLInputElement | null>(null);
   const issueFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const signCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   async function loadAll() {
     try {
@@ -234,7 +263,7 @@ export default function MeasureJobPage() {
 
       const { data: jobData, error: jobError } = await supabase
         .from("measure_jobs")
-        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, linked_measure_id, created_at")
+        .select("id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, linked_measure_id, created_at, quote_id, materials_confirmed, install_status, customer_signature, signed_off_at, signed_off_name")
         .eq("id", measureJobId)
         .single();
 
@@ -335,6 +364,27 @@ export default function MeasureJobPage() {
         .in("window_id", windowIds);
 
       setInstallIssues((issueData || []) as InstallIssue[]);
+
+      // Load install checklist completions
+      if (jobData.install_mode) {
+        const { data: checkData } = await supabase
+          .from("install_checklist_completions")
+          .select("id, label, required, completed, completed_at, sort_order")
+          .eq("job_id", jobData.id)
+          .order("sort_order");
+        if (checkData) setChecklist(checkData as ChecklistCompletion[]);
+
+        // Load packing list from quote materials (if job has a quote_id)
+        if (jobData.quote_id) {
+          const { data: matData } = await supabase
+            .from("quote_materials")
+            .select("id, description, status, vendor, expected_packages, received_packages")
+            .eq("quote_id", jobData.quote_id);
+          if (matData) setPackingItems(matData as PackingItem[]);
+        }
+
+        setMaterialsConfirmed(jobData.materials_confirmed ?? false);
+      }
     } catch (err) {
       console.error(err);
       setLoadError("Unexpected load error.");
@@ -645,6 +695,89 @@ export default function MeasureJobPage() {
       alert(`Rework tasks created for ${issueWindows.length} window(s) with issues. Check the customer's task list.`);
     }
     setInstallCompleting(false);
+  }
+
+  async function toggleChecklistItem(itemId: string) {
+    const item = checklist.find(c => c.id === itemId);
+    if (!item) return;
+    const now = new Date().toISOString();
+    const newCompleted = !item.completed;
+    await supabase.from("install_checklist_completions").update({
+      completed: newCompleted,
+      completed_at: newCompleted ? now : null,
+    }).eq("id", itemId);
+    setChecklist(prev => prev.map(c => c.id === itemId ? { ...c, completed: newCompleted, completed_at: newCompleted ? now : null } : c));
+  }
+
+  async function confirmMaterials() {
+    if (!job) return;
+    const now = new Date().toISOString();
+    await supabase.from("measure_jobs").update({
+      materials_confirmed: true,
+      materials_confirmed_at: now,
+    }).eq("id", job.id);
+    setMaterialsConfirmed(true);
+  }
+
+  async function submitSignOff() {
+    if (!job || !signCanvasRef.current || !signOffName.trim()) return;
+    const sigData = signCanvasRef.current.toDataURL("image/png");
+    const now = new Date().toISOString();
+    await supabase.from("measure_jobs").update({
+      customer_signature: sigData,
+      signed_off_at: now,
+      signed_off_name: signOffName.trim(),
+      install_status: "completed",
+      install_completed_at: now,
+    }).eq("id", job.id);
+
+    // Update customer
+    await supabase.from("customers").update({
+      lead_status: "Installed",
+      last_activity_at: now,
+    }).eq("id", job.customer_id);
+
+    await supabase.from("activity_log").insert([{
+      customer_id: job.customer_id,
+      type: "note",
+      notes: `Install completed with customer sign-off by ${signOffName.trim()}. Job: ${job.title}`,
+      created_by: "ShadeLogic",
+    }]);
+
+    setShowSignOff(false);
+    setInstallCompleted(true);
+    setShowInstallDoneActions(true);
+  }
+
+  function initSignCanvas(canvas: HTMLCanvasElement | null): void {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#000";
+    let drawing = false;
+
+    function getPos(e: MouseEvent | TouchEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      const touch = "touches" in e ? e.touches[0] : e;
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    canvas.onmousedown = canvas.ontouchstart = (e: any) => {
+      drawing = true;
+      const p = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      e.preventDefault();
+    };
+    canvas.onmousemove = canvas.ontouchmove = (e: any) => {
+      if (!drawing) return;
+      const p = getPos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      e.preventDefault();
+    };
+    canvas.onmouseup = canvas.ontouchend = () => { drawing = false; };
   }
 
   async function duplicateJob() {
@@ -1679,19 +1812,28 @@ export default function MeasureJobPage() {
                   {/* Completion actions — appear when all windows are accounted for */}
                   {allAccountedFor && !installCompleted && (
                     <div className="mt-3 border-t pt-3 space-y-2">
+                      {checklist.length > 0 && checklist.some(c => c.required && !c.completed) && (
+                        <p className="text-xs text-amber-600 font-medium">⚠ Complete all required checklist items before finishing.</p>
+                      )}
                       <p className="text-xs text-gray-500 font-medium">All windows marked — choose an outcome:</p>
                       <div className="flex gap-2">
-                        <button onClick={() => completeInstall(false)} disabled={installCompleting}
+                        <button onClick={() => setShowSignOff(true)}
+                          disabled={installCompleting || (checklist.length > 0 && checklist.some(c => c.required && !c.completed))}
                           className="flex-1 rounded bg-green-600 text-white py-2 text-sm font-semibold disabled:opacity-50">
-                          ✓ Mark Install Complete
+                          ✓ Complete with Sign-Off
                         </button>
-                        {issues > 0 && (
-                          <button onClick={() => completeInstall(true)} disabled={installCompleting}
-                            className="flex-1 rounded bg-red-500 text-white py-2 text-sm font-semibold disabled:opacity-50">
-                            ⚠ Needs Rework
-                          </button>
-                        )}
+                        <button onClick={() => completeInstall(false)}
+                          disabled={installCompleting || (checklist.length > 0 && checklist.some(c => c.required && !c.completed))}
+                          className="flex-1 rounded border border-green-600 text-green-700 py-2 text-sm font-semibold disabled:opacity-50">
+                          ✓ Complete (No Sign-Off)
+                        </button>
                       </div>
+                      {issues > 0 && (
+                        <button onClick={() => completeInstall(true)} disabled={installCompleting}
+                          className="w-full rounded bg-red-500 text-white py-2 text-sm font-semibold disabled:opacity-50">
+                          ⚠ Needs Rework ({issues} issue{issues !== 1 ? "s" : ""})
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -1718,6 +1860,77 @@ export default function MeasureJobPage() {
                 </div>
               );
             })()}
+
+            {/* Materials Packing List */}
+            {packingItems.length > 0 && (
+              <div className="mb-3 rounded border p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold">Materials Packing List</h3>
+                  {materialsConfirmed ? (
+                    <span className="text-xs rounded bg-green-100 text-green-700 px-2 py-0.5 font-medium">✓ Loaded</span>
+                  ) : (
+                    <button onClick={confirmMaterials}
+                      className="text-xs rounded bg-blue-600 text-white px-2.5 py-1 hover:bg-blue-700">
+                      Confirm Materials Loaded
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {packingItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1.5">
+                      <div>
+                        <span className={item.status === "received" ? "text-green-700" : "text-gray-700"}>{item.description}</span>
+                        {item.vendor && <span className="text-xs text-gray-400 ml-1.5">({item.vendor})</span>}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs shrink-0">
+                        {item.expected_packages && (
+                          <span className={`${(item.received_packages || 0) >= item.expected_packages ? "text-green-600" : "text-amber-600"}`}>
+                            {item.received_packages || 0}/{item.expected_packages} pkgs
+                          </span>
+                        )}
+                        <span className={`rounded px-1.5 py-0.5 ${
+                          item.status === "received" ? "bg-green-100 text-green-700" :
+                          item.status === "shipped" ? "bg-blue-100 text-blue-700" :
+                          item.status === "ordered" ? "bg-amber-100 text-amber-700" :
+                          "bg-gray-100 text-gray-500"
+                        }`}>{item.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {!materialsConfirmed && (
+                  <p className="text-xs text-amber-600 mt-2">⚠ Confirm materials are loaded on the truck before heading to the job.</p>
+                )}
+              </div>
+            )}
+
+            {/* Install Checklist */}
+            {checklist.length > 0 && (
+              <div className="mb-3 rounded border p-3">
+                <h3 className="text-sm font-semibold mb-2">
+                  Install Checklist
+                  <span className="text-xs text-gray-400 font-normal ml-2">
+                    {checklist.filter(c => c.completed).length}/{checklist.length}
+                  </span>
+                </h3>
+                <div className="space-y-1">
+                  {checklist.map(item => (
+                    <label key={item.id} className="flex items-center gap-2.5 py-1 cursor-pointer hover:bg-gray-50 rounded px-1">
+                      <input type="checkbox" checked={item.completed}
+                        onChange={() => toggleChecklistItem(item.id)}
+                        className="h-4 w-4 shrink-0" />
+                      <span className={`text-sm ${item.completed ? "line-through text-gray-400" : "text-gray-700"}`}>
+                        {item.label}
+                        {item.required && !item.completed && <span className="text-red-500 ml-0.5">*</span>}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {checklist.some(c => c.required && !c.completed) && (
+                  <p className="text-xs text-amber-600 mt-2">* Required items must be completed before marking job done.</p>
+                )}
+              </div>
+            )}
 
             {rooms.map((room) => {
               const roomWindows = windows.filter((w) => w.room_id === room.id);
@@ -1851,6 +2064,43 @@ export default function MeasureJobPage() {
                 </div>
               );
             })}
+
+            {/* Customer Sign-Off Modal */}
+            {showSignOff && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4">
+                  <h3 className="text-lg font-bold">Customer Sign-Off</h3>
+                  <p className="text-sm text-gray-500">Customer confirms the installation is complete and satisfactory.</p>
+
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">Customer Name</label>
+                    <input value={signOffName} onChange={e => setSignOffName(e.target.value)}
+                      placeholder="Full name" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">Signature</label>
+                    <canvas ref={el => { signCanvasRef.current = el; initSignCanvas(el); }}
+                      width={360} height={150}
+                      className="w-full border rounded-xl bg-gray-50 touch-none" />
+                    <button onClick={() => {
+                      const ctx = signCanvasRef.current?.getContext("2d");
+                      if (ctx && signCanvasRef.current) ctx.clearRect(0, 0, signCanvasRef.current.width, signCanvasRef.current.height);
+                    }} className="text-xs text-blue-600 mt-1">Clear signature</button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowSignOff(false)} className="flex-1 rounded border py-2.5 text-sm hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button onClick={submitSignOff} disabled={!signOffName.trim()}
+                      className="flex-1 rounded bg-green-600 text-white py-2.5 text-sm font-semibold disabled:opacity-50">
+                      Confirm & Complete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         </div>

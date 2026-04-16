@@ -53,6 +53,22 @@ type Material = {
   shipped_at: string | null;
   received_at: string | null;
   notes: string | null;
+  expected_packages: number | null;
+  received_packages: number | null;
+  order_pdf_path: string | null;
+  order_pdf_text: string | null;
+  eta: string | null;
+};
+
+type MaterialPackage = {
+  id: string;
+  material_id: string;
+  tracking_number: string | null;
+  status: string;
+  description: string | null;
+  received_at: string | null;
+  received_by: string | null;
+  notes: string | null;
 };
 
 const MATERIAL_STATUSES = [
@@ -167,7 +183,16 @@ export default function QuotePage() {
   const [matDesc,      setMatDesc]      = useState("");
   const [matVendor,    setMatVendor]    = useState("");
   const [matOrderNum,  setMatOrderNum]  = useState("");
+  const [matExpPkgs,   setMatExpPkgs]   = useState("");
   const [savingMat,    setSavingMat]    = useState(false);
+
+  // Package tracking
+  const [packages,     setPackages]     = useState<Record<string, MaterialPackage[]>>({});
+  const [expandedMat,  setExpandedMat]  = useState<string | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState<string | null>(null);
+  const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
+  const [pkgTracking,  setPkgTracking]  = useState("");
+  const [pkgDesc,      setPkgDesc]      = useState("");
 
   // Editing state
   const [editingLine, setEditingLine] = useState<string | null>(null);
@@ -543,11 +568,25 @@ export default function QuotePage() {
     e.preventDefault();
     if (!matDesc.trim()) return;
     setSavingMat(true);
+    const expPkgs = matExpPkgs ? parseInt(matExpPkgs) || null : null;
     const { data } = await supabase.from("quote_materials").insert([{
-      quote_id: quoteId, description: matDesc.trim(), vendor: matVendor.trim() || null, order_number: matOrderNum.trim() || null, status: "not_ordered",
+      quote_id: quoteId, description: matDesc.trim(), vendor: matVendor.trim() || null,
+      order_number: matOrderNum.trim() || null, status: "not_ordered",
+      expected_packages: expPkgs, received_packages: 0,
     }]).select("*").single();
-    if (data) setMaterials(prev => [...prev, data as Material]);
-    setMatDesc(""); setMatVendor(""); setMatOrderNum("");
+    if (data) {
+      setMaterials(prev => [...prev, data as Material]);
+      // If expected packages specified, pre-create package slots
+      if (expPkgs && expPkgs > 0) {
+        const pkgInserts = Array.from({ length: expPkgs }, (_, i) => ({
+          material_id: data.id, status: "pending",
+          description: `Package ${i + 1} of ${expPkgs}`,
+        }));
+        const { data: pkgs } = await supabase.from("material_packages").insert(pkgInserts).select("*");
+        if (pkgs) setPackages(prev => ({ ...prev, [data.id]: pkgs as MaterialPackage[] }));
+      }
+    }
+    setMatDesc(""); setMatVendor(""); setMatOrderNum(""); setMatExpPkgs("");
     setSavingMat(false); setShowAddMat(false);
   }
 
@@ -567,9 +606,170 @@ export default function QuotePage() {
     }
   }
 
+  async function updateMaterialField(id: string, field: string, value: unknown) {
+    await supabase.from("quote_materials").update({ [field]: value }).eq("id", id);
+    setMaterials(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  }
+
   async function deleteMaterial(id: string) {
     await supabase.from("quote_materials").delete().eq("id", id);
     setMaterials(prev => prev.filter(m => m.id !== id));
+  }
+
+  // ── Package tracking functions ─────────────────────────────
+
+  async function loadPackages(materialId: string) {
+    const { data } = await supabase.from("material_packages")
+      .select("*").eq("material_id", materialId).order("created_at");
+    setPackages(prev => ({ ...prev, [materialId]: (data || []) as MaterialPackage[] }));
+  }
+
+  async function toggleMaterialExpand(materialId: string) {
+    if (expandedMat === materialId) {
+      setExpandedMat(null);
+    } else {
+      setExpandedMat(materialId);
+      if (!packages[materialId]) await loadPackages(materialId);
+    }
+  }
+
+  async function addPackage(materialId: string) {
+    const mat = materials.find(m => m.id === materialId);
+    const existingPkgs = packages[materialId] || [];
+    const { data } = await supabase.from("material_packages").insert([{
+      material_id: materialId, status: "pending",
+      tracking_number: pkgTracking.trim() || null,
+      description: pkgDesc.trim() || `Package ${existingPkgs.length + 1}`,
+    }]).select("*").single();
+    if (data) {
+      setPackages(prev => ({ ...prev, [materialId]: [...(prev[materialId] || []), data as MaterialPackage] }));
+      // Update expected count
+      const newCount = (existingPkgs.length + 1);
+      if (!mat?.expected_packages || newCount > mat.expected_packages) {
+        await updateMaterialField(materialId, "expected_packages", newCount);
+      }
+    }
+    setPkgTracking(""); setPkgDesc(""); setAddingPkg(null);
+  }
+
+  async function checkInPackage(materialId: string, packageId: string) {
+    const now = new Date().toISOString();
+    await supabase.from("material_packages").update({
+      status: "received", received_at: now, received_by: "User",
+    }).eq("id", packageId);
+
+    setPackages(prev => ({
+      ...prev,
+      [materialId]: (prev[materialId] || []).map(p =>
+        p.id === packageId ? { ...p, status: "received", received_at: now } : p
+      ),
+    }));
+
+    // Update received count on material
+    const mat = materials.find(m => m.id === materialId);
+    const newReceivedCount = (mat?.received_packages || 0) + 1;
+    await updateMaterialField(materialId, "received_packages", newReceivedCount);
+
+    // Check if all packages received
+    const updatedPkgs = (packages[materialId] || []).map(p =>
+      p.id === packageId ? { ...p, status: "received" } : p
+    );
+    const allPkgsReceived = updatedPkgs.length > 0 && updatedPkgs.every(p => p.status === "received");
+    if (allPkgsReceived) {
+      await updateMaterialStatus(materialId, "received");
+    }
+  }
+
+  async function undoCheckIn(materialId: string, packageId: string) {
+    await supabase.from("material_packages").update({
+      status: "pending", received_at: null, received_by: null,
+    }).eq("id", packageId);
+
+    setPackages(prev => ({
+      ...prev,
+      [materialId]: (prev[materialId] || []).map(p =>
+        p.id === packageId ? { ...p, status: "pending", received_at: null } : p
+      ),
+    }));
+
+    const mat = materials.find(m => m.id === materialId);
+    const newReceivedCount = Math.max(0, (mat?.received_packages || 1) - 1);
+    await updateMaterialField(materialId, "received_packages", newReceivedCount);
+  }
+
+  // ── Order PDF upload ──────────────────────────────────────
+  async function handleOrderPdfUpload(materialId: string, file: File) {
+    setUploadingPdf(materialId);
+    try {
+      // Upload PDF to Supabase storage
+      const fileName = `orders/${quoteId}/${materialId}/${Date.now()}-${file.name}`;
+      await supabase.storage.from("window-photos").upload(fileName, file, { upsert: true });
+
+      // Read PDF text client-side for matching (basic approach: read as text)
+      // For real PDF parsing, the API route with pdf-parse handles it.
+      // For now, store the path and send to our parsing API
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("materialId", materialId);
+
+      // Try server-side parsing first
+      let pdfText = "";
+      try {
+        const resp = await fetch("/api/parse-order-pdf", { method: "POST", body: formData });
+        if (resp.ok) {
+          const result = await resp.json();
+          pdfText = result.text || "";
+          // If parsing extracted order info, auto-fill fields
+          if (result.orderNumber) {
+            await updateMaterialField(materialId, "order_number", result.orderNumber);
+          }
+          if (result.expectedPackages) {
+            await updateMaterialField(materialId, "expected_packages", result.expectedPackages);
+            // Create package slots
+            const pkgInserts = Array.from({ length: result.expectedPackages }, (_, i) => ({
+              material_id: materialId, status: "pending",
+              description: result.packageDescriptions?.[i] || `Package ${i + 1} of ${result.expectedPackages}`,
+            }));
+            const { data: pkgs } = await supabase.from("material_packages").insert(pkgInserts).select("*");
+            if (pkgs) setPackages(prev => ({ ...prev, [materialId]: [...(prev[materialId] || []), ...(pkgs as MaterialPackage[])] }));
+          }
+          if (result.eta) {
+            await updateMaterialField(materialId, "eta", result.eta);
+          }
+          if (result.vendor) {
+            await updateMaterialField(materialId, "vendor", result.vendor);
+          }
+        }
+      } catch {
+        // Parsing API not available yet — just store the file path
+      }
+
+      // Save PDF path and extracted text
+      await supabase.from("quote_materials").update({
+        order_pdf_path: fileName,
+        order_pdf_text: pdfText.slice(0, 5000),
+        status: "ordered",
+        ordered_at: new Date().toISOString(),
+      }).eq("id", materialId);
+
+      setMaterials(prev => prev.map(m => m.id === materialId ? {
+        ...m, order_pdf_path: fileName, order_pdf_text: pdfText.slice(0, 5000),
+        status: "ordered", ordered_at: new Date().toISOString(),
+      } : m));
+
+      // Log activity
+      if (quote) {
+        await supabase.from("activity_log").insert([{
+          customer_id: quote.customer_id, type: "note",
+          notes: `📄 Order confirmation PDF uploaded for ${materials.find(m => m.id === materialId)?.description || "material"}`,
+          created_by: "ShadeLogic",
+        }]);
+      }
+    } catch (err) {
+      console.error("PDF upload error:", err);
+    }
+    setUploadingPdf(null);
+    load();
   }
 
   // ── Render ────────────────────────────────────────────────────
@@ -991,7 +1191,7 @@ export default function QuotePage() {
           <div className="rounded border">
             <div className="flex items-center justify-between px-3 py-2 border-b">
               <div className="font-semibold text-sm">
-                Materials
+                Materials & Orders
                 {materials.length > 0 && (
                   <span className="ml-2 text-xs font-normal text-gray-400">
                     {materials.filter(m => m.status === "received" || m.status === "staged").length}/{materials.length} received
@@ -1012,7 +1212,6 @@ export default function QuotePage() {
                 {lines.length > 0 && (
                   <button
                     onClick={async () => {
-                      // Auto-generate one material item per unique product
                       const seen = new Set<string>();
                       const toAdd = lines.filter(l => {
                         if (seen.has(l.product_name)) return false;
@@ -1022,6 +1221,7 @@ export default function QuotePage() {
                         quote_id: quoteId,
                         description: `${l.product_name}${l.is_motorized ? " + Motorization" : ""} (${lines.filter(x => x.product_name === l.product_name).length}x)`,
                         status: "not_ordered",
+                        received_packages: 0,
                       }));
                       if (inserts.length > 0) {
                         const { data } = await supabase.from("quote_materials").insert(inserts).select("*");
@@ -1038,28 +1238,161 @@ export default function QuotePage() {
               <ul>
                 {materials.map(m => {
                   const statusInfo = MATERIAL_STATUSES.find(s => s.value === m.status) ?? MATERIAL_STATUSES[0];
+                  const isExpanded = expandedMat === m.id;
+                  const matPkgs = packages[m.id] || [];
+                  const receivedPkgs = matPkgs.filter(p => p.status === "received").length;
+                  const totalPkgs = m.expected_packages || matPkgs.length;
+                  const hasPkgs = totalPkgs > 0;
+
                   return (
-                    <li key={m.id} className="border-b last:border-0 px-3 py-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{m.description}</div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {m.vendor && <span className="text-xs text-gray-400">{m.vendor}</span>}
-                            {m.order_number && <span className="text-xs text-gray-400">#{m.order_number}</span>}
-                            {m.tracking_number && (
-                              <a href={`https://www.google.com/search?q=${encodeURIComponent(m.tracking_number)}`} target="_blank" rel="noreferrer"
-                                className="text-xs text-blue-600 hover:underline">Track {m.tracking_number}</a>
+                    <li key={m.id} className="border-b last:border-0">
+                      <div className="px-3 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              {hasPkgs && (
+                                <button onClick={() => toggleMaterialExpand(m.id)}
+                                  className="text-xs text-gray-400 hover:text-black shrink-0">
+                                  {isExpanded ? "▾" : "▸"}
+                                </button>
+                              )}
+                              <span className="text-sm font-medium truncate">{m.description}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {m.vendor && <span className="text-xs text-gray-400">{m.vendor}</span>}
+                              {m.order_number && <span className="text-xs text-gray-400">#{m.order_number}</span>}
+                              {m.eta && <span className="text-xs text-amber-600">ETA: {m.eta}</span>}
+                              {m.tracking_number && (
+                                <a href={`https://www.google.com/search?q=${encodeURIComponent(m.tracking_number)}`} target="_blank" rel="noreferrer"
+                                  className="text-xs text-blue-600 hover:underline">Track {m.tracking_number}</a>
+                              )}
+                              {m.order_pdf_path && (
+                                <span className="text-xs text-green-600">📄 PDF uploaded</span>
+                              )}
+                            </div>
+                            {/* Package progress bar */}
+                            {hasPkgs && (
+                              <div className="mt-1.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-300"
+                                      style={{
+                                        width: `${totalPkgs > 0 ? (receivedPkgs / totalPkgs) * 100 : 0}%`,
+                                        backgroundColor: receivedPkgs === totalPkgs ? "#22c55e" : "#f59e0b",
+                                      }} />
+                                  </div>
+                                  <span className="text-xs text-gray-500 shrink-0">
+                                    {receivedPkgs}/{totalPkgs} pkgs
+                                  </span>
+                                </div>
+                              </div>
                             )}
                           </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* PDF upload button */}
+                            {!m.order_pdf_path && (
+                              <label className="text-xs text-blue-600 hover:underline cursor-pointer">
+                                📄
+                                <input type="file" accept=".pdf" className="hidden"
+                                  onChange={e => { if (e.target.files?.[0]) handleOrderPdfUpload(m.id, e.target.files[0]); }}
+                                  disabled={uploadingPdf === m.id} />
+                              </label>
+                            )}
+                            <select value={m.status} onChange={e => updateMaterialStatus(m.id, e.target.value)}
+                              className={`text-xs rounded px-1.5 py-0.5 border-0 font-medium ${statusInfo.color}`}>
+                              {MATERIAL_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select>
+                            <button onClick={() => deleteMaterial(m.id)} className="text-xs text-gray-300 hover:text-red-400 ml-1">✕</button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <select value={m.status} onChange={e => updateMaterialStatus(m.id, e.target.value)}
-                            className={`text-xs rounded px-1.5 py-0.5 border-0 font-medium ${statusInfo.color}`}>
-                            {MATERIAL_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                          </select>
-                          <button onClick={() => deleteMaterial(m.id)} className="text-xs text-gray-300 hover:text-red-400 ml-1">✕</button>
-                        </div>
+
+                        {/* Inline: set expected packages if none set */}
+                        {!hasPkgs && m.status !== "not_ordered" && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-xs text-gray-400">Expected packages:</span>
+                            <input type="number" min="1" max="100" placeholder="#"
+                              className="w-14 border rounded px-1.5 py-0.5 text-xs"
+                              onKeyDown={async (e) => {
+                                if (e.key === "Enter") {
+                                  const val = parseInt((e.target as HTMLInputElement).value);
+                                  if (val > 0) {
+                                    await updateMaterialField(m.id, "expected_packages", val);
+                                    // Create package slots
+                                    const pkgInserts = Array.from({ length: val }, (_, i) => ({
+                                      material_id: m.id, status: "pending",
+                                      description: `Package ${i + 1} of ${val}`,
+                                    }));
+                                    const { data: pkgs } = await supabase.from("material_packages").insert(pkgInserts).select("*");
+                                    if (pkgs) setPackages(prev => ({ ...prev, [m.id]: pkgs as MaterialPackage[] }));
+                                    setExpandedMat(m.id);
+                                  }
+                                }
+                              }}
+                            />
+                            <span className="text-xs text-gray-300">press Enter</span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Expanded package list */}
+                      {isExpanded && (
+                        <div className="bg-gray-50 border-t px-3 py-2 space-y-1.5">
+                          {matPkgs.length === 0 && (
+                            <div className="text-xs text-gray-400 text-center py-2">No packages tracked yet.</div>
+                          )}
+                          {matPkgs.map(pkg => (
+                            <div key={pkg.id} className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs ${pkg.status === "received" ? "bg-green-50" : "bg-white border"}`}>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                {pkg.status === "received" ? (
+                                  <span className="text-green-600 shrink-0">✓</span>
+                                ) : (
+                                  <span className="text-gray-300 shrink-0">○</span>
+                                )}
+                                <span className={`truncate ${pkg.status === "received" ? "text-green-700" : ""}`}>
+                                  {pkg.description || "Package"}
+                                </span>
+                                {pkg.tracking_number && (
+                                  <a href={`https://www.google.com/search?q=${encodeURIComponent(pkg.tracking_number)}`}
+                                    target="_blank" rel="noreferrer"
+                                    className="text-blue-500 hover:underline shrink-0">
+                                    {pkg.tracking_number}
+                                  </a>
+                                )}
+                                {pkg.received_at && (
+                                  <span className="text-gray-400 shrink-0">
+                                    {new Date(pkg.received_at).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              {pkg.status === "received" ? (
+                                <button onClick={() => undoCheckIn(m.id, pkg.id)}
+                                  className="text-xs text-gray-400 hover:text-red-500 shrink-0">Undo</button>
+                              ) : (
+                                <button onClick={() => checkInPackage(m.id, pkg.id)}
+                                  className="bg-green-600 text-white rounded px-2 py-0.5 text-xs hover:bg-green-700 shrink-0">
+                                  Check In
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {/* Add package */}
+                          {addingPkg === m.id ? (
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <input value={pkgTracking} onChange={e => setPkgTracking(e.target.value)}
+                                placeholder="Tracking # (opt)" className="flex-1 border rounded px-2 py-1 text-xs" />
+                              <input value={pkgDesc} onChange={e => setPkgDesc(e.target.value)}
+                                placeholder="Description (opt)" className="flex-1 border rounded px-2 py-1 text-xs" />
+                              <button onClick={() => addPackage(m.id)}
+                                className="bg-black text-white rounded px-2 py-1 text-xs shrink-0">Add</button>
+                              <button onClick={() => setAddingPkg(null)}
+                                className="text-xs text-gray-400 shrink-0">✕</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setAddingPkg(m.id)}
+                              className="text-xs text-blue-600 hover:underline pt-1">+ Add package</button>
+                          )}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -1271,6 +1604,13 @@ export default function QuotePage() {
                   placeholder="PO or order number"
                   className="w-full border rounded px-2 py-1.5 text-sm" />
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Expected Packages</label>
+              <input type="number" min="0" value={matExpPkgs} onChange={e => setMatExpPkgs(e.target.value)}
+                placeholder="How many boxes/packages will arrive?"
+                className="w-full border rounded px-2 py-1.5 text-sm" />
+              <p className="text-xs text-gray-300 mt-0.5">Leave blank if unknown — you can add packages later</p>
             </div>
             <div className="flex gap-2 pt-1">
               <button type="submit" disabled={savingMat}

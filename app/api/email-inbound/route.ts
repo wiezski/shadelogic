@@ -1,6 +1,6 @@
 // ── Email Order Tracking Webhook ──────────────────────────────
 // Receives inbound emails from Postmark and auto-updates
-// quote_materials order status in the database.
+// quote_materials order status + package tracking in the database.
 //
 // Setup: in Postmark → Inbound Stream → Webhook URL:
 //   https://yoursite.vercel.app/api/email-inbound
@@ -24,18 +24,19 @@ function extractOrderNumbers(text: string): string[] {
   return [...found];
 }
 
-function extractTracking(text: string): string | null {
+function extractTracking(text: string): string[] {
   const patterns = [
-    /\b(1Z[A-Z0-9]{16})\b/i,                  // UPS
-    /\b(94\d{18,20})\b/,                        // USPS
-    /\b(3S[A-Z0-9]{14})\b/i,                   // FedEx
-    /tracking[:\s#]+([A-Z0-9]{10,30})/i,
+    /\b(1Z[A-Z0-9]{16})\b/gi,                  // UPS
+    /\b(94\d{18,20})\b/g,                        // USPS
+    /\b(3S[A-Z0-9]{14})\b/gi,                   // FedEx
+    /tracking[:\s#]+([A-Z0-9]{10,30})/gi,
   ];
+  const found = new Set<string>();
   for (const p of patterns) {
-    const m = text.match(p);
-    if (m) return m[1].trim();
+    const matches = [...text.matchAll(p)];
+    matches.forEach(m => found.add(m[1].trim()));
   }
-  return null;
+  return [...found];
 }
 
 type StatusType = "ordered" | "shipped" | "received" | null;
@@ -60,6 +61,20 @@ function extractETA(text: string): string | null {
     if (m) return m[1];
   }
   return null;
+}
+
+function extractPackageInfo(text: string): { count: number | null; packageNum: number | null } {
+  // "Package 2 of 5" or "Shipment 3/8"
+  const ofMatch = text.match(/(?:package|shipment|box|carton)\s*(\d+)\s*(?:of|\/)\s*(\d+)/i);
+  if (ofMatch) {
+    return { packageNum: parseInt(ofMatch[1]), count: parseInt(ofMatch[2]) };
+  }
+  // "5 packages total"
+  const totalMatch = text.match(/(\d+)\s*(?:packages?|boxes?|cartons?)\s*(?:total|will|to\s+be)/i);
+  if (totalMatch) {
+    return { packageNum: null, count: parseInt(totalMatch[1]) };
+  }
+  return { count: null, packageNum: null };
 }
 
 // Company token: first 12 chars of company_id with dashes removed
@@ -107,13 +122,14 @@ export async function POST(req: NextRequest) {
     const htmlBody = body.HtmlBody ?? "";
     const fullText = subject + " " + textBody + " " + htmlBody;
 
-    const orderNumbers  = extractOrderNumbers(fullText);
-    const trackingNum   = extractTracking(fullText);
+    const orderNumbers   = extractOrderNumbers(fullText);
+    const trackingNums   = extractTracking(fullText);
     const detectedStatus = detectStatus(subject, textBody + " " + htmlBody);
-    const eta           = extractETA(fullText);
-    const fromEmail     = body.From ?? "";
+    const eta            = extractETA(fullText);
+    const fromEmail      = body.From ?? "";
+    const pkgInfo        = extractPackageInfo(fullText);
 
-    console.log(`[email-inbound] company=${companyId} orders=${orderNumbers} status=${detectedStatus} tracking=${trackingNum}`);
+    console.log(`[email-inbound] company=${companyId} orders=${orderNumbers} status=${detectedStatus} tracking=${trackingNums} pkgs=${JSON.stringify(pkgInfo)}`);
 
     // ── Try to match to a quote_materials record ─────────────
     let matched = false;
@@ -121,11 +137,12 @@ export async function POST(req: NextRequest) {
 
     if (orderNumbers.length > 0) {
       for (const orderNum of orderNumbers) {
+        // Search by order_number, description, or order_pdf_text
         const { data: mats } = await supabase
           .from("quote_materials")
-          .select("id, status, quote_id")
+          .select("id, status, quote_id, expected_packages, received_packages")
           .eq("company_id", companyId)
-          .or(`order_number.ilike.%${orderNum}%,description.ilike.%${orderNum}%`)
+          .or(`order_number.ilike.%${orderNum}%,description.ilike.%${orderNum}%,order_pdf_text.ilike.%${orderNum}%`)
           .limit(1);
 
         if (mats && mats.length > 0) {
@@ -137,51 +154,150 @@ export async function POST(req: NextRequest) {
           const currentIdx = STATUS_ORDER.indexOf(mat.status);
           const newIdx     = STATUS_ORDER.indexOf(detectedStatus ?? "");
 
+          const update: Record<string, unknown> = {
+            last_email_at:     new Date().toISOString(),
+            last_email_subject: subject.slice(0, 200),
+            auto_updated:      true,
+          };
+
           if (detectedStatus && newIdx > currentIdx) {
-            const update: Record<string, unknown> = {
-              status:            detectedStatus,
-              last_email_at:     new Date().toISOString(),
-              last_email_subject: subject.slice(0, 200),
-              auto_updated:      true,
-            };
-            if (trackingNum)                     update.tracking_number = trackingNum;
+            update.status = detectedStatus;
             if (detectedStatus === "ordered")    update.ordered_at = new Date().toISOString();
             if (detectedStatus === "shipped")    update.shipped_at = new Date().toISOString();
             if (detectedStatus === "received")   update.received_at = new Date().toISOString();
+          }
 
-            await supabase.from("quote_materials").update(update).eq("id", mat.id);
-            matched = true;
+          // Update tracking number (first one found)
+          if (trackingNums.length > 0 && !update.tracking_number) {
+            update.tracking_number = trackingNums[0];
+          }
 
-            // Check if all materials on this quote are now received/staged
-            const { data: quoteMats } = await supabase
-              .from("quote_materials")
-              .select("status, quote_id")
-              .eq("quote_id", mat.quote_id);
-            const allDone = quoteMats?.every(m => m.status === "received" || m.status === "staged");
-            if (allDone && quoteMats && quoteMats.length > 0) {
-              // Get customer_id from quote
-              const { data: quote } = await supabase
-                .from("quotes").select("customer_id").eq("id", mat.quote_id).single();
-              if (quote) {
-                await supabase.from("customers")
-                  .update({ next_action: "✅ All materials received — ready to schedule install" })
-                  .eq("id", quote.customer_id);
+          // Update ETA if found
+          if (eta) update.eta = eta;
+
+          // Update expected packages if detected and not already set
+          if (pkgInfo.count && !mat.expected_packages) {
+            update.expected_packages = pkgInfo.count;
+          }
+
+          await supabase.from("quote_materials").update(update).eq("id", mat.id);
+          matched = true;
+
+          // ── Package-level tracking ────────────────────────
+          // If we have tracking numbers, try to match or create packages
+          if (trackingNums.length > 0) {
+            for (const trackNum of trackingNums) {
+              // Check if this tracking number already exists as a package
+              const { data: existingPkg } = await supabase
+                .from("material_packages")
+                .select("id")
+                .eq("material_id", mat.id)
+                .eq("tracking_number", trackNum)
+                .limit(1);
+
+              if (existingPkg && existingPkg.length > 0) {
+                // Update existing package
+                if (detectedStatus === "received") {
+                  await supabase.from("material_packages").update({
+                    status: "received",
+                    received_at: new Date().toISOString(),
+                    received_by: "Email Auto-Detect",
+                  }).eq("id", existingPkg[0].id);
+                } else if (detectedStatus === "shipped") {
+                  await supabase.from("material_packages").update({
+                    status: "shipped",
+                  }).eq("id", existingPkg[0].id);
+                }
+              } else {
+                // Try to assign tracking to a pending package without a tracking number
+                const { data: pendingPkg } = await supabase
+                  .from("material_packages")
+                  .select("id")
+                  .eq("material_id", mat.id)
+                  .is("tracking_number", null)
+                  .eq("status", "pending")
+                  .limit(1);
+
+                if (pendingPkg && pendingPkg.length > 0) {
+                  const pkgUpdate: Record<string, unknown> = { tracking_number: trackNum };
+                  if (detectedStatus === "shipped") pkgUpdate.status = "shipped";
+                  if (detectedStatus === "received") {
+                    pkgUpdate.status = "received";
+                    pkgUpdate.received_at = new Date().toISOString();
+                    pkgUpdate.received_by = "Email Auto-Detect";
+                  }
+                  await supabase.from("material_packages").update(pkgUpdate).eq("id", pendingPkg[0].id);
+                } else {
+                  // Create a new package entry
+                  const pkgLabel = pkgInfo.packageNum
+                    ? `Package ${pkgInfo.packageNum}${pkgInfo.count ? ` of ${pkgInfo.count}` : ""}`
+                    : `Package (auto-detected)`;
+                  await supabase.from("material_packages").insert([{
+                    material_id: mat.id,
+                    tracking_number: trackNum,
+                    status: detectedStatus === "received" ? "received" : detectedStatus === "shipped" ? "shipped" : "pending",
+                    description: pkgLabel,
+                    received_at: detectedStatus === "received" ? new Date().toISOString() : null,
+                    received_by: detectedStatus === "received" ? "Email Auto-Detect" : null,
+                    company_id: companyId,
+                  }]);
+                }
               }
             }
 
-            // Log activity on customer
-            if (matched) {
-              const { data: q } = await supabase.from("quotes").select("customer_id").eq("id", mat.quote_id).single();
-              if (q) {
-                const statusLabels: Record<string, string> = { ordered: "Order confirmed", shipped: "Order shipped", received: "Materials received" };
-                await supabase.from("activity_log").insert([{
-                  customer_id: q.customer_id,
-                  company_id:  companyId,
-                  type:        "note",
-                  notes:       `📦 ${statusLabels[detectedStatus ?? ""] ?? detectedStatus} (auto-detected from email: "${subject.slice(0, 80)}")${trackingNum ? ` — Tracking: ${trackingNum}` : ""}`,
-                  created_by:  "Email Tracking",
-                }]);
+            // Recount received packages
+            const { data: allPkgs } = await supabase
+              .from("material_packages")
+              .select("status")
+              .eq("material_id", mat.id);
+
+            if (allPkgs) {
+              const receivedCount = allPkgs.filter(p => p.status === "received").length;
+              await supabase.from("quote_materials").update({
+                received_packages: receivedCount,
+              }).eq("id", mat.id);
+
+              // If all packages received, mark material as received
+              const allReceived = allPkgs.length > 0 && allPkgs.every(p => p.status === "received");
+              if (allReceived) {
+                await supabase.from("quote_materials").update({
+                  status: "received",
+                  received_at: new Date().toISOString(),
+                }).eq("id", mat.id);
               }
+            }
+          }
+
+          // Check if all materials on this quote are now received/staged
+          const { data: quoteMats } = await supabase
+            .from("quote_materials")
+            .select("status, quote_id")
+            .eq("quote_id", mat.quote_id);
+          const allDone = quoteMats?.every(m => m.status === "received" || m.status === "staged");
+          if (allDone && quoteMats && quoteMats.length > 0) {
+            const { data: quote } = await supabase
+              .from("quotes").select("customer_id").eq("id", mat.quote_id).single();
+            if (quote) {
+              await supabase.from("customers")
+                .update({ next_action: "All materials received — ready to schedule install" })
+                .eq("id", quote.customer_id);
+            }
+          }
+
+          // Log activity on customer
+          if (matched) {
+            const { data: q } = await supabase.from("quotes").select("customer_id").eq("id", mat.quote_id).single();
+            if (q) {
+              const statusLabels: Record<string, string> = { ordered: "Order confirmed", shipped: "Order shipped", received: "Materials received" };
+              const trackingStr = trackingNums.length > 0 ? ` — Tracking: ${trackingNums.join(", ")}` : "";
+              const pkgStr = pkgInfo.packageNum ? ` (pkg ${pkgInfo.packageNum}${pkgInfo.count ? `/${pkgInfo.count}` : ""})` : "";
+              await supabase.from("activity_log").insert([{
+                customer_id: q.customer_id,
+                company_id:  companyId,
+                type:        "note",
+                notes:       `📦 ${statusLabels[detectedStatus ?? ""] ?? detectedStatus}${pkgStr} (auto-detected from email: "${subject.slice(0, 80)}")${trackingStr}`,
+                created_by:  "Email Tracking",
+              }]);
             }
           }
           break;
@@ -196,7 +312,7 @@ export async function POST(req: NextRequest) {
         from_email:      fromEmail,
         subject:         subject.slice(0, 300),
         order_number:    orderNumbers[0] ?? null,
-        tracking_number: trackingNum,
+        tracking_number: trackingNums[0] ?? null,
         detected_status: detectedStatus,
         email_body:      textBody.slice(0, 1000),
         reviewed:        false,
@@ -205,11 +321,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      ok:      true,
+      ok:       true,
       matched,
-      status:  detectedStatus,
-      orders:  orderNumbers,
-      tracking: trackingNum,
+      status:   detectedStatus,
+      orders:   orderNumbers,
+      tracking: trackingNums,
+      packages: pkgInfo,
     });
 
   } catch (err) {

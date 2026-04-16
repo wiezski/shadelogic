@@ -650,9 +650,9 @@ export default function CustomerPage() {
 
   return (
     <PermissionGate require="view_customers">
-      <main className="min-h-screen bg-white p-4 pb-12 text-black">
+      <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 pb-12">
         <div className="mx-auto max-w-2xl">
-        <Link href="/" className="mb-4 inline-block text-sm text-blue-600 hover:underline">← Back</Link>
+        <Link href="/" className="mb-4 inline-block text-sm hover:underline" style={{ color: "var(--zr-orange)" }}>← Back</Link>
 
         {/* ── Header ──────────────────────────────────────── */}
         <div className="mb-4">
@@ -672,10 +672,11 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Next Action ─────────────────────────────────── */}
-        <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-3">
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-700">Next Action Required</label>
+        <div className="mb-4 rounded p-3" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-warning)" }}>Next Action Required</label>
           <input
-            className="w-full rounded border border-amber-200 bg-white px-3 py-2 text-sm placeholder-gray-400"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+            className="w-full rounded px-3 py-2 text-sm"
             value={customer.next_action || ""}
             onChange={(e) => updateLocal("next_action", e.target.value)}
             onBlur={(e) => saveField("next_action", e.target.value || null)}
@@ -692,7 +693,8 @@ export default function CustomerPage() {
                   updateLocal("next_action", suggestion);
                   saveField("next_action", suggestion);
                 }}
-                className="text-xs text-amber-700 underline hover:text-amber-900"
+                style={{ color: "var(--zr-warning)" }}
+                className="text-xs underline hover:opacity-80"
               >
                 {STAGE_NEXT_ACTION[customer.lead_status]}
               </button>
@@ -701,9 +703,9 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Lead Status + Heat Score ─────────────────── */}
-        <div className="mb-5 rounded border p-4">
+        <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Lead Status</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Lead Status</h2>
             <div className="flex gap-1">
               {HEAT_SCORES.map((h) => (
                 <button key={h} onClick={() => saveHeatScore(h)}
@@ -718,9 +720,10 @@ export default function CustomerPage() {
               const isActive = customer.lead_status === stage;
               return (
                 <button key={stage} onClick={() => saveLeadStatus(stage)}
+                  style={isActive ? {} : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
                   className={`shrink-0 rounded border px-3 py-1.5 text-xs font-medium transition-all ${
                     isActive ? stageStyle[stage] + " border-current font-semibold"
-                    : "border-gray-200 bg-white text-gray-400 hover:border-gray-400 hover:text-gray-600"
+                    : ""
                   }`}>
                   {stage}
                 </button>
@@ -730,10 +733,10 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Tags + Lead Source ───────────────────────── */}
-        <div className="mb-5 rounded border p-4">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">Tags & Source</h2>
+        <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Tags & Source</h2>
           <div className="mb-3">
-            <label className="mb-1.5 block text-xs font-medium text-gray-500">Tags</label>
+            <label className="mb-1.5 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Tags</label>
             <div className="flex flex-wrap gap-1.5">
               {PRESET_TAGS.map(tag => {
                 const active = (customer.tags ?? []).includes(tag);
@@ -745,9 +748,8 @@ export default function CustomerPage() {
                       updateLocal("tags", updated);
                       await supabase.from("customers").update({ tags: updated }).eq("id", customerId);
                     }}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${
-                      active ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300 hover:border-gray-500"
-                    }`}>
+                    style={active ? { background: "var(--zr-orange)", color: "#fff", border: `1px solid var(--zr-orange)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors`}>
                     {tag}
                   </button>
                 );
@@ -755,7 +757,7 @@ export default function CustomerPage() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Lead Source</label>
+            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Lead Source</label>
             <select
               value={customer.lead_source ?? ""}
               onChange={async e => {
@@ -763,7 +765,8 @@ export default function CustomerPage() {
                 updateLocal("lead_source", val);
                 await supabase.from("customers").update({ lead_source: val }).eq("id", customerId);
               }}
-              className="w-full border rounded px-2 py-1.5 text-sm">
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+              className="w-full rounded px-2 py-1.5 text-sm">
               <option value="">— Not set —</option>
               {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -771,44 +774,44 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Contact Info ─────────────────────────────── */}
-        <div className="mb-5 rounded border p-4">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">Contact Info</h2>
+        <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Contact Info</h2>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">First Name</label>
-              <input className="w-full rounded border px-3 py-2 text-sm" value={customer.first_name || ""}
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>First Name</label>
+              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={customer.first_name || ""}
                 onChange={(e) => updateLocal("first_name", e.target.value)}
                 onBlur={(e) => saveField("first_name", e.target.value || null)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Last Name</label>
-              <input className="w-full rounded border px-3 py-2 text-sm" value={customer.last_name || ""}
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Last Name</label>
+              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={customer.last_name || ""}
                 onChange={(e) => updateLocal("last_name", e.target.value)}
                 onBlur={(e) => saveField("last_name", e.target.value || null)} />
             </div>
           </div>
 
           <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Street Address</label>
-            <input className="w-full rounded border px-3 py-2 text-sm" value={street}
+            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Street Address</label>
+            <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={street}
               onChange={(e) => setStreet(e.target.value)} onBlur={saveAddress} placeholder="123 Main St" />
           </div>
           <div className="mt-3 grid grid-cols-[1fr_64px_96px] gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">City</label>
-              <input className="w-full rounded border px-3 py-2 text-sm" value={city}
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>City</label>
+              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={city}
                 onChange={(e) => setCity(e.target.value)} onBlur={saveAddress} placeholder="Salt Lake City" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">State</label>
-              <input className="w-full rounded border px-3 py-2 text-sm uppercase" value={addrState}
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>State</label>
+              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm uppercase" value={addrState}
                 onChange={(e) => setAddrState(e.target.value.toUpperCase())} onBlur={saveAddress}
                 placeholder="UT" maxLength={2} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Zip</label>
-              <input className="w-full rounded border px-3 py-2 text-sm" value={zip}
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Zip</label>
+              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={zip}
                 onChange={(e) => setZip(e.target.value)} onBlur={saveAddress} placeholder="84101" />
             </div>
           </div>
@@ -819,7 +822,8 @@ export default function CustomerPage() {
               <a
                 href={`https://maps.google.com/?q=${encodeURIComponent([street, city, addrState, zip].filter(Boolean).join(", "))}`}
                 target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                style={{ color: "var(--zr-orange)" }}
+                className="inline-flex items-center gap-1 text-xs hover:underline">
                 📍 Open in Maps →
               </a>
             </div>
@@ -827,7 +831,7 @@ export default function CustomerPage() {
 
           {/* ── Phone Numbers ──────────────────────────── */}
           <div className="mt-4">
-            <label className="mb-2 block text-xs font-medium text-gray-500">Phone Numbers</label>
+            <label className="mb-2 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Phone Numbers</label>
             <div className="space-y-2">
               {phones.map((p) => (
                 <div key={p.id}>
@@ -837,24 +841,27 @@ export default function CustomerPage() {
                       className={`h-3 w-3 shrink-0 rounded-full border-2 ${p.is_primary ? "border-blue-500 bg-blue-500" : "border-gray-300 bg-white"}`} />
                     {/* Label */}
                     <select value={p.label} onChange={(e) => updatePhoneField(p.id, "label", e.target.value)}
-                      className="rounded border px-2 py-1.5 text-xs text-gray-600 w-24">
+                      style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                      className="rounded px-2 py-1.5 text-xs w-24">
                       {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
                       <option value={p.label}>{PHONE_LABELS.includes(p.label as typeof PHONE_LABELS[number]) ? "" : p.label}</option>
                     </select>
                     {/* Phone input */}
-                    <input type="tel" className="flex-1 rounded border px-3 py-1.5 text-sm"
+                    <input type="tel" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-1.5 text-sm"
                       value={p.phone}
                       onChange={(e) => setPhones((prev) => prev.map((ph) => ph.id === p.id ? { ...ph, phone: e.target.value } : ph))}
                       onBlur={(e) => updatePhoneField(p.id, "phone", e.target.value)}
                       placeholder="801-555-1234" />
                     {/* Call */}
                     <button onClick={() => handleCall(p.phone)}
-                      className="rounded border border-green-300 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700">
+                      style={{ background: "var(--zr-success)", color: "#fff", border: `1px solid var(--zr-success)` }}
+                      className="rounded px-2.5 py-1.5 text-xs font-medium">
                       Call
                     </button>
                     {/* Text */}
                     <button onClick={() => openSmsComposer(p.id)}
-                      className={`rounded border px-2.5 py-1.5 text-xs font-medium ${composer === `sms-${p.id}` ? "border-blue-400 bg-blue-500 text-white" : "border-blue-300 bg-blue-50 text-blue-700"}`}>
+                      style={composer === `sms-${p.id}` ? { background: "var(--zr-info)", color: "#fff", border: `1px solid var(--zr-info)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                      className={`rounded px-2.5 py-1.5 text-xs font-medium`}>
                       Text
                     </button>
                     {/* Delete */}
@@ -864,17 +871,19 @@ export default function CustomerPage() {
 
                   {/* SMS composer inline */}
                   {composer === `sms-${p.id}` && (
-                    <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3">
-                      <textarea className="w-full rounded border px-3 py-2 text-sm" rows={4}
+                    <div className="mt-2 rounded p-3" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)" }}>
+                      <textarea style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" rows={4}
                         value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)}
                         placeholder="Type your message..." autoFocus />
                       <div className="mt-2 flex gap-2">
                         <button onClick={() => sendSms(p.phone)} disabled={!composerMsg.trim()}
-                          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                          style={{ background: "var(--zr-info)", color: "#fff", border: "none" }}
+                          className="rounded px-4 py-1.5 text-sm disabled:opacity-40">
                           Open in Messages
                         </button>
                         <button onClick={() => setComposer(null)}
-                          className="rounded border px-3 py-1.5 text-sm text-gray-600">Cancel</button>
+                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                          className="rounded px-3 py-1.5 text-sm">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -885,13 +894,15 @@ export default function CustomerPage() {
             {/* Add phone form */}
             <form onSubmit={addPhone} className="mt-2 flex gap-2">
               <select value={newPhoneLabel} onChange={(e) => setNewPhoneLabel(e.target.value)}
-                className="rounded border px-2 py-1.5 text-xs text-gray-600 w-24">
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                className="rounded px-2 py-1.5 text-xs w-24">
                 {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
               </select>
-              <input type="tel" className="flex-1 rounded border px-3 py-1.5 text-sm"
+              <input type="tel" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-1.5 text-sm"
                 value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Add phone number" />
               <button type="submit" disabled={addingPhone || !newPhone.trim()}
-                className="rounded bg-gray-800 px-3 py-1.5 text-xs text-white disabled:opacity-40">
+                style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+                className="rounded px-3 py-1.5 text-xs disabled:opacity-40">
                 Add
               </button>
             </form>
@@ -899,16 +910,17 @@ export default function CustomerPage() {
 
           {/* ── Email ──────────────────────────────────── */}
           <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Email</label>
+            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Email</label>
             <div className="flex gap-2">
-              <input type="email" className="flex-1 rounded border px-3 py-2 text-sm"
+              <input type="email" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-2 text-sm"
                 value={customer.email || ""}
                 onChange={(e) => updateLocal("email", e.target.value)}
                 onBlur={(e) => saveField("email", e.target.value || null)}
                 placeholder="john@example.com" />
               {customer.email && (
                 <button onClick={openEmailComposer}
-                  className={`rounded border px-3 py-2 text-xs font-medium ${composer === "email" ? "border-purple-400 bg-purple-500 text-white" : "border-purple-300 bg-purple-50 text-purple-700"}`}>
+                  style={composer === "email" ? { background: "var(--zr-info)", color: "#fff", border: `1px solid var(--zr-info)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                  className={`rounded px-3 py-2 text-xs font-medium`}>
                   Email
                 </button>
               )}
@@ -917,26 +929,28 @@ export default function CustomerPage() {
 
           {/* Email composer */}
           {composer === "email" && customer.email && (
-            <div className="mt-2 rounded border border-purple-200 bg-purple-50 p-3">
-              <input className="mb-2 w-full rounded border px-3 py-2 text-sm" placeholder="Subject"
+            <div className="mt-2 rounded p-3" style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)" }}>
+              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="mb-2 w-full rounded px-3 py-2 text-sm" placeholder="Subject"
                 value={composerSubject} onChange={(e) => setComposerSubject(e.target.value)} autoFocus />
-              <textarea className="w-full rounded border px-3 py-2 text-sm" rows={6}
+              <textarea style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" rows={6}
                 value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)} />
               <div className="mt-2 flex gap-2">
                 <button onClick={() => sendEmail(customer.email!)} disabled={!composerMsg.trim()}
-                  className="rounded bg-purple-600 px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                  style={{ background: "var(--zr-info)", color: "#fff", border: "none" }}
+                  className="rounded px-4 py-1.5 text-sm disabled:opacity-40">
                   Open in Mail
                 </button>
                 <button onClick={() => setComposer(null)}
-                  className="rounded border px-3 py-1.5 text-sm text-gray-600">Cancel</button>
+                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                  className="rounded px-3 py-1.5 text-sm">Cancel</button>
               </div>
             </div>
           )}
 
           {/* ── Preferred Contact ──────────────────────── */}
           <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Preferred Contact Method / Notes</label>
-            <input className="w-full rounded border px-3 py-2 text-sm"
+            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Preferred Contact Method / Notes</label>
+            <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm"
               value={customer.preferred_contact || ""}
               onChange={(e) => updateLocal("preferred_contact", e.target.value)}
               onBlur={(e) => saveField("preferred_contact", e.target.value || null)}
@@ -945,18 +959,20 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Activity & Tasks ──────────────────────────── */}
-        <div className="mb-5 rounded border">
-          <div className="flex border-b">
+        <div className="mb-5 rounded" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <div style={{ borderBottom: "1px solid var(--zr-border)" }} className="flex">
             <button onClick={() => setCrmTab("activity")}
-              className={`flex-1 py-2.5 text-sm font-medium ${crmTab === "activity" ? "border-b-2 border-black text-black" : "text-gray-400"}`}>
+              style={crmTab === "activity" ? { borderBottom: `2px solid var(--zr-orange)`, color: "var(--zr-text-primary)" } : { color: "var(--zr-text-secondary)" }}
+              className={`flex-1 py-2.5 text-sm font-medium`}>
               Activity
-              {activities.length > 0 && <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{activities.length}</span>}
+              {activities.length > 0 && <span style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)" }} className="ml-1.5 rounded px-1.5 py-0.5 text-xs">{activities.length}</span>}
             </button>
             <button onClick={() => setCrmTab("tasks")}
-              className={`flex-1 py-2.5 text-sm font-medium ${crmTab === "tasks" ? "border-b-2 border-black text-black" : "text-gray-400"}`}>
+              style={crmTab === "tasks" ? { borderBottom: `2px solid var(--zr-orange)`, color: "var(--zr-text-primary)" } : { color: "var(--zr-text-secondary)" }}
+              className={`flex-1 py-2.5 text-sm font-medium`}>
               Tasks
               {openTasks.length > 0 && (
-                <span className={`ml-1.5 rounded px-1.5 py-0.5 text-xs ${openTasks.some((t) => isOverdue(t.due_date)) ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"}`}>
+                <span style={openTasks.some((t) => isOverdue(t.due_date)) ? { background: "rgba(239,68,68,0.2)", color: "var(--zr-error)" } : { background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)" }} className={`ml-1.5 rounded px-1.5 py-0.5 text-xs`}>
                   {openTasks.length}
                 </span>
               )}
@@ -971,38 +987,41 @@ export default function CustomerPage() {
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {ACTIVITY_TYPES.map((t) => (
                       <button key={t} type="button" onClick={() => setActType(t)}
-                        className={`rounded border px-3 py-1 text-xs font-medium ${actType === t ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300"}`}>
+                        style={actType === t ? { background: "var(--zr-orange)", color: "#fff", border: `1px solid var(--zr-orange)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                        className={`rounded px-3 py-1 text-xs font-medium`}>
                         {t}
                       </button>
                     ))}
                   </div>
                   <div className="relative">
-                    <textarea className="w-full rounded border px-3 py-2 pr-10 text-sm" rows={2}
+                    <textarea style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 pr-10 text-sm" rows={2}
                       placeholder={`Log a ${actType.toLowerCase()}...`}
                       value={actNotes} onChange={(e) => setActNotes(e.target.value)} />
                     {/* Voice-to-text mic button */}
                     <button type="button" onClick={startVoiceInput}
                       title="Voice input"
-                      className={`absolute right-2 top-2 rounded p-1 text-sm ${listening ? "text-red-500 animate-pulse" : "text-gray-400 hover:text-gray-700"}`}>
+                      style={{ color: listening ? "var(--zr-error)" : "var(--zr-text-secondary)" }}
+                      className={`absolute right-2 top-2 rounded p-1 text-sm ${listening ? "animate-pulse" : "hover:opacity-80"}`}>
                       {listening ? "●" : "🎤"}
                     </button>
                   </div>
                   <button type="submit" disabled={savingActivity || !actNotes.trim()}
-                    className="mt-2 rounded bg-black px-4 py-1.5 text-sm text-white disabled:opacity-40">
+                    style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+                    className="mt-2 rounded px-4 py-1.5 text-sm disabled:opacity-40">
                     {savingActivity ? "Saving..." : "Log"}
                   </button>
                 </form>
 
-                {activities.length === 0 ? <p className="text-sm text-gray-400">No activity yet.</p> : (
+                {activities.length === 0 ? <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No activity yet.</p> : (
                   <ul className="space-y-2">
                     {activities.map((a) => (
-                      <li key={a.id} className="flex gap-2 rounded border bg-gray-50 p-2.5">
+                      <li key={a.id} className="flex gap-2 rounded p-2.5" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                         <span className={`shrink-0 self-start rounded px-2 py-0.5 text-xs font-medium ${activityTypeStyle[a.type] || "bg-gray-100 text-gray-600"}`}>{a.type}</span>
                         <div className="min-w-0 flex-1">
                           {a.notes && <p className="text-sm">{a.notes}</p>}
-                          <p className="mt-0.5 text-xs text-gray-400">{formatDateTime(a.created_at)}{a.created_by ? ` · ${a.created_by}` : ""}</p>
+                          <p style={{ color: "var(--zr-text-muted)" }} className="mt-0.5 text-xs">{formatDateTime(a.created_at)}{a.created_by ? ` · ${a.created_by}` : ""}</p>
                         </div>
-                        <button onClick={() => deleteActivity(a.id)} className="shrink-0 text-xs text-gray-300 hover:text-red-400">✕</button>
+                        <button onClick={() => deleteActivity(a.id)} style={{ color: "var(--zr-text-muted)" }} className="shrink-0 text-xs hover:text-red-400">✕</button>
                       </li>
                     ))}
                   </ul>
@@ -1014,17 +1033,18 @@ export default function CustomerPage() {
             {crmTab === "tasks" && (
               <>
                 <form onSubmit={addTask} className="mb-4 flex gap-2">
-                  <input ref={taskInputRef} className="flex-1 rounded border px-3 py-2 text-sm"
+                  <input ref={taskInputRef} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-2 text-sm"
                     placeholder="Add a follow-up task..." value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)} />
-                  <input type="date" className="rounded border px-2 py-2 text-sm text-gray-600"
+                  <input type="date" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="rounded px-2 py-2 text-sm"
                     value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
                   <button type="submit" disabled={savingTask || !taskTitle.trim()}
-                    className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-40">Add</button>
+                    style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+                    className="rounded px-3 py-2 text-sm disabled:opacity-40">Add</button>
                 </form>
 
                 {openTasks.length === 0 && doneTasks.length === 0 ? (
-                  <p className="text-sm text-gray-400">No tasks yet.</p>
+                  <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No tasks yet.</p>
                 ) : (
                   <>
                     {openTasks.length > 0 && (
@@ -1033,16 +1053,16 @@ export default function CustomerPage() {
                           const overdue = isOverdue(t.due_date);
                           const today = isDueToday(t.due_date);
                           return (
-                            <li key={t.id} className="flex items-center gap-2 rounded border bg-white p-2.5">
+                            <li key={t.id} className="flex items-center gap-2 rounded p-2.5" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                               <input type="checkbox" checked={false} onChange={() => toggleTask(t)}
                                 className="h-4 w-4 shrink-0 cursor-pointer rounded" />
-                              <span className="flex-1 text-sm">{t.title}</span>
+                              <span className="flex-1 text-sm" style={{ color: "var(--zr-text-primary)" }}>{t.title}</span>
                               {t.due_date && (
-                                <span className={`shrink-0 text-xs ${overdue ? "font-semibold text-red-600" : today ? "font-semibold text-amber-600" : "text-gray-400"}`}>
+                                <span style={{ color: overdue ? "var(--zr-error)" : today ? "var(--zr-warning)" : "var(--zr-text-muted)" }} className={`shrink-0 text-xs ${overdue ? "font-semibold" : today ? "font-semibold" : ""}`}>
                                   {overdue ? "Overdue · " : today ? "Today · " : ""}{formatDate(t.due_date)}
                                 </span>
                               )}
-                              <button onClick={() => deleteTask(t.id)} className="shrink-0 text-xs text-gray-300 hover:text-red-400">✕</button>
+                              <button onClick={() => deleteTask(t.id)} style={{ color: "var(--zr-text-muted)" }} className="shrink-0 text-xs hover:text-red-400">✕</button>
                             </li>
                           );
                         })}
@@ -1050,15 +1070,15 @@ export default function CustomerPage() {
                     )}
                     {doneTasks.length > 0 && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600">{doneTasks.length} completed</summary>
+                        <summary style={{ color: "var(--zr-text-secondary)" }} className="cursor-pointer text-xs hover:opacity-80">{doneTasks.length} completed</summary>
                         <ul className="mt-2 space-y-1.5">
                           {doneTasks.map((t) => (
-                            <li key={t.id} className="flex items-center gap-2 rounded border bg-gray-50 p-2.5 opacity-60">
+                            <li key={t.id} className="flex items-center gap-2 rounded p-2.5 opacity-60" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                               <input type="checkbox" checked={true} onChange={() => toggleTask(t)}
                                 className="h-4 w-4 shrink-0 cursor-pointer rounded" />
                               <span className="flex-1 text-sm line-through text-gray-500">{t.title}</span>
                               {t.completed_at && <span className="shrink-0 text-xs text-gray-400">{formatDate(t.completed_at)}</span>}
-                              <button onClick={() => deleteTask(t.id)} className="shrink-0 text-xs text-gray-300 hover:text-red-400">✕</button>
+                              <button onClick={() => deleteTask(t.id)} style={{ color: "var(--zr-text-muted)" }} className="shrink-0 text-xs hover:text-red-400">✕</button>
                             </li>
                           ))}
                         </ul>
@@ -1072,17 +1092,18 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Appointments ─────────────────────────────── */}
-        <div className="rounded border p-4">
+        <div className="rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Appointments</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Appointments</h2>
             <Link
               href={`/schedule?customerId=${customerId}&customerName=${encodeURIComponent([customer?.first_name, customer?.last_name].filter(Boolean).join(" "))}&customerAddress=${encodeURIComponent(customer?.address ?? "")}`}
-              className="rounded bg-black px-3 py-1.5 text-sm text-white">
+              style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+              className="rounded px-3 py-1.5 text-sm">
               + Schedule
             </Link>
           </div>
           {appts.length === 0 ? (
-            <p className="text-sm text-gray-400">No appointments yet.</p>
+            <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No appointments yet.</p>
           ) : (
             <ul className="space-y-2">
               {appts.map((a) => {
@@ -1096,11 +1117,12 @@ export default function CustomerPage() {
                 const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
                 return (
                   <li key={a.id}
-                    className={`rounded border p-2.5 ${isCanceled ? "opacity-40" : isPast && !isComplete ? "opacity-60" : ""}`}>
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
+                    className={`rounded p-2.5 ${isCanceled ? "opacity-40" : isPast && !isComplete ? "opacity-60" : ""}`}>
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${typeBadge}`}>{typeLabel}</span>
-                        <span className="text-sm text-gray-700">{dateStr} at {timeStr}</span>
+                        <span style={{ color: "var(--zr-text-primary)" }} className="text-sm">{dateStr} at {timeStr}</span>
                       </div>
                       <span className={`text-xs rounded px-1.5 py-0.5 ${
                         isComplete ? "bg-green-100 text-green-700" :
@@ -1112,12 +1134,12 @@ export default function CustomerPage() {
                       </span>
                     </div>
                     {a.outcome && (
-                      <div className="mt-1 text-xs text-gray-500">
-                        Outcome: <span className="text-gray-700 font-medium">{OUTCOME_LABELS[a.outcome] ?? a.outcome}</span>
+                      <div style={{ color: "var(--zr-text-muted)" }} className="mt-1 text-xs">
+                        Outcome: <span style={{ color: "var(--zr-text-primary)" }} className="font-medium">{OUTCOME_LABELS[a.outcome] ?? a.outcome}</span>
                       </div>
                     )}
                     {a.address && (
-                      <div className="mt-1 text-xs text-gray-400 truncate">📍 {a.address}</div>
+                      <div style={{ color: "var(--zr-text-muted)" }} className="mt-1 text-xs truncate">📍 {a.address}</div>
                     )}
                   </li>
                 );
@@ -1129,26 +1151,27 @@ export default function CustomerPage() {
         {/* ── Job Pipeline ─────────────────────────────── */}
 
         {/* Quotes */}
-        <div className="rounded border p-4">
+        <div className="rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Quotes</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Quotes</h2>
             <button onClick={createQuote} disabled={creatingQuote}
-              className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+              className="rounded px-3 py-1.5 text-sm disabled:opacity-50">
               {creatingQuote ? "Creating…" : "+ New Quote"}
             </button>
           </div>
-          {quotes.length === 0 ? <p className="text-sm text-gray-400">No quotes yet.</p> : (
+          {quotes.length === 0 ? <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No quotes yet.</p> : (
             <ul className="space-y-2">
               {quotes.map((q) => (
                 <li key={q.id}>
                   <Link href={`/quotes/${q.id}`}
-                    className="flex items-center justify-between rounded border p-2.5 hover:bg-gray-50">
+                    className="flex items-center justify-between rounded p-2.5 hover:opacity-80" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                     <div>
-                      <div className="text-sm font-medium text-blue-600">{q.title ?? "Untitled Quote"}</div>
-                      {q.amount && <div className="text-xs text-gray-400">{q.amount}</div>}
+                      <div style={{ color: "var(--zr-orange)" }} className="text-sm font-medium">{q.title ?? "Untitled Quote"}</div>
+                      {q.amount && <div style={{ color: "var(--zr-text-muted)" }} className="text-xs">{q.amount}</div>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-400">{q.created_at.slice(0, 10)}</span>
+                      <span style={{ color: "var(--zr-text-muted)" }} className="text-xs">{q.created_at.slice(0, 10)}</span>
                       <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${QUOTE_STATUS_BADGE[q.status] ?? "bg-gray-100 text-gray-600"}`}>
                         {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                       </span>
@@ -1161,25 +1184,26 @@ export default function CustomerPage() {
         </div>
 
         {/* Measures */}
-        <div className="rounded border p-4">
+        <div className="rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Measures</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Measures</h2>
             <button onClick={createJob} disabled={creating}
-              className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+              className="rounded px-3 py-1.5 text-sm disabled:opacity-50">
               {creating ? "Creating…" : "+ New Measure"}
             </button>
           </div>
           {jobs.filter(j => !j.install_mode).length === 0
-            ? <p className="text-sm text-gray-400">No measures yet.</p>
+            ? <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No measures yet.</p>
             : (
             <ul className="space-y-2">
               {jobs.filter(j => !j.install_mode).map((job) => (
                 <li key={job.id}>
                   <Link href={`/measure-jobs/${job.id}`}
-                    className="flex items-center justify-between rounded border p-2.5 hover:bg-gray-50">
-                    <div className="text-sm font-medium text-blue-600">{job.title}</div>
+                    className="flex items-center justify-between rounded p-2.5 hover:opacity-80" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                    <div style={{ color: "var(--zr-orange)" }} className="text-sm font-medium">{job.title}</div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {job.scheduled_at && <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>}
+                      {job.scheduled_at && <span style={{ color: "var(--zr-text-muted)" }} className="text-xs">{job.scheduled_at.slice(0, 10)}</span>}
                       <span className="rounded px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700">Measure</span>
                     </div>
                   </Link>
@@ -1190,21 +1214,21 @@ export default function CustomerPage() {
         </div>
 
         {/* Installs */}
-        <div className="rounded border p-4">
+        <div className="rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Installs</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Installs</h2>
           </div>
           {jobs.filter(j => j.install_mode).length === 0
-            ? <p className="text-sm text-gray-400">No installs yet. Use "Convert to Install" inside a measure job once sold.</p>
+            ? <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No installs yet. Use "Convert to Install" inside a measure job once sold.</p>
             : (
             <ul className="space-y-2">
               {jobs.filter(j => j.install_mode).map((job) => (
                 <li key={job.id}>
                   <Link href={`/measure-jobs/${job.id}`}
-                    className="flex items-center justify-between rounded border p-2.5 hover:bg-gray-50">
-                    <div className="text-sm font-medium text-blue-600">{job.title}</div>
+                    className="flex items-center justify-between rounded p-2.5 hover:opacity-80" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                    <div style={{ color: "var(--zr-orange)" }} className="text-sm font-medium">{job.title}</div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {job.scheduled_at && <span className="text-xs text-gray-400">{job.scheduled_at.slice(0, 10)}</span>}
+                      {job.scheduled_at && <span style={{ color: "var(--zr-text-muted)" }} className="text-xs">{job.scheduled_at.slice(0, 10)}</span>}
                       <span className="rounded px-1.5 py-0.5 text-xs bg-green-100 text-green-700">Install</span>
                     </div>
                   </Link>
@@ -1214,8 +1238,8 @@ export default function CustomerPage() {
           )}
         </div>
         {/* ── Timeline ─────────────────────────────────── */}
-        <div className="rounded border p-4">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">Timeline</h2>
+        <div className="rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Timeline</h2>
           {(() => {
             type Event = { date: string; label: string; sub?: string; icon: string; color: string };
             const events: Event[] = [];
@@ -1251,24 +1275,24 @@ export default function CustomerPage() {
               events.push({ date: j.created_at, label: `Install job created: ${j.title}`, icon: "🔧", color: "text-green-600" });
             });
 
-            if (events.length === 0) return <p className="text-sm text-gray-400">No activity yet.</p>;
+            if (events.length === 0) return <p style={{ color: "var(--zr-text-secondary)" }} className="text-sm">No activity yet.</p>;
 
             // Sort newest first
             events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             return (
               <div className="relative">
-                <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-100" />
+                <div className="absolute left-3.5 top-0 bottom-0 w-px" style={{ background: "var(--zr-border)" }} />
                 <ul className="space-y-3">
                   {events.map((e, i) => (
                     <li key={i} className="flex gap-3 relative">
-                      <div className={`shrink-0 w-7 h-7 rounded-full bg-white border flex items-center justify-center text-sm z-10`}>
+                      <div style={{ background: "var(--zr-surface-1)", border: `1px solid var(--zr-border)` }} className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm z-10`}>
                         {e.icon}
                       </div>
                       <div className="min-w-0 pt-0.5">
                         <div className={`text-sm ${e.color}`}>{e.label}</div>
-                        {e.sub && <div className="text-xs text-gray-400">{e.sub}</div>}
-                        <div className="text-xs text-gray-300 mt-0.5">
+                        {e.sub && <div style={{ color: "var(--zr-text-muted)" }} className="text-xs">{e.sub}</div>}
+                        <div style={{ color: "var(--zr-text-muted)" }} className="text-xs mt-0.5">
                           {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           {" "}
                           {new Date(e.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}

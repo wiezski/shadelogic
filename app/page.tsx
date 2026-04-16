@@ -497,12 +497,17 @@ export default function HomePage() {
       <button
         type="button"
         onClick={() => toggleFilter(filterKey)}
-        className={`rounded border p-3 text-center w-full transition-colors ${active ? "bg-black text-white" : "bg-white hover:bg-gray-50"}`}
+        style={{
+          background: active ? "var(--zr-orange)" : "var(--zr-surface-1)",
+          border: active ? "1px solid var(--zr-orange)" : "1px solid var(--zr-border)",
+          color: active ? "#fff" : "var(--zr-text-primary)",
+        }}
+        className="rounded p-3 text-center w-full transition-colors"
       >
-        <div className={`text-2xl font-bold ${active ? "text-white" : color}`}>
+        <div style={{ color: active ? "#fff" : undefined }} className={`text-2xl font-bold ${active ? "" : color}`}>
           {statsLoading ? "—" : count}
         </div>
-        <div className={`text-xs mt-1 ${active ? "text-gray-300" : "text-gray-500"}`}>{label}</div>
+        <div style={{ color: active ? "rgba(255,255,255,0.7)" : "var(--zr-text-muted)" }} className="text-xs mt-1">{label}</div>
       </button>
     );
   }
@@ -532,12 +537,17 @@ export default function HomePage() {
       <button
         type="button"
         onClick={() => setSelectedStage(active ? null : stage)}
-        className={`rounded border p-2 text-center w-full transition-colors ${active ? "bg-black text-white" : "bg-white hover:bg-gray-50"}`}
+        style={{
+          background: active ? "var(--zr-orange)" : "var(--zr-surface-1)",
+          border: active ? "1px solid var(--zr-orange)" : "1px solid var(--zr-border)",
+          color: active ? "#fff" : "var(--zr-text-primary)",
+        }}
+        className="rounded p-2 text-center w-full transition-colors"
       >
-        <div className={`text-xl font-bold ${active ? "text-white" : STAGE_COLORS[stage] ?? "text-black"}`}>{count}</div>
-        <div className={`text-xs mt-0.5 ${active ? "text-gray-300" : "text-gray-500"} leading-tight`}>{stage}</div>
+        <div style={{ color: active ? "#fff" : undefined }} className={`text-xl font-bold ${active ? "" : STAGE_COLORS[stage] ?? "text-black"}`}>{count}</div>
+        <div style={{ color: active ? "rgba(255,255,255,0.7)" : "var(--zr-text-muted)" }} className="text-xs mt-0.5 leading-tight">{stage}</div>
         {value > 0 && (
-          <div className={`text-xs mt-0.5 font-medium ${active ? "text-green-300" : "text-green-600"}`}>
+          <div style={{ color: active ? "rgba(34,197,94,0.8)" : "var(--zr-success)" }} className="text-xs mt-0.5 font-medium">
             ${value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toFixed(0)}
           </div>
         )}
@@ -546,50 +556,53 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black">
+    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4">
       <div className="mx-auto max-w-3xl">
         <div className="mb-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-700">Dashboard</h1>
-          <Link href="/analytics" className="text-sm text-blue-600 hover:underline">Analytics →</Link>
+          <h1 style={{ color: "var(--zr-text-primary)" }} className="text-xl font-bold">Dashboard</h1>
+          <Link href="/analytics" style={{ color: "var(--zr-orange)" }} className="text-sm hover:underline">Analytics →</Link>
         </div>
 
         {/* Quick-actions */}
         <div className="mb-4 grid grid-cols-3 gap-2">
           <button onClick={() => { setTab("customers"); setShowForm(true); }}
-            className="rounded border py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex flex-col items-center gap-1">
+            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+            className="rounded py-2.5 text-xs font-medium flex flex-col items-center gap-1">
             <span className="text-lg">👤</span>New Customer
           </button>
           <Link href="/schedule"
-            className="rounded border py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex flex-col items-center gap-1 text-center">
+            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+            className="rounded py-2.5 text-xs font-medium flex flex-col items-center gap-1 text-center">
             <span className="text-lg">📅</span>Schedule
           </Link>
           <Link href="/reminders"
-            className="rounded border py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex flex-col items-center gap-1 text-center">
+            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+            className="rounded py-2.5 text-xs font-medium flex flex-col items-center gap-1 text-center">
             <span className="text-lg">🔔</span>Reminders
           </Link>
         </div>
 
-        <div className="mb-4 flex rounded border overflow-hidden">
-          <button className={`flex-1 py-2 text-sm font-medium ${tab === "dashboard" ? "bg-black text-white" : "bg-white text-black"}`} onClick={() => setTab("dashboard")}>Dashboard</button>
-          <button className={`flex-1 py-2 text-sm font-medium ${tab === "customers" ? "bg-black text-white" : "bg-white text-black"}`} onClick={() => setTab("customers")}>Customers</button>
+        <div className="mb-4 flex rounded border overflow-hidden" style={{ borderColor: "var(--zr-border)" }}>
+          <button style={{ background: tab === "dashboard" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: tab === "dashboard" ? "#fff" : "var(--zr-text-primary)" }} className="flex-1 py-2 text-sm font-medium" onClick={() => setTab("dashboard")}>Dashboard</button>
+          <button style={{ background: tab === "customers" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: tab === "customers" ? "#fff" : "var(--zr-text-primary)" }} className="flex-1 py-2 text-sm font-medium" onClick={() => setTab("customers")}>Customers</button>
         </div>
 
         {tab === "dashboard" && (
           <>
             {/* ── Today's Focus ── */}
             {focusItems.length > 0 && (
-              <div className="mb-4 rounded-xl border-2 border-black p-3">
-                <div className="text-xs font-bold uppercase tracking-wide mb-2">Today's Focus</div>
+              <div style={{ background: "var(--zr-surface-1)", border: "2px solid var(--zr-orange)" }} className="mb-4 rounded-xl p-3">
+                <div style={{ color: "var(--zr-text-primary)" }} className="text-xs font-bold uppercase tracking-wide mb-2">Today's Focus</div>
                 <ul className="space-y-2">
                   {focusItems.map((item, i) => (
                     <li key={i}>
                       <Link href={item.href}
-                        className="flex items-center justify-between gap-2 rounded-lg p-2 hover:bg-gray-50">
+                        className="flex items-center justify-between gap-2 rounded-lg p-2">
                         <div className="min-w-0">
                           <div className={`text-sm font-semibold ${item.color}`}>{item.label}</div>
-                          <div className="text-xs text-gray-400 truncate">{item.sub}</div>
+                          <div style={{ color: "var(--zr-text-muted)" }} className="text-xs truncate">{item.sub}</div>
                         </div>
-                        <span className="text-gray-300 shrink-0">→</span>
+                        <span style={{ color: "var(--zr-text-muted)" }} className="shrink-0">→</span>
                       </Link>
                     </li>
                   ))}
@@ -599,8 +612,8 @@ export default function HomePage() {
 
             {/* ── Sales Pipeline ── */}
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Sales Pipeline</span>
-              <div className="flex-1 border-t border-gray-100" />
+              <span style={{ color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)" }} className="text-xs font-semibold uppercase tracking-wide">Sales Pipeline</span>
+              <div style={{ borderColor: "var(--zr-border)" }} className="flex-1 border-t" />
             </div>
             <div className="mb-2 grid grid-cols-5 gap-1.5 sm:grid-cols-10">
               {ALL_STAGES.map(s => <PipelineCard key={s} stage={s} />)}
@@ -608,13 +621,13 @@ export default function HomePage() {
 
             {/* Stage drill-down */}
             {selectedStage && (
-              <div className="mb-4 rounded border p-3">
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <h2 className="font-semibold">{selectedStage} <span className="text-gray-400 font-normal text-sm">({stageCustomers.length})</span></h2>
-                  <button type="button" onClick={() => setSelectedStage(null)} className="text-xs text-gray-400">✕ close</button>
+                  <h2 style={{ color: "var(--zr-text-primary)" }} className="font-semibold">{selectedStage} <span style={{ color: "var(--zr-text-muted)" }} className="font-normal text-sm">({stageCustomers.length})</span></h2>
+                  <button type="button" onClick={() => setSelectedStage(null)} style={{ color: "var(--zr-text-muted)" }} className="text-xs">✕ close</button>
                 </div>
                 {stageCustomers.length === 0 ? (
-                  <p className="text-sm text-gray-500">No customers at this stage.</p>
+                  <p style={{ color: "var(--zr-text-muted)" }} className="text-sm">No customers at this stage.</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {stageCustomers.map(c => {
@@ -623,17 +636,18 @@ export default function HomePage() {
                       return (
                         <li key={c.id}>
                           <Link href={`/customers/${c.id}`}
-                            className="flex items-center justify-between rounded border p-2 hover:bg-gray-50 gap-2">
+                            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
+                            className="flex items-center justify-between rounded p-2 gap-2">
                             <div className="min-w-0">
-                              <div className="text-sm font-medium text-blue-600 truncate">{name}</div>
-                              {c.address && <div className="text-xs text-gray-400 truncate">{formatAddressDisplay(c.address)}</div>}
+                              <div style={{ color: "var(--zr-orange)" }} className="text-sm font-medium truncate">{name}</div>
+                              {c.address && <div style={{ color: "var(--zr-text-muted)" }} className="text-xs truncate">{formatAddressDisplay(c.address)}</div>}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {c.heat_score && (
                                 <span className={`text-xs rounded px-1.5 py-0.5 ${heatStyle[c.heat_score]}`}>{c.heat_score}</span>
                               )}
                               {inactive !== null && (
-                                <span className="text-xs text-gray-400">{inactive}d ago</span>
+                                <span style={{ color: "var(--zr-text-muted)" }} className="text-xs">{inactive}d ago</span>
                               )}
                             </div>
                           </Link>
@@ -647,8 +661,8 @@ export default function HomePage() {
 
             {/* ── Operations ── */}
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Operations</span>
-              <div className="flex-1 border-t border-gray-100" />
+              <span style={{ color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)" }} className="text-xs font-semibold uppercase tracking-wide">Operations</span>
+              <div style={{ borderColor: "var(--zr-border)" }} className="flex-1 border-t" />
             </div>
             {/* Stats grid */}
             <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -661,33 +675,33 @@ export default function HomePage() {
 
             {/* Filtered job list */}
             {selectedFilter && (
-              <div className="mb-4 rounded border p-3">
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <h2 className="font-semibold">{filterLabels[selectedFilter]}</h2>
-                  <button type="button" onClick={() => setSelectedFilter(null)} className="text-xs text-gray-400">✕ close</button>
+                  <h2 style={{ color: "var(--zr-text-primary)" }} className="font-semibold">{filterLabels[selectedFilter]}</h2>
+                  <button type="button" onClick={() => setSelectedFilter(null)} style={{ color: "var(--zr-text-muted)" }} className="text-xs">✕ close</button>
                 </div>
 
                 {filterJobs[selectedFilter].length === 0 ? (
-                  <p className="text-sm text-gray-500">None right now.</p>
+                  <p style={{ color: "var(--zr-text-muted)" }} className="text-sm">None right now.</p>
                 ) : (
                   <ul className="space-y-2">
                     {filterJobs[selectedFilter].map((job) => (
                       <li key={job.id}>
-                        <Link href={`/measure-jobs/${job.id}`} className="block rounded border p-2 hover:bg-gray-50">
+                        <Link href={`/measure-jobs/${job.id}`} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="block rounded p-2">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <div className="text-sm font-medium text-blue-600">{job.title}</div>
-                              <div className="text-xs text-gray-500">{job.customer_name}</div>
+                              <div style={{ color: "var(--zr-orange)" }} className="text-sm font-medium">{job.title}</div>
+                              <div style={{ color: "var(--zr-text-muted)" }} className="text-xs">{job.customer_name}</div>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               {job.overdue && (
                                 <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Overdue</span>
                               )}
                               {job.needs_attention && !job.overdue && daysAgo(job.created_at) > 5 && (
-                                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Idle {daysAgo(job.created_at)}d</span>
+                                <span style={{ background: "rgba(90, 86, 82, 0.3)", color: "var(--zr-text-muted)" }} className="rounded px-2 py-0.5 text-xs">Idle {daysAgo(job.created_at)}d</span>
                               )}
                               {job.install_scheduled_at && (
-                                <span className="text-xs text-gray-400">{job.install_scheduled_at.slice(0, 10)}</span>
+                                <span style={{ color: "var(--zr-text-muted)" }} className="text-xs">{job.install_scheduled_at.slice(0, 10)}</span>
                               )}
                             </div>
                           </div>
@@ -701,8 +715,8 @@ export default function HomePage() {
 
             {/* Work Queue */}
             {!workQueueLoading && workQueue.length > 0 && (
-              <div className="mb-4 rounded border p-3">
-                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
+                <h2 style={{ color: "var(--zr-text-primary)" }} className="mb-2 flex items-center gap-2 text-sm font-semibold">
                   Work Queue
                   <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${workQueue.some((w) => w.priority === 1) ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
                     {workQueue.length}
@@ -711,17 +725,17 @@ export default function HomePage() {
                 <ul className="space-y-1.5">
                   {workQueue.slice(0, 8).map((w) => (
                     <li key={w.customer_id}>
-                      <Link href={`/customers/${w.customer_id}`} className="flex items-start justify-between gap-2 rounded border p-2 hover:bg-gray-50">
+                      <Link href={`/customers/${w.customer_id}`} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="flex items-start justify-between gap-2 rounded p-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-medium text-blue-600">{w.customer_name}</span>
+                            <span style={{ color: "var(--zr-orange)" }} className="text-sm font-medium">{w.customer_name}</span>
                             {w.heat_score && w.heat_score !== "Warm" && (
                               <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${w.heat_score === "Hot" ? "bg-red-500 text-white" : "bg-sky-400 text-white"}`}>{w.heat_score}</span>
                             )}
                             <span className={`rounded px-1.5 py-0.5 text-xs ${stageStyle[w.lead_status] || "bg-gray-100 text-gray-600"}`}>{w.lead_status}</span>
                           </div>
-                          <div className="mt-0.5 text-xs text-gray-500">{w.reason}</div>
-                          {w.next_action && <div className="mt-0.5 text-xs font-medium text-amber-700">→ {w.next_action}</div>}
+                          <div style={{ color: "var(--zr-text-muted)" }} className="mt-0.5 text-xs">{w.reason}</div>
+                          {w.next_action && <div style={{ color: "var(--zr-warning)" }} className="mt-0.5 text-xs font-medium">→ {w.next_action}</div>}
                         </div>
                         <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${w.priority === 1 ? "bg-red-100 text-red-700" : w.priority === 2 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"}`}>
                           {w.priority === 1 ? "Now" : w.priority === 2 ? "Today" : "Soon"}
@@ -731,7 +745,7 @@ export default function HomePage() {
                   ))}
                 </ul>
                 {workQueue.length > 8 && (
-                  <p className="mt-2 text-xs text-gray-400 text-center">+{workQueue.length - 8} more — check Customers tab</p>
+                  <p style={{ color: "var(--zr-text-muted)" }} className="mt-2 text-xs text-center">+{workQueue.length - 8} more — check Customers tab</p>
                 )}
               </div>
             )}
@@ -739,21 +753,22 @@ export default function HomePage() {
             {/* Today's appointments */}
             {/* Ready to Install */}
             {readyToInstall.length > 0 && (
-              <div className="mb-4 rounded border border-green-300 bg-green-50 p-3">
+              <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)" }} className="mb-4 rounded p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-green-800">
+                  <h2 style={{ color: "var(--zr-success)" }} className="text-sm font-semibold">
                     ✓ Ready to Install
-                    <span className="ml-1.5 rounded bg-green-200 text-green-800 px-1.5 py-0.5 text-xs font-medium">{readyToInstall.length}</span>
+                    <span style={{ background: "rgba(34,197,94,0.2)", color: "var(--zr-success)" }} className="ml-1.5 rounded px-1.5 py-0.5 text-xs font-medium">{readyToInstall.length}</span>
                   </h2>
-                  <span className="text-xs text-green-600">All materials received</span>
+                  <span style={{ color: "var(--zr-success)" }} className="text-xs">All materials received</span>
                 </div>
                 <ul className="space-y-1">
                   {readyToInstall.map(c => (
                     <li key={c.id}>
                       <Link href={`/customers/${c.id}`}
-                        className="flex items-center justify-between rounded border border-green-200 bg-white p-2 hover:bg-green-50">
-                        <span className="text-sm font-medium text-green-800">{c.name}</span>
-                        <span className="text-xs text-green-600">Schedule install →</span>
+                        style={{ background: "var(--zr-surface-2)", border: "1px solid rgba(34,197,94,0.2)" }}
+                        className="flex items-center justify-between rounded p-2">
+                        <span style={{ color: "var(--zr-success)" }} className="text-sm font-medium">{c.name}</span>
+                        <span style={{ color: "var(--zr-success)" }} className="text-xs">Schedule install →</span>
                       </Link>
                     </li>
                   ))}
@@ -777,20 +792,20 @@ export default function HomePage() {
                 repair: "bg-amber-100 text-amber-700", site_walk: "bg-teal-100 text-teal-700", punch: "bg-slate-100 text-slate-600",
               };
               return (
-                <div className="mb-4 rounded border p-3">
+                <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold">
+                    <h2 style={{ color: "var(--zr-text-primary)" }} className="text-sm font-semibold">
                       Today&apos;s Appointments
                       <span className="ml-1.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{todayAppts.length}</span>
                     </h2>
-                    <Link href="/schedule" className="text-xs text-blue-600 hover:underline">View calendar →</Link>
+                    <Link href="/schedule" style={{ color: "var(--zr-info)" }} className="text-xs hover:underline">View calendar →</Link>
                   </div>
 
                   {/* Unconfirmed alert */}
                   {unconfirmed.length > 0 && (
-                    <div className="mb-2 flex items-center gap-1.5 rounded bg-amber-50 border border-amber-200 px-2 py-1.5">
+                    <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }} className="mb-2 flex items-center gap-1.5 rounded px-2 py-1.5">
                       <span className="text-amber-600 text-xs">⚠️</span>
-                      <span className="text-xs text-amber-700 font-medium">
+                      <span style={{ color: "var(--zr-warning)" }} className="text-xs font-medium">
                         {unconfirmed.length} appointment{unconfirmed.length > 1 ? "s" : ""} not yet confirmed
                       </span>
                     </div>
@@ -804,21 +819,22 @@ export default function HomePage() {
                       return (
                         <li key={a.id}>
                           <Link href={`/customers/${a.customer_id}`}
-                            className={`flex items-center justify-between rounded border p-2 hover:bg-gray-50 gap-2 ${isNext ? "border-blue-400 bg-blue-50" : ""}`}>
+                            style={{ background: isNext ? "rgba(59,130,246,0.1)" : "var(--zr-surface-2)", border: isNext ? "1px solid rgba(59,130,246,0.3)" : "1px solid var(--zr-border)" }}
+                            className="flex items-center justify-between rounded p-2 gap-2">
                             <div className="min-w-0">
                               {isNext && (
-                                <div className="text-xs text-blue-600 font-semibold mb-0.5">▶ Next up</div>
+                                <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold mb-0.5">▶ Next up</div>
                               )}
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`text-xs rounded px-1.5 py-0.5 ${typeColors[a.type] ?? "bg-gray-100 text-gray-600"}`}>
                                   {typeLabels[a.type] ?? a.type}
                                 </span>
-                                <span className="text-sm font-medium text-blue-600 truncate">{a.customer_name}</span>
+                                <span style={{ color: "var(--zr-orange)" }} className="text-sm font-medium truncate">{a.customer_name}</span>
                               </div>
-                              {a.address && <div className="text-xs text-gray-400 truncate mt-0.5">📍 {a.address}</div>}
+                              {a.address && <div style={{ color: "var(--zr-text-muted)" }} className="text-xs truncate mt-0.5">📍 {a.address}</div>}
                             </div>
                             <div className="shrink-0 text-right">
-                              <div className={`text-sm font-medium ${isNext ? "text-blue-700" : ""}`}>{timeStr}</div>
+                              <div style={{ color: isNext ? "var(--zr-info)" : "var(--zr-text-primary)" }} className="text-sm font-medium">{timeStr}</div>
                               <div className={`text-xs ${
                                 a.status === "confirmed"   ? "text-blue-600" :
                                 a.status === "completed"   ? "text-green-600" :
@@ -838,18 +854,18 @@ export default function HomePage() {
 
             {/* Tasks due today / overdue */}
             {tasksDue.length > 0 && (
-              <div className="mb-4 rounded border p-3">
-                <h2 className="mb-2 text-sm font-semibold">
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
+                <h2 style={{ color: "var(--zr-text-primary)" }} className="mb-2 text-sm font-semibold">
                   Tasks Due
                   <span className="ml-1.5 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">{tasksDue.length}</span>
                 </h2>
                 <ul className="space-y-1.5">
                   {tasksDue.map((t) => (
                     <li key={t.id}>
-                      <Link href={`/customers/${t.customer_id}`} className="flex items-center justify-between rounded border p-2 hover:bg-gray-50">
+                      <Link href={`/customers/${t.customer_id}`} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="flex items-center justify-between rounded p-2">
                         <div>
-                          <div className="text-sm font-medium text-blue-600">{t.title}</div>
-                          <div className="text-xs text-gray-500">{t.customer_name}</div>
+                          <div style={{ color: "var(--zr-orange)" }} className="text-sm font-medium">{t.title}</div>
+                          <div style={{ color: "var(--zr-text-muted)" }} className="text-xs">{t.customer_name}</div>
                         </div>
                         {t.due_date && (
                           <span className={`text-xs font-medium ${t.due_date < new Date().toISOString().slice(0, 10) ? "text-red-600" : "text-amber-600"}`}>
@@ -865,7 +881,7 @@ export default function HomePage() {
 
             {/* Quick actions */}
             <div className="flex gap-2">
-              <button onClick={() => { setTab("customers"); setShowForm(true); }} className="rounded bg-black px-4 py-2 text-sm text-white">
+              <button onClick={() => { setTab("customers"); setShowForm(true); }} style={{ background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-md)" }} className="px-4 py-2 text-sm">
                 + New Customer
               </button>
             </div>
@@ -875,8 +891,8 @@ export default function HomePage() {
         {tab === "customers" && (
           <>
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="font-semibold shrink-0">Customers ({customers.length})</h2>
-              <button onClick={() => setShowForm((v) => !v)} className="shrink-0 rounded bg-black px-3 py-1 text-sm text-white">
+              <h2 style={{ color: "var(--zr-text-primary)" }} className="font-semibold shrink-0">Customers ({customers.length})</h2>
+              <button onClick={() => setShowForm((v) => !v)} style={{ background: "var(--zr-orange)", color: "#fff" }} className="shrink-0 rounded px-3 py-1 text-sm">
                 {showForm ? "Cancel" : "+ New"}
               </button>
             </div>
@@ -886,28 +902,29 @@ export default function HomePage() {
                 placeholder="Search by name, address, phone…"
                 value={custSearch}
                 onChange={e => setCustSearch(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                className="w-full rounded px-3 py-2 text-sm"
               />
             </div>
 
             {showForm && (
-              <form onSubmit={addCustomer} className="mb-6 rounded border p-4">
-                <h3 className="mb-3 font-semibold">New Customer</h3>
+              <form onSubmit={addCustomer} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-6 rounded p-4">
+                <h3 style={{ color: "var(--zr-text-primary)" }} className="mb-3 font-semibold">New Customer</h3>
                 <div className="mb-3 grid grid-cols-2 gap-3">
-                  <div><label className="mb-1 block text-xs font-medium">First Name</label><input className="w-full rounded border px-3 py-2" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" /></div>
-                  <div><label className="mb-1 block text-xs font-medium">Last Name</label><input className="w-full rounded border px-3 py-2" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Johnson" /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">First Name</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Last Name</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Johnson" /></div>
                 </div>
-                <div className="mb-3"><label className="mb-1 block text-xs font-medium">Street Address</label><input className="w-full rounded border px-3 py-2" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="123 Main St" /></div>
+                <div className="mb-3"><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Street Address</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="123 Main St" /></div>
                 <div className="mb-3 grid grid-cols-[1fr_72px_104px] gap-3">
-                  <div><label className="mb-1 block text-xs font-medium">City</label><input className="w-full rounded border px-3 py-2" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Salt Lake City" /></div>
-                  <div><label className="mb-1 block text-xs font-medium">State</label><input className="w-full rounded border px-3 py-2 uppercase" value={addrState} onChange={(e) => setAddrState(e.target.value.toUpperCase())} placeholder="UT" maxLength={2} /></div>
-                  <div><label className="mb-1 block text-xs font-medium">Zip</label><input className="w-full rounded border px-3 py-2" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="84101" /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">City</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Salt Lake City" /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">State</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 uppercase" value={addrState} onChange={(e) => setAddrState(e.target.value.toUpperCase())} placeholder="UT" maxLength={2} /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Zip</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="84101" /></div>
                 </div>
                 <div className="mb-4 grid grid-cols-2 gap-3">
-                  <div><label className="mb-1 block text-xs font-medium">Phone</label><input type="tel" className="w-full rounded border px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="801-555-1234" /></div>
-                  <div><label className="mb-1 block text-xs font-medium">Email</label><input type="email" className="w-full rounded border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Phone</label><input type="tel" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="801-555-1234" /></div>
+                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Email</label><input type="email" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" /></div>
                 </div>
-                <button type="submit" disabled={saving} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">{saving ? "Saving..." : "Save Customer"}</button>
+                <button type="submit" disabled={saving} style={{ background: "var(--zr-orange)", color: "#fff" }} className="rounded px-4 py-2 disabled:opacity-50">{saving ? "Saving..." : "Save Customer"}</button>
               </form>
             )}
 
@@ -920,13 +937,13 @@ export default function HomePage() {
                   )
                 : customers;
               return filtered.length === 0 ? (
-                <p className="text-gray-500">{custSearch ? "No customers match." : "No customers yet."}</p>
+                <p style={{ color: "var(--zr-text-muted)" }}>{custSearch ? "No customers match." : "No customers yet."}</p>
               ) : (
               <ul className="space-y-2">
                 {filtered.map((customer) => (
-                  <li key={customer.id} className="rounded border p-3">
+                  <li key={customer.id} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <Link href={`/customers/${customer.id}`} className="font-semibold text-blue-600 hover:underline">
+                      <Link href={`/customers/${customer.id}`} style={{ color: "var(--zr-orange)" }} className="font-semibold hover:underline">
                         {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
                       </Link>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -942,8 +959,8 @@ export default function HomePage() {
                         )}
                       </div>
                     </div>
-                    <div className="mt-0.5 text-sm text-gray-500">{formatAddressDisplay(customer.address)}</div>
-                    {customer.phone && <div className="text-sm text-gray-500">{customer.phone}</div>}
+                    <div style={{ color: "var(--zr-text-muted)" }} className="mt-0.5 text-sm">{formatAddressDisplay(customer.address)}</div>
+                    {customer.phone && <div style={{ color: "var(--zr-text-muted)" }} className="text-sm">{customer.phone}</div>}
                   </li>
                 ))}
               </ul>

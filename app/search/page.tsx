@@ -109,7 +109,7 @@ export default function SearchPage() {
   const TYPE_LABEL: Record<string, string> = { customer: "Customer", quote: "Quote", job: "Job" };
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm">
+    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
       <div className="mx-auto max-w-2xl">
         <div className="mb-4 relative">
           <input

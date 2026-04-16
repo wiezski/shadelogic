@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: "ZeroRemake",
   description: "Window treatment software — sale to install, done right.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

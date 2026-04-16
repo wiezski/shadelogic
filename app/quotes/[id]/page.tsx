@@ -868,8 +868,8 @@ export default function QuotePage() {
 
   // ── Render ────────────────────────────────────────────────────
 
-  if (loading) return <div className="p-4 text-sm text-gray-400">Loading…</div>;
-  if (!quote)  return <div className="p-4 text-sm text-gray-400">Quote not found.</div>;
+  if (loading) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Loading…</div>;
+  if (!quote)  return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Quote not found.</div>;
 
   const customerName = [customer?.first_name, customer?.last_name].filter(Boolean).join(" ");
   const statusInfo   = STATUSES.find(s => s.value === quote.status) ?? STATUSES[0];
@@ -886,22 +886,22 @@ export default function QuotePage() {
 
   return (
     <PermissionGate require={["create_quotes", "view_pricing"]}>
-      <main className="min-h-screen bg-white p-4 text-black text-sm pb-16">
+      <main className="min-h-screen p-4 text-sm pb-16" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
         <div className="mx-auto max-w-3xl space-y-4">
 
         <div className="flex items-center justify-between">
-          <Link href={`/customers/${quote.customer_id}`} className="text-blue-600 hover:underline text-sm">
+          <Link href={`/customers/${quote.customer_id}`} className="text-sm hover:underline" style={{ color: "var(--zr-orange)" }}>
             ← Back to {customerName}
           </Link>
           <a href={`/quotes/${quoteId}/print`} target="_blank" rel="noreferrer"
-            className="text-xs border rounded px-2.5 py-1.5 text-gray-600 hover:bg-gray-50">
+            className="text-xs rounded px-2.5 py-1.5" style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}>
             🖨 Print / PDF
           </a>
         </div>
 
         {/* New quote banner */}
         {isNew && lines.length === 0 && (
-          <div className="rounded-lg bg-orange-500 text-white px-4 py-3 space-y-2">
+          <div className="rounded-lg text-white px-4 py-3 space-y-2" style={{ background: "var(--zr-orange)" }}>
             <div className="font-bold text-lg">📋 New Quote</div>
             {quote.linked_measure_id ? (
               <>
@@ -909,7 +909,8 @@ export default function QuotePage() {
                 <button
                   onClick={() => pullFromMeasure(quote.linked_measure_id!)}
                   disabled={pulling}
-                  className="w-full rounded bg-white text-orange-600 font-semibold py-2 text-sm disabled:opacity-50">
+                  className="w-full rounded font-semibold py-2 text-sm disabled:opacity-50"
+                  style={{ background: "#fff", color: "var(--zr-orange)" }}>
                   {pulling ? "Pulling windows…" : "📐 Pull Windows from Measure →"}
                 </button>
               </>
@@ -917,7 +918,8 @@ export default function QuotePage() {
               <>
                 <div className="text-sm opacity-90">Link a measure job to pull in all the windows:</div>
                 <button onClick={() => setShowLinkMeasure(true)}
-                  className="w-full rounded bg-white text-orange-600 font-semibold py-2 text-sm">
+                  className="w-full rounded font-semibold py-2 text-sm"
+                  style={{ background: "#fff", color: "var(--zr-orange)" }}>
                   📐 Select Measure Job →
                 </button>
               </>

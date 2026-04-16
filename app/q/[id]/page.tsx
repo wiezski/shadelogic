@@ -46,7 +46,7 @@ function fmtMoney(n: number) {
 
 export default function CustomerQuotePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-gray-400 text-sm">Loading your quote…</div>}>
+    <Suspense fallback={<div className="p-8 text-sm" style={{ color: "var(--zr-text-secondary)" }}>Loading your quote…</div>}>
       <CustomerQuoteInner />
     </Suspense>
   );
@@ -145,17 +145,17 @@ function CustomerQuoteInner() {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-sm text-gray-400">Loading your quote…</div>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--zr-black)" }}>
+      <div className="text-sm" style={{ color: "var(--zr-text-secondary)" }}>Loading your quote…</div>
     </div>
   );
 
   if (notFound) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--zr-black)" }}>
       <div className="text-center">
         <div className="text-4xl mb-3">🔍</div>
-        <div className="font-semibold text-gray-700">Quote not found</div>
-        <div className="text-sm text-gray-400 mt-1">This link may have expired or been removed.</div>
+        <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>Quote not found</div>
+        <div className="text-sm mt-1" style={{ color: "var(--zr-text-secondary)" }}>This link may have expired or been removed.</div>
       </div>
     </div>
   );
@@ -180,13 +180,13 @@ function CustomerQuoteInner() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--zr-black)" }}>
       {/* Header */}
-      <div className="bg-white border-b px-4 py-4 text-center">
-        <div className="font-bold text-xl">{company?.name ?? "ZeroRemake"}</div>
-        {company?.tagline && <div className="text-xs text-gray-400 mt-0.5">{company.tagline}</div>}
+      <div className="border-b px-4 py-4 text-center" style={{ backgroundColor: "var(--zr-surface-1)", borderColor: "var(--zr-border)" }}>
+        <div className="font-bold text-xl" style={{ color: "var(--zr-text-primary)" }}>{company?.name ?? "ZeroRemake"}</div>
+        {company?.tagline && <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-secondary)" }}>{company.tagline}</div>}
         {company?.phone && (
-          <a href={`tel:${company.phone.replace(/\D/g,"")}`} className="text-xs text-blue-600 mt-1 block">{company.phone}</a>
+          <a href={`tel:${company.phone.replace(/\D/g,"")}`} className="text-xs mt-1 block" style={{ color: "var(--zr-orange)" }}>{company.phone}</a>
         )}
       </div>
 
@@ -194,8 +194,8 @@ function CustomerQuoteInner() {
 
         {/* Greeting */}
         <div>
-          <h1 className="text-xl font-bold">Hi {firstName}! 👋</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Hi {firstName}! 👋</h1>
+          <p className="mt-1" style={{ color: "var(--zr-text-secondary)" }}>
             Here's your quote for <strong>{quote?.title ?? "window treatments"}</strong>.
             Review the details below and approve when you're ready.
           </p>
@@ -203,7 +203,7 @@ function CustomerQuoteInner() {
 
         {/* Approved banner */}
         {isApproved && (
-          <div className="rounded-xl bg-green-500 text-white px-4 py-4 text-center">
+          <div className="rounded-xl text-white px-4 py-4 text-center" style={{ backgroundColor: "var(--zr-success)" }}>
             <div className="text-2xl mb-1">🎉</div>
             <div className="font-bold text-lg">Quote Approved!</div>
             <div className="text-sm opacity-90 mt-0.5">
@@ -215,33 +215,33 @@ function CustomerQuoteInner() {
 
         {/* Expired warning */}
         {isExpired && !isApproved && (
-          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="rounded px-3 py-2 text-xs border" style={{ borderColor: "var(--zr-error)", backgroundColor: "rgba(239, 68, 68, 0.1)", color: "var(--zr-error)" }}>
             ⚠ This quote has expired. Contact us for an updated quote.
           </div>
         )}
 
         {/* Line items */}
-        <div className="rounded-xl border bg-white overflow-hidden">
-          <div className="px-4 py-3 border-b bg-gray-50">
-            <div className="font-semibold">Quote Details</div>
-            <div className="text-xs text-gray-400">
+        <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--zr-surface-2)", borderColor: "var(--zr-border)" }}>
+          <div className="px-4 py-3 border-b" style={{ backgroundColor: "var(--zr-surface-1)", borderColor: "var(--zr-border)" }}>
+            <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>Quote Details</div>
+            <div className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
               {new Date(quote!.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </div>
           </div>
           {Object.entries(rooms).map(([room, roomLines]) => (
-            <div key={room} className="border-b last:border-0">
-              <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">{room}</div>
+            <div key={room} className="border-b last:border-0" style={{ borderColor: "var(--zr-border)" }}>
+              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ backgroundColor: "var(--zr-surface-1)", color: "var(--zr-text-secondary)" }}>{room}</div>
               {roomLines.map(line => (
-                <div key={line.id} className="flex items-start justify-between px-4 py-3 border-b last:border-0">
+                <div key={line.id} className="flex items-start justify-between px-4 py-3 border-b last:border-0" style={{ borderColor: "var(--zr-border)" }}>
                   <div className="min-w-0 pr-3">
-                    <div className="font-medium">{line.product_name}</div>
+                    <div className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{line.product_name}</div>
                     {(line.width || line.height) && (
-                      <div className="text-xs text-gray-400">{line.width}" × {line.height}" {line.mount_type ?? ""}</div>
+                      <div className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>{line.width}" × {line.height}" {line.mount_type ?? ""}</div>
                     )}
-                    {line.is_motorized && <div className="text-xs text-purple-600">+ Motorization</div>}
-                    {line.notes && <div className="text-xs text-gray-400 italic">{line.notes}</div>}
+                    {line.is_motorized && <div className="text-xs" style={{ color: "var(--zr-warning)" }}>+ Motorization</div>}
+                    {line.notes && <div className="text-xs italic" style={{ color: "var(--zr-text-secondary)" }}>{line.notes}</div>}
                   </div>
-                  <div className="shrink-0 font-semibold text-right">
+                  <div className="shrink-0 font-semibold text-right" style={{ color: "var(--zr-text-primary)" }}>
                     {fmtMoney(line.retail + (line.is_motorized ? line.motor_retail : 0))}
                   </div>
                 </div>
@@ -250,22 +250,22 @@ function CustomerQuoteInner() {
           ))}
 
           {/* Totals */}
-          <div className="px-4 py-3 space-y-1.5 bg-gray-50">
+          <div className="px-4 py-3 space-y-1.5" style={{ backgroundColor: "var(--zr-surface-1)" }}>
             {(quote!.discount_amount || 0) > 0 && (
               <>
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs" style={{ color: "var(--zr-text-secondary)" }}>
                   <span>Subtotal</span><span>{fmtMoney(quote!.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-xs text-green-600">
+                <div className="flex justify-between text-xs" style={{ color: "var(--zr-success)" }}>
                   <span>Discount</span><span>-{fmtMoney(quote!.discount_amount)}</span>
                 </div>
               </>
             )}
-            <div className="flex justify-between font-bold text-base border-t pt-2">
+            <div className="flex justify-between font-bold text-base pt-2 border-t" style={{ borderColor: "var(--zr-border)", color: "var(--zr-text-primary)" }}>
               <span>Total</span>
-              <span className="text-green-700">{fmtMoney(quote!.total)}</span>
+              <span style={{ color: "var(--zr-success)" }}>{fmtMoney(quote!.total)}</span>
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
               {company?.default_deposit_pct ?? 50}% deposit ({fmtMoney((quote!.total || 0) * ((company?.default_deposit_pct ?? 50) / 100))}) due to begin order.
             </div>
           </div>
@@ -273,70 +273,69 @@ function CustomerQuoteInner() {
 
         {/* Notes */}
         {quote?.notes && (
-          <div className="rounded-xl border bg-white px-4 py-3">
-            <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Notes</div>
-            <div className="text-sm text-gray-600 whitespace-pre-wrap">{quote.notes}</div>
+          <div className="rounded-xl border px-4 py-3" style={{ backgroundColor: "var(--zr-surface-2)", borderColor: "var(--zr-border)" }}>
+            <div className="text-xs font-semibold uppercase mb-1" style={{ color: "var(--zr-text-secondary)" }}>Notes</div>
+            <div className="text-sm whitespace-pre-wrap" style={{ color: "var(--zr-text-secondary)" }}>{quote.notes}</div>
           </div>
         )}
 
         {/* Approve / Sign */}
         {!isApproved && !isExpired && (
-          <div className="rounded-xl border bg-white px-4 py-4 space-y-3">
-            <div className="font-semibold">Ready to move forward?</div>
-            <p className="text-xs text-gray-500">
+          <div className="rounded-xl border px-4 py-4 space-y-3" style={{ backgroundColor: "var(--zr-surface-2)", borderColor: "var(--zr-border)" }}>
+            <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>Ready to move forward?</div>
+            <p className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
               Tap below to approve this quote. Your digital signature is legally binding.
             </p>
             {!showSign ? (
               <button onClick={() => setShowSign(true)}
-                className="w-full bg-green-600 text-white rounded-xl py-3 font-semibold text-base">
+                className="w-full text-white rounded-xl py-3 font-semibold text-base" style={{ backgroundColor: "var(--zr-success)" }}>
                 ✓ Approve This Quote
               </button>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">Sign your name:</div>
+                  <div className="text-xs mb-1" style={{ color: "var(--zr-text-secondary)" }}>Sign your name:</div>
                   <canvas
                     ref={canvasRef} width={600} height={180}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-xl bg-white touch-none"
-                    style={{ height: 150 }}
+                    className="w-full border-2 border-dashed rounded-xl touch-none" style={{ height: 150, borderColor: "var(--zr-border)", backgroundColor: "var(--zr-surface-1)" }}
                     onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
                     onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
                   />
-                  <button onClick={clearCanvas} className="text-xs text-gray-400 mt-1">Clear</button>
+                  <button onClick={clearCanvas} className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>Clear</button>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">Type your full name:</div>
+                  <div className="text-xs mb-1" style={{ color: "var(--zr-text-secondary)" }}>Type your full name:</div>
                   <input value={signedName} onChange={e => setSignedName(e.target.value)}
                     placeholder={customerName || "Your full name"}
-                    className="w-full border rounded-xl px-3 py-2 text-sm" />
+                    className="w-full rounded-xl px-3 py-2 text-sm" style={{ backgroundColor: "var(--zr-surface-1)", borderColor: "var(--zr-border)", border: "1px solid", color: "var(--zr-text-primary)" }} />
                 </div>
-                <label className="flex items-start gap-2 text-xs text-gray-600">
+                <label className="flex items-start gap-2 text-xs" style={{ color: "var(--zr-text-secondary)" }}>
                   <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" />
                   I agree to proceed with this quote and authorize the work described above.
                 </label>
                 <button onClick={submitSignature}
                   disabled={saving || !hasStrokes || !signedName.trim() || !agreed}
-                  className="w-full bg-green-600 text-white rounded-xl py-3 font-semibold text-base disabled:opacity-40">
+                  className="w-full text-white rounded-xl py-3 font-semibold text-base disabled:opacity-40" style={{ backgroundColor: "var(--zr-success)" }}>
                   {saving ? "Submitting…" : "✓ Sign & Approve"}
                 </button>
-                <button onClick={() => setShowSign(false)} className="w-full text-xs text-gray-400">Cancel</button>
+                <button onClick={() => setShowSign(false)} className="w-full text-xs" style={{ color: "var(--zr-text-secondary)" }}>Cancel</button>
               </div>
             )}
           </div>
         )}
 
         {/* Contact */}
-        <div className="rounded-xl border bg-white px-4 py-3 text-center space-y-2">
-          <div className="text-xs text-gray-400">Questions? We're here to help.</div>
+        <div className="rounded-xl border px-4 py-3 text-center space-y-2" style={{ backgroundColor: "var(--zr-surface-2)", borderColor: "var(--zr-border)" }}>
+          <div className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>Questions? We're here to help.</div>
           {company?.phone && (
             <a href={`tel:${company.phone.replace(/\D/g,"")}`}
-              className="flex items-center justify-center gap-2 w-full rounded-xl border py-2 text-sm font-medium hover:bg-gray-50">
+              className="flex items-center justify-center gap-2 w-full rounded-xl border py-2 text-sm font-medium" style={{ borderColor: "var(--zr-border)", backgroundColor: "var(--zr-surface-1)", color: "var(--zr-text-primary)" }}>
               📞 Call {company.phone}
             </a>
           )}
           {company?.email && (
             <a href={`mailto:${company.email}`}
-              className="flex items-center justify-center gap-2 w-full rounded-xl border py-2 text-sm text-gray-600 hover:bg-gray-50">
+              className="flex items-center justify-center gap-2 w-full rounded-xl border py-2 text-sm" style={{ borderColor: "var(--zr-border)", backgroundColor: "var(--zr-surface-1)", color: "var(--zr-text-secondary)" }}>
               ✉️ {company.email}
             </a>
           )}

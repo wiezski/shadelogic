@@ -369,32 +369,32 @@ export default function AnalyticsPage() {
   return (
     <FeatureGate require="analytics">
       <PermissionGate require="view_reports">
-        <main className="min-h-screen bg-white p-6 text-black">
+        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex items-center justify-between">
-          <Link href="/" className="text-blue-600 hover:underline text-sm">← Back</Link>
-          <button onClick={exportCSV} className="text-xs border rounded px-2.5 py-1.5 text-gray-600 hover:bg-gray-50">
+          <Link href="/" style={{ color: "var(--zr-orange)" }} className="hover:underline text-sm">← Back</Link>
+          <button onClick={exportCSV} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }} className="text-xs rounded px-2.5 py-1.5 hover:opacity-80">
             ⬇ Export CSV
           </button>
         </div>
 
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Analytics</h1>
-          <div className="flex gap-1 rounded border overflow-hidden">
+          <div className="flex gap-1 rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
             {(["week", "month", "all"] as const).map((r) => (
-              <button key={r} onClick={() => setRange(r)} className={`px-3 py-1 text-sm ${range === r ? "bg-black text-white" : "bg-white text-black"}`}>
+              <button key={r} onClick={() => setRange(r)} style={range === r ? { background: "var(--zr-orange)", color: "#fff" } : { background: "var(--zr-surface-2)", color: "var(--zr-text-primary)" }} className={`px-3 py-1 text-sm`}>
                 {r === "week" ? "7 days" : r === "month" ? "30 days" : "All time"}
               </button>
             ))}
           </div>
         </div>
 
-        {loading ? <p className="text-gray-500">Loading...</p> : (
+        {loading ? <p style={{ color: "var(--zr-text-secondary)" }}>Loading...</p> : (
           <>
             {/* ── Operations Section ───────────────────── */}
             <div className="mb-4 flex items-center gap-3">
               <h2 className="text-lg font-bold">Operations</h2>
-              <div className="flex-1 border-t border-gray-200" />
+              <div style={{ borderTop: "1px solid var(--zr-border)" }} className="flex-1" />
             </div>
 
             {/* Top stats — clickable → /jobs?filter=... */}
@@ -407,7 +407,8 @@ export default function AnalyticsPage() {
                 { key: "issues",                label: "Open Issues",           count: openIssues,          color: openIssues > 0 ? "text-red-600" : "text-black" },
               ].map(({ key, label, count, color }) => (
                 <Link key={key} href={`/jobs?filter=${key}`}
-                  className="rounded border p-4 text-center hover:bg-gray-50 transition-colors block">
+                  style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+                  className="rounded p-4 text-center hover:opacity-80 transition-opacity block">
                   <div className={`text-3xl font-bold ${color}`}>{count}</div>
                   <div className="mt-1 text-xs text-gray-500">{label}</div>
                   <div className="mt-1 text-xs text-blue-500">View all →</div>
@@ -496,21 +497,21 @@ export default function AnalyticsPage() {
               <>
                 {/* ── Revenue summary ── */}
                 <div className="mb-4 grid grid-cols-3 gap-3">
-                  <div className="rounded border p-3 text-center">
+                  <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
                     <div className="text-xl font-bold text-green-600">
                       ${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toFixed(0)}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">Revenue</div>
                     <div className="text-xs text-gray-400">(approved quotes)</div>
                   </div>
-                  <div className="rounded border p-3 text-center">
+                  <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
                     <div className="text-xl font-bold text-blue-600">
                       ${pipelineTotal >= 1000 ? (pipelineTotal / 1000).toFixed(1) + "k" : pipelineTotal.toFixed(0)}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">In Pipeline</div>
                     <div className="text-xs text-gray-400">(sent / draft quotes)</div>
                   </div>
-                  <div className="rounded border p-3 text-center">
+                  <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
                     <div className="text-xl font-bold text-gray-700">
                       ${avgDealSize >= 1000 ? (avgDealSize / 1000).toFixed(1) + "k" : avgDealSize.toFixed(0)}
                     </div>
@@ -705,7 +706,8 @@ export default function AnalyticsPage() {
                     { label: "Stuck Leads", count: stuckCount, color: stuckCount > 0 ? "text-amber-600" : "text-black", href: "/customers?filter=stuck" },
                   ].map(({ label, count, color, href }) => (
                     <Link key={label} href={href}
-                      className="rounded border p-3 text-center hover:bg-gray-50 transition-colors block">
+                      style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+                      className="rounded p-3 text-center hover:opacity-80 transition-opacity block">
                       <div className={`text-2xl font-bold ${color}`}>{count}</div>
                       <div className="mt-1 text-xs text-gray-500">{label}</div>
                       <div className="mt-0.5 text-xs text-blue-500">View →</div>
@@ -730,7 +732,8 @@ export default function AnalyticsPage() {
                         };
                         return (
                           <Link key={a.type} href={`/customers?activity=${a.type}`}
-                            className="rounded border p-3 text-center hover:bg-gray-50 transition-colors block">
+                            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+                      className="rounded p-3 text-center hover:opacity-80 transition-opacity block">
                             <div className={`text-2xl font-bold ${colors[a.type] || "text-black"}`}>{a.count}</div>
                             <div className="mt-1 text-xs text-gray-500">{a.type}s</div>
                             <div className="mt-0.5 text-xs text-blue-500">View →</div>
@@ -753,7 +756,7 @@ export default function AnalyticsPage() {
             )}
 
             {/* Recent jobs */}
-            <div className="rounded border p-4">
+            <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-4">
               <h2 className="mb-3 font-semibold">Recent Jobs</h2>
               {jobs.length === 0 ? <p className="text-sm text-gray-500">No jobs in this period.</p> : (
                 <ul className="space-y-2">

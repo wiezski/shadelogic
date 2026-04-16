@@ -70,22 +70,30 @@ function PlanSection() {
   const daysLeft = trialEnds ? Math.max(0, Math.ceil((new Date(trialEnds).getTime() - Date.now()) / 86400000)) : null;
 
   return (
-    <div className="rounded border p-4 space-y-4">
+    <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Plan & Features</h2>
-        <span className={`text-xs rounded px-2 py-0.5 font-medium ${
-          plan === "enterprise" ? "bg-purple-100 text-purple-700" :
-          plan === "pro" ? "bg-blue-100 text-blue-700" :
-          plan === "basic" ? "bg-green-100 text-green-700" :
-          "bg-amber-100 text-amber-700"
-        }`}>
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Plan & Features</h2>
+        <span className="text-xs rounded px-2 py-0.5 font-medium" style={{
+          background: plan === "enterprise" ? "rgba(168, 85, 247, 0.2)" :
+          plan === "pro" ? "rgba(59, 130, 246, 0.2)" :
+          plan === "basic" ? "rgba(34, 197, 94, 0.2)" :
+          "rgba(245, 158, 11, 0.2)",
+          color: plan === "enterprise" ? "#a855f7" :
+          plan === "pro" ? "var(--zr-info)" :
+          plan === "basic" ? "var(--zr-success)" :
+          "var(--zr-warning)"
+        }}>
           {PLAN_LABELS[plan as Plan] ?? plan}
         </span>
-        {saved && <span className="text-xs text-green-600 font-medium">✓ Saved</span>}
+        {saved && <span className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>✓ Saved</span>}
       </div>
 
       {plan === "trial" && daysLeft !== null && (
-        <div className={`rounded p-3 text-sm ${daysLeft <= 3 ? "bg-red-50 text-red-700 border border-red-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+        <div className="rounded p-3 text-sm" style={{
+          background: daysLeft <= 3 ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
+          color: daysLeft <= 3 ? "var(--zr-error)" : "var(--zr-warning)",
+          border: daysLeft <= 3 ? "1px solid var(--zr-error)" : "1px solid var(--zr-warning)"
+        }}>
           {daysLeft > 0
             ? <>{daysLeft} day{daysLeft !== 1 ? "s" : ""} left on your free trial. All features are unlocked during trial.</>
             : <>Your trial has expired. Choose a plan to continue using ZeroRemake.</>}
@@ -95,20 +103,22 @@ function PlanSection() {
       {/* Plan selector (owner only) */}
       {isOwner && (
         <div className="space-y-2">
-          <div className="text-xs font-medium text-gray-500">Choose Plan</div>
+          <div className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Choose Plan</div>
           <div className="grid grid-cols-2 gap-2">
             {(["basic", "pro", "enterprise"] as Plan[]).map(p => (
               <button key={p} onClick={() => p !== "enterprise" ? changePlan(p) : undefined}
-                className={`rounded border p-3 text-left transition-colors ${
-                  plan === p ? "border-blue-500 bg-blue-50" : "hover:border-gray-300"
-                } ${p === "enterprise" ? "col-span-2" : ""}`}>
-                <div className="font-medium text-sm">{PLAN_LABELS[p]}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
+                className={`rounded p-3 text-left transition-colors ${p === "enterprise" ? "col-span-2" : ""}`}
+                style={{
+                  border: plan === p ? "1px solid var(--zr-info)" : "1px solid var(--zr-border)",
+                  background: plan === p ? "rgba(59, 130, 246, 0.1)" : "transparent"
+                }}>
+                <div className="font-medium text-sm" style={{ color: "var(--zr-text-primary)" }}>{PLAN_LABELS[p]}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-secondary)" }}>
                   {p === "basic" && "Measure + Scheduling — $29/user/mo"}
                   {p === "pro" && "Full platform — $49/user/mo"}
                   {p === "enterprise" && "Everything + Builder Portal + Automation — Contact sales"}
                 </div>
-                {plan === p && <div className="text-xs text-blue-600 font-medium mt-1">Current plan</div>}
+                {plan === p && <div className="text-xs font-medium mt-1" style={{ color: "var(--zr-info)" }}>Current plan</div>}
               </button>
             ))}
           </div>
@@ -117,18 +127,18 @@ function PlanSection() {
 
       {/* Feature toggles */}
       <div className="space-y-2">
-        <div className="text-xs font-medium text-gray-500">
+        <div className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>
           {isOwner ? "Feature Toggles (override plan defaults)" : "Enabled Features"}
         </div>
         <div className="space-y-1.5">
           {(Object.entries(FEATURE_LABELS) as [FeatureKey, { label: string; desc: string }][]).map(([key, { label, desc }]) => (
-            <label key={key} className={`flex items-start gap-2.5 p-2 rounded ${isOwner ? "cursor-pointer hover:bg-gray-50" : ""}`}>
+            <label key={key} className={`flex items-start gap-2.5 p-2 rounded ${isOwner ? "cursor-pointer" : ""}`} style={{ background: isOwner ? "transparent" : "transparent" }}>
               <input type="checkbox" checked={localFeatures[key]} disabled={!isOwner}
                 onChange={() => toggleFeature(key)}
                 className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
-                <div className={`text-sm ${localFeatures[key] ? "text-gray-800 font-medium" : "text-gray-400"}`}>{label}</div>
-                <div className="text-xs text-gray-400">{desc}</div>
+                <div className="text-sm" style={{ color: localFeatures[key] ? "var(--zr-text-primary)" : "var(--zr-text-muted)", fontWeight: localFeatures[key] ? "500" : "normal" }}>{label}</div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{desc}</div>
               </div>
             </label>
           ))}
@@ -169,33 +179,33 @@ function EmailTrackingSection() {
   }
 
   return (
-    <div className="rounded border p-4 space-y-4">
+    <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email Order Tracking</h2>
-        <span className="text-xs rounded bg-purple-100 text-purple-700 px-2 py-0.5 font-medium">Pro Feature</span>
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Email Order Tracking</h2>
+        <span className="text-xs rounded px-2 py-0.5 font-medium" style={{ background: "rgba(168, 85, 247, 0.2)", color: "#a855f7" }}>Pro Feature</span>
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
         Forward manufacturer order emails to your unique address and ZeroRemake automatically updates order status — shipped, delivered, tracking numbers — without you lifting a finger.
       </p>
 
       {/* Inbound address */}
-      <div className="rounded bg-gray-50 border p-3 space-y-1.5">
-        <div className="text-xs font-medium text-gray-500">Your inbound email address:</div>
-        <div className="font-mono text-xs break-all text-gray-800">{inbound || "Loading…"}</div>
-        <button onClick={copy} className={`text-xs rounded px-2.5 py-1 ${copied ? "bg-green-600 text-white" : "bg-black text-white"}`}>
+      <div className="rounded p-3 space-y-1.5" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+        <div className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Your inbound email address:</div>
+        <div className="font-mono text-xs break-all" style={{ color: "var(--zr-text-primary)" }}>{inbound || "Loading…"}</div>
+        <button onClick={copy} className="text-xs rounded px-2.5 py-1 text-white" style={{ background: copied ? "var(--zr-success)" : "var(--zr-orange)" }}>
           {copied ? "✓ Copied" : "Copy Address"}
         </button>
       </div>
 
       {/* Setup steps */}
-      <div className="rounded bg-blue-50 border border-blue-200 p-3 space-y-2">
-        <div className="text-xs font-semibold text-blue-700">One-time setup (5 minutes):</div>
-        <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+      <div className="rounded p-3 space-y-2" style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--zr-info)" }}>
+        <div className="text-xs font-semibold" style={{ color: "var(--zr-info)" }}>One-time setup (5 minutes):</div>
+        <ol className="text-xs space-y-1 list-decimal list-inside" style={{ color: "var(--zr-info)" }}>
           <li>Create a free account at <a href="https://postmarkapp.com" target="_blank" rel="noreferrer" className="underline">postmarkapp.com</a></li>
           <li>Create an <strong>Inbound Stream</strong></li>
-          <li>Set webhook URL: <code className="bg-white rounded px-1">https://yoursite.vercel.app/api/email-inbound</code></li>
-          <li>Add <code className="bg-white rounded px-1">SUPABASE_SERVICE_ROLE_KEY</code> to your Vercel env vars</li>
+          <li>Set webhook URL: <code className="rounded px-1" style={{ background: "var(--zr-surface-2)" }}>https://yoursite.vercel.app/api/email-inbound</code></li>
+          <li>Add <code className="rounded px-1" style={{ background: "var(--zr-surface-2)" }}>SUPABASE_SERVICE_ROLE_KEY</code> to your Vercel env vars</li>
           <li>In Gmail/Outlook: filter emails from your manufacturers → forward to the address above</li>
         </ol>
       </div>
@@ -203,21 +213,22 @@ function EmailTrackingSection() {
       {/* Notification prefs */}
       {settings && (
         <div className="space-y-3">
-          <div className="text-xs font-medium text-gray-500">Notifications</div>
-          <label className="flex items-center justify-between text-sm">
+          <div className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Notifications</div>
+          <label className="flex items-center justify-between text-sm" style={{ color: "var(--zr-text-primary)" }}>
             <span>Alert when order ships</span>
             <input type="checkbox" checked={settings.notify_on_shipped}
               onChange={e => toggle("notify_on_shipped", e.target.checked)} className="h-4 w-4" />
           </label>
-          <label className="flex items-center justify-between text-sm">
+          <label className="flex items-center justify-between text-sm" style={{ color: "var(--zr-text-primary)" }}>
             <span>Alert when order arrives</span>
             <input type="checkbox" checked={settings.notify_on_delivered}
               onChange={e => toggle("notify_on_delivered", e.target.checked)} className="h-4 w-4" />
           </label>
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm" style={{ color: "var(--zr-text-primary)" }}>
             <span>Notification method</span>
             <select value={settings.notify_channel} onChange={e => setChannel(e.target.value)}
-              className="border rounded px-2 py-1 text-xs">
+              className="rounded px-2 py-1 text-xs"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
               <option value="dashboard">Dashboard only</option>
               <option value="text">Text (requires Twilio)</option>
               <option value="both">Dashboard + Text</option>
@@ -278,46 +289,49 @@ function TeamSection() {
   if (!myPerms.manage_team) return null;
 
   return (
-    <div className="rounded border p-4 space-y-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Team Members</h2>
+    <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Team Members</h2>
 
       {/* Invite link */}
-      <div className="rounded bg-blue-50 border border-blue-200 p-3 space-y-1.5">
-        <div className="text-xs font-medium text-blue-700">Invite someone to your team</div>
-        <div className="text-xs text-blue-600 font-mono break-all">{inviteLink}</div>
+      <div className="rounded p-3 space-y-1.5" style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--zr-info)" }}>
+        <div className="text-xs font-medium" style={{ color: "var(--zr-info)" }}>Invite someone to your team</div>
+        <div className="text-xs font-mono break-all" style={{ color: "var(--zr-info)" }}>{inviteLink}</div>
         <button onClick={() => navigator.clipboard?.writeText(inviteLink)}
-          className="text-xs bg-blue-600 text-white rounded px-2.5 py-1">
+          className="text-xs text-white rounded px-2.5 py-1"
+          style={{ background: "var(--zr-info)" }}>
           Copy Invite Link
         </button>
-        <p className="text-xs text-blue-500">They sign up with this link → automatically joins your company. Set their role below.</p>
+        <p className="text-xs" style={{ color: "var(--zr-info)" }}>They sign up with this link → automatically joins your company. Set their role below.</p>
       </div>
 
-      {loading ? <p className="text-xs text-gray-400">Loading…</p> : members.length === 0 ? (
-        <p className="text-xs text-gray-400">No team members yet.</p>
+      {loading ? <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Loading…</p> : members.length === 0 ? (
+        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No team members yet.</p>
       ) : (
         <ul className="space-y-3">
           {members.map(m => {
             const resolved = resolvePermissions(m.role, m.permissions);
             const isMe = m.id === user?.id;
             return (
-              <li key={m.id} className="rounded border p-3 space-y-2">
+              <li key={m.id} className="rounded p-3 space-y-2" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <div className="font-medium text-sm">{m.full_name ?? "Unnamed"} {isMe && <span className="text-xs text-gray-400">(you)</span>}</div>
+                    <div className="font-medium text-sm" style={{ color: "var(--zr-text-primary)" }}>{m.full_name ?? "Unnamed"} {isMe && <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>(you)</span>}</div>
                     <select value={m.role} disabled={isMe}
                       onChange={e => updateMemberRole(m.id, e.target.value)}
-                      className="text-xs border rounded px-2 py-1 mt-1 disabled:opacity-50">
+                      className="text-xs rounded px-2 py-1 mt-1 disabled:opacity-50"
+                      style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
                       {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                     </select>
                   </div>
                   <button onClick={() => setEditingId(editingId === m.id ? null : m.id)}
-                    className="text-xs text-blue-600 hover:underline shrink-0">
+                    className="text-xs hover:underline shrink-0"
+                    style={{ color: "var(--zr-orange)" }}>
                     {editingId === m.id ? "Close" : "Edit permissions"}
                   </button>
                 </div>
 
                 {editingId === m.id && (
-                  <div className="border-t pt-2 grid grid-cols-1 gap-1.5">
+                  <div className="border-t pt-2 grid grid-cols-1 gap-1.5" style={{ borderTopColor: "var(--zr-border)" }}>
                     {(Object.entries(PERM_LABELS) as [PermKey, { label: string; desc: string }][]).map(([key, { label }]) => (
                       <label key={key} className="flex items-center gap-2 text-xs cursor-pointer">
                         <input type="checkbox"
@@ -325,7 +339,7 @@ function TeamSection() {
                           disabled={isMe && key === "manage_team"}
                           onChange={() => togglePermission(m.id, key, resolved[key])}
                           className="h-3.5 w-3.5" />
-                        <span className={resolved[key] ? "text-gray-700" : "text-gray-400"}>{label}</span>
+                        <span style={{ color: resolved[key] ? "var(--zr-text-primary)" : "var(--zr-text-muted)" }}>{label}</span>
                       </label>
                     ))}
                   </div>
@@ -409,30 +423,30 @@ function ChecklistSection() {
   if (role !== "owner") return null;
 
   return (
-    <div className="rounded border p-4 space-y-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Install Checklist</h2>
-      <p className="text-xs text-gray-400">
+    <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Install Checklist</h2>
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
         Define the checklist your installers must complete on every job. Required items must be checked before the job can be marked done.
       </p>
 
-      {loading ? <p className="text-xs text-gray-400">Loading…</p> : items.length === 0 ? (
+      {loading ? <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Loading…</p> : items.length === 0 ? (
         <div className="space-y-2">
-          <p className="text-xs text-gray-400">No checklist items yet.</p>
-          <button onClick={loadDefaults} className="text-xs bg-blue-600 text-white rounded px-2.5 py-1">
+          <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No checklist items yet.</p>
+          <button onClick={loadDefaults} className="text-xs text-white rounded px-2.5 py-1" style={{ background: "var(--zr-info)" }}>
             Load Default Checklist
           </button>
         </div>
       ) : (
         <ul className="space-y-1.5">
           {items.map(item => (
-            <li key={item.id} className="flex items-center justify-between gap-2 py-1 border-b border-gray-100">
-              <span className="text-sm">{item.label}</span>
+            <li key={item.id} className="flex items-center justify-between gap-2 py-1" style={{ borderBottom: "1px solid var(--zr-border)" }}>
+              <span className="text-sm" style={{ color: "var(--zr-text-primary)" }}>{item.label}</span>
               <div className="flex items-center gap-2 shrink-0">
                 <label className="flex items-center gap-1 text-xs cursor-pointer">
                   <input type="checkbox" checked={item.required} onChange={() => toggleRequired(item.id)} className="h-3.5 w-3.5" />
-                  <span className="text-gray-500">Required</span>
+                  <span style={{ color: "var(--zr-text-secondary)" }}>Required</span>
                 </label>
-                <button onClick={() => removeItem(item.id)} className="text-xs text-red-400 hover:text-red-600">✕</button>
+                <button onClick={() => removeItem(item.id)} className="text-xs" style={{ color: "var(--zr-error)" }}>✕</button>
               </div>
             </li>
           ))}
@@ -442,13 +456,15 @@ function ChecklistSection() {
       <div className="flex gap-2">
         <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
           onKeyDown={e => e.key === "Enter" && addItem()}
-          placeholder="Add checklist item…" className="flex-1 border rounded px-2 py-1.5 text-sm" />
+          placeholder="Add checklist item…" className="flex-1 rounded px-2 py-1.5 text-sm"
+          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
         <button onClick={addItem} disabled={!newLabel.trim()}
-          className="rounded bg-black text-white px-3 py-1.5 text-sm disabled:opacity-50">Add</button>
+          className="rounded text-white px-3 py-1.5 text-sm disabled:opacity-50"
+          style={{ background: "var(--zr-orange)" }}>Add</button>
       </div>
 
       {items.length > 0 && (
-        <button onClick={loadDefaults} className="text-xs text-blue-600 hover:underline">
+        <button onClick={loadDefaults} className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>
           + Add default items
         </button>
       )}
@@ -458,8 +474,13 @@ function ChecklistSection() {
 
 // ── Branding / White-Label ────────────────────────────────────
 
+const OWNER_COMPANY_ID = "92811199-4342-40d2-9332-dfe92e8210db";
+
 function BrandingSection() {
-  const { companyId, role, branding } = useAuth();
+  const { companyId, role, plan, branding } = useAuth();
+  // Only show for enterprise plan OR the platform owner's company
+  const canWhiteLabel = plan === "enterprise" || companyId === OWNER_COMPANY_ID;
+  if (!canWhiteLabel) return null;
   const [slug,         setSlug]         = useState(branding?.slug ?? "");
   const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor ?? "");
   const [primaryHover, setPrimaryHover] = useState(branding?.primaryHover ?? "");
@@ -501,77 +522,85 @@ function BrandingSection() {
   if (role !== "owner") return null;
 
   return (
-    <div className="rounded border p-4 space-y-3">
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Branding / White-Label</h2>
-        {saved && <span className="text-xs text-green-600 font-medium">✓ Saved</span>}
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Branding / White-Label</h2>
+        {saved && <span className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>✓ Saved</span>}
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
         Customize your app appearance. Leave fields blank to use ZeroRemake defaults.
       </p>
 
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">Brand Slug</label>
+          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Brand Slug</label>
           <input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-            placeholder="acme-blinds" className="w-full border rounded px-2 py-1.5 text-sm" />
-          <p className="text-xs text-gray-400 mt-0.5">Lowercase, hyphens only. Used for white-label CSS targeting.</p>
+            placeholder="acme-blinds" className="w-full rounded px-2 py-1.5 text-sm"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+          <p className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>Lowercase, hyphens only. Used for white-label CSS targeting.</p>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Primary Color</label>
+            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Primary Color</label>
             <div className="flex gap-2 items-center">
               <input type="color" value={primaryColor || "#e63000"}
                 onChange={e => setPrimaryColor(e.target.value)}
                 className="w-8 h-8 rounded cursor-pointer border-0 p-0" />
               <input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
-                placeholder="#e63000" className="flex-1 border rounded px-2 py-1.5 text-sm font-mono" />
+                placeholder="#e63000" className="flex-1 rounded px-2 py-1.5 text-sm font-mono"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Hover Color</label>
+            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Hover Color</label>
             <input value={primaryHover} onChange={e => setPrimaryHover(e.target.value)}
-              placeholder="#cc2900" className="w-full border rounded px-2 py-1.5 text-sm font-mono" />
+              placeholder="#cc2900" className="w-full rounded px-2 py-1.5 text-sm font-mono"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Dark BG Color</label>
+            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Dark BG Color</label>
             <input value={darkColor} onChange={e => setDarkColor(e.target.value)}
-              placeholder="#1a1a1a" className="w-full border rounded px-2 py-1.5 text-sm font-mono" />
+              placeholder="#1a1a1a" className="w-full rounded px-2 py-1.5 text-sm font-mono"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">Custom Font (Google Fonts name)</label>
+          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Custom Font (Google Fonts name)</label>
           <input value={font} onChange={e => setFont(e.target.value)}
-            placeholder="Inter, Poppins, Roboto…" className="w-full border rounded px-2 py-1.5 text-sm" />
+            placeholder="Inter, Poppins, Roboto…" className="w-full rounded px-2 py-1.5 text-sm"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Logo URL</label>
+            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Logo URL</label>
             <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)}
-              placeholder="https://…/logo.svg" className="w-full border rounded px-2 py-1.5 text-sm" />
+              placeholder="https://…/logo.svg" className="w-full rounded px-2 py-1.5 text-sm"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Logo Mark (letter)</label>
+            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Logo Mark (letter)</label>
             <input value={logoMark} onChange={e => setLogoMark(e.target.value.slice(0, 2))}
-              placeholder="Z" maxLength={2} className="w-full border rounded px-2 py-1.5 text-sm" />
+              placeholder="Z" maxLength={2} className="w-full rounded px-2 py-1.5 text-sm"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
           </div>
         </div>
 
         {/* Preview */}
         {primaryColor && (
-          <div className="rounded p-3 text-xs flex items-center gap-3" style={{ background: darkColor || "#1a1a1a", border: "1px solid #333" }}>
+          <div className="rounded p-3 text-xs flex items-center gap-3" style={{ background: darkColor || "var(--zr-black)", border: "1px solid var(--zr-border)" }}>
             <div className="w-6 h-6 rounded" style={{ background: primaryColor }} />
-            <span style={{ color: "#fff", fontFamily: font ? `'${font}', sans-serif` : "inherit" }}>
+            <span style={{ color: primaryColor, fontFamily: font ? `'${font}', sans-serif` : "inherit" }}>
               Preview — your primary color on dark background
             </span>
           </div>
         )}
 
         <button onClick={saveBranding}
-          className="rounded bg-black text-white px-4 py-2 text-sm font-medium hover:bg-gray-800">
+          className="rounded text-white px-4 py-2 text-sm font-medium"
+          style={{ background: "var(--zr-orange)" }}>
           Save Branding & Reload
         </button>
       </div>
@@ -620,19 +649,20 @@ function DataExportSection() {
   if (!myPerms.access_settings) return null;
 
   return (
-    <div className="rounded border p-4 space-y-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Data & Privacy</h2>
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Data & Privacy</h2>
       <div>
-        <div className="text-sm font-medium">Export All Company Data</div>
-        <div className="text-xs text-gray-400 mt-0.5 mb-2">
+        <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>Export All Company Data</div>
+        <div className="text-xs mt-0.5 mb-2" style={{ color: "var(--zr-text-muted)" }}>
           Download a complete copy of all your customers, quotes, jobs, and activity as a JSON file. You own your data — always.
         </div>
         <button onClick={exportAll} disabled={exporting}
-          className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50">
+          className="rounded px-3 py-1.5 text-sm disabled:opacity-50"
+          style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}>
           {exporting ? "Preparing export…" : "⬇ Download Full Export"}
         </button>
       </div>
-      <div className="text-xs text-gray-400 border-t pt-2">
+      <div className="text-xs border-t pt-2" style={{ borderTopColor: "var(--zr-border)", color: "var(--zr-text-muted)" }}>
         Need to cancel your account? Email us and we'll send you a final export before deleting your data.
       </div>
     </div>
@@ -666,7 +696,7 @@ export default function SettingsPage() {
     const val = settings ? (settings[field] ?? "") : "";
     return (
       <div>
-        <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
+        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>{label}</label>
         <input
           type={type}
           defaultValue={String(val)}
@@ -675,46 +705,47 @@ export default function SettingsPage() {
             save(field, type === "number" ? parseFloat(v) || 0 : v || null);
           }}
           placeholder={placeholder}
-          className="w-full border rounded px-2 py-1.5 text-sm"
+          className="w-full rounded px-2 py-1.5 text-sm"
+          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
         />
       </div>
     );
   }
 
-  if (loading) return <div className="p-4 text-sm text-gray-400">Loading…</div>;
-  if (!settings) return <div className="p-4 text-sm text-gray-400">No settings found. Run the phase9 SQL first.</div>;
+  if (loading) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Loading…</div>;
+  if (!settings) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>No settings found. Run the phase9 SQL first.</div>;
 
   return (
     <PermissionGate require="access_settings">
-      <main className="min-h-screen bg-white p-4 text-black text-sm">
+      <main className="min-h-screen p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
         <div className="mx-auto max-w-2xl space-y-5">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Company Settings</h1>
-          {saved && <span className="text-xs text-green-600 font-medium">✓ Saved</span>}
+          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Company Settings</h1>
+          {saved && <span className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>✓ Saved</span>}
         </div>
-        <p className="text-xs text-gray-400">This information appears on your PDF quotes and customer-facing documents.</p>
+        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>This information appears on your PDF quotes and customer-facing documents.</p>
 
         {/* Company info */}
-        <div className="rounded border p-4 space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Company</h2>
+        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Company</h2>
           <Field label="Company Name *" field="name" placeholder="Aspen Blinds" />
           <Field label="Tagline" field="tagline" placeholder="Window Treatments for Every Home" />
           <Field label="License # (optional)" field="license_number" placeholder="Utah Contractor #12345" />
           <Field label="Google Review Link" field="google_review_link" placeholder="https://g.page/r/YOUR_ID/review" />
-          <p className="text-xs text-gray-400">Paste your Google Business review link — it goes into every review request text after installs.</p>
+          <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Paste your Google Business review link — it goes into every review request text after installs.</p>
         </div>
 
         {/* Contact */}
-        <div className="rounded border p-4 space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Contact</h2>
+        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Contact</h2>
           <Field label="Phone" field="phone" type="tel" placeholder="801-555-1234" />
           <Field label="Email" field="email" type="email" placeholder="info@aspenblinds.com" />
           <Field label="Website" field="website" placeholder="www.aspenblinds.com" />
         </div>
 
         {/* Address */}
-        <div className="rounded border p-4 space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Address</h2>
+        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Address</h2>
           <Field label="Street" field="address" placeholder="123 Main St" />
           <div className="grid grid-cols-[1fr_56px_88px] gap-2">
             <Field label="City" field="city" placeholder="Orem" />
@@ -724,32 +755,35 @@ export default function SettingsPage() {
         </div>
 
         {/* Defaults */}
-        <div className="rounded border p-4 space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Quote Defaults</h2>
+        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Quote Defaults</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Deposit %</label>
+              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Deposit %</label>
               <input type="number" min="0" max="100"
                 defaultValue={settings.default_deposit_pct}
                 onBlur={e => save("default_deposit_pct", parseFloat(e.target.value) || 50)}
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                className="w-full rounded px-2 py-1.5 text-sm"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Default Markup</label>
+              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Default Markup</label>
               <input type="number" min="1" step="0.01"
                 defaultValue={settings.default_markup}
                 onBlur={e => save("default_markup", parseFloat(e.target.value) || 2.5)}
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                className="w-full rounded px-2 py-1.5 text-sm"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Quote Valid (days)</label>
+              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Quote Valid (days)</label>
               <input type="number" min="1"
                 defaultValue={settings.default_quote_days}
                 onBlur={e => save("default_quote_days", parseInt(e.target.value) || 30)}
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                className="w-full rounded px-2 py-1.5 text-sm"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
             </div>
           </div>
-          <p className="text-xs text-gray-400">These pre-fill on every new quote but can be changed per job.</p>
+          <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>These pre-fill on every new quote but can be changed per job.</p>
         </div>
 
         <PlanSection />

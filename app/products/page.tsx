@@ -297,23 +297,25 @@ export default function ProductsPage() {
   return (
     <FeatureGate require="inventory">
       <PermissionGate require="access_settings">
-        <main className="min-h-screen bg-white p-4 text-black text-sm">
+        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
           <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-xl font-bold">Product Catalog</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p style={{ color: "var(--zr-text-secondary)" }} className="text-xs mt-0.5">
               Manage products, costs, and specs. Import from CSV or add manually.
             </p>
           </div>
           <div className="flex gap-1.5">
             <button onClick={() => { setShowImport(!showImport); setImportResult(null); setCsvPreview([]); }}
-              className="border rounded px-2.5 py-1.5 text-xs hover:bg-gray-50">
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+              className="rounded px-2.5 py-1.5 text-xs hover:opacity-80">
               📥 Import
             </button>
             <button onClick={openNew}
-              className="bg-black text-white rounded px-3 py-1.5 text-xs">
+              style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
+              className="rounded px-3 py-1.5 text-xs">
               + Add Product
             </button>
           </div>
@@ -321,27 +323,29 @@ export default function ProductsPage() {
 
         {/* Import Panel */}
         {showImport && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 mb-3 space-y-2">
-            <div className="text-xs font-semibold text-blue-800">Import Products from CSV</div>
-            <p className="text-xs text-blue-600">
+          <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)" }}>
+            <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold">Import Products from CSV</div>
+            <p style={{ color: "var(--zr-info)" }} className="text-xs">
               Upload a CSV with columns like: name, cost, multiplier, category, manufacturer, sku, notes.
               Column names are flexible — we'll do our best to map them automatically.
             </p>
             <div className="flex items-center gap-2">
               <input ref={csvInputRef} type="file" accept=".csv,.tsv,.txt"
                 onChange={handleCSVFile}
-                className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-blue-300 file:text-xs file:bg-white file:text-blue-600 file:cursor-pointer" />
+                style={{ color: "var(--zr-text-primary)" }}
+                className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:text-xs file:cursor-pointer"
+                />
             </div>
 
             {/* CSV Preview */}
             {csvPreview.length > 0 && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-blue-800">
+                <div style={{ color: "var(--zr-info)" }} className="text-xs font-medium">
                   Preview: {csvPreview.length} products found
                 </div>
-                <div className="max-h-48 overflow-y-auto rounded border bg-white">
-                  <table className="w-full text-xs">
-                    <thead className="bg-gray-50 sticky top-0">
+                <div style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="max-h-48 overflow-y-auto rounded">
+                  <table style={{ color: "var(--zr-text-primary)" }} className="w-full text-xs">
+                    <thead style={{ background: "var(--zr-surface-3)" }} className="sticky top-0">
                       <tr>
                         <th className="text-left px-2 py-1 font-medium">Name</th>
                         <th className="text-left px-2 py-1 font-medium">Mfg</th>
@@ -393,7 +397,7 @@ export default function ProductsPage() {
               a.href = URL.createObjectURL(blob);
               a.download = "product-import-template.csv";
               a.click();
-            }} className="text-xs text-blue-600 hover:underline">
+            }} className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>
               📄 Download CSV template
             </button>
           </div>
@@ -459,7 +463,7 @@ export default function ProductsPage() {
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
                         <button onClick={() => openEdit(p)}
-                          className="text-xs text-blue-600 hover:underline">Edit</button>
+                          className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>Edit</button>
                         <button onClick={() => toggleActive(p)}
                           className="text-xs text-gray-400 hover:text-red-500">Archive</button>
                       </div>
@@ -494,7 +498,7 @@ export default function ProductsPage() {
                   {inactive.map(p => (
                     <li key={p.id} className="rounded border p-2 opacity-50 flex items-center justify-between">
                       <span className="text-sm">{p.name}</span>
-                      <button onClick={() => toggleActive(p)} className="text-xs text-blue-600 hover:underline">Restore</button>
+                      <button onClick={() => toggleActive(p)} className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>Restore</button>
                     </li>
                   ))}
                 </ul>
@@ -564,7 +568,7 @@ export default function ProductsPage() {
 
               {/* Expandable specs section */}
               <button type="button" onClick={() => setShowSpecs(!showSpecs)}
-                className="text-xs text-blue-600 hover:underline w-full text-left">
+                className="text-xs hover:underline w-full text-left" style={{ color: "var(--zr-orange)" }}>
                 {showSpecs ? "▾ Hide specs & size limits" : "▸ Add specs & size limits (optional)"}
               </button>
               {showSpecs && (

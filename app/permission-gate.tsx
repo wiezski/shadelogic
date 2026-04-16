@@ -16,8 +16,8 @@ export function PermissionGate({ require, children, fallback }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-gray-400 text-sm">Loading…</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--zr-black)" }}>
+        <div className="text-sm" style={{ color: "var(--zr-text-secondary)" }}>Loading…</div>
       </div>
     );
   }
@@ -31,14 +31,14 @@ export function PermissionGate({ require, children, fallback }: Props) {
   if (!hasAccess) {
     if (fallback) return <>{fallback}</>;
     return (
-      <main className="min-h-screen bg-white flex items-center justify-center p-4">
+      <main className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--zr-black)" }}>
         <div className="text-center max-w-sm space-y-3">
           <div className="text-4xl">🔒</div>
-          <h1 className="text-lg font-bold text-gray-800">Access Restricted</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-lg font-bold" style={{ color: "var(--zr-text-primary)" }}>Access Restricted</h1>
+          <p className="text-sm" style={{ color: "var(--zr-text-secondary)" }}>
             You don't have permission to view this page. Contact your company admin if you need access.
           </p>
-          <a href="/" className="inline-block text-sm text-blue-600 hover:underline mt-2">
+          <a href="/" className="inline-block text-sm mt-2 hover:underline" style={{ color: "var(--zr-orange)" }}>
             ← Back to Home
           </a>
         </div>

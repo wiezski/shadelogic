@@ -41,7 +41,7 @@ export default function SetupGuidePage() {
       time: "5 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Your product catalog is the foundation of ZeroRemake. Add the products you sell
             so they auto-fill on every quote with your cost and markup.
           </p>
@@ -50,14 +50,14 @@ export default function SetupGuidePage() {
             <ol className="text-xs text-gray-600 space-y-1 list-decimal ml-4">
               <li>Export your price list from your manufacturer or create a spreadsheet with columns: name, cost, category, manufacturer, sku</li>
               <li>Save as .csv file</li>
-              <li>Go to <Link href="/products" className="text-blue-600 hover:underline">Products</Link> → Import → upload your CSV</li>
+              <li>Go to <Link href="/products" style={{ color: "var(--zr-orange)" }} className="hover:underline">Products</Link> → Import → upload your CSV</li>
               <li>Preview and confirm the import</li>
             </ol>
           </div>
           <div className="rounded bg-gray-50 p-3 space-y-2">
             <div className="font-medium text-xs text-gray-800">Option 2: Add manually</div>
             <p className="text-xs text-gray-600">
-              Go to <Link href="/products" className="text-blue-600 hover:underline">Products</Link> → + Add Product. Enter the name, your cost, and your markup multiplier.
+              Go to <Link href="/products" style={{ color: "var(--zr-orange)" }} className="hover:underline">Products</Link> → + Add Product. Enter the name, your cost, and your markup multiplier.
             </p>
           </div>
           <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
@@ -74,11 +74,11 @@ export default function SetupGuidePage() {
       time: "2 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Every job starts with a customer. Add them from the dashboard and they'll flow through your pipeline.
           </p>
           <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
-            <li>Go to <Link href="/" className="text-blue-600 hover:underline">Home</Link> → Customers tab → + Add Customer</li>
+            <li>Go to <Link href="/" style={{ color: "var(--zr-orange)" }} className="hover:underline">Home</Link> → Customers tab → + Add Customer</li>
             <li>Enter their name, phone, email, and address</li>
             <li>Set their lead status (New, Contacted, Scheduled, etc.)</li>
             <li>Set heat score (Hot / Warm / Cold)</li>
@@ -97,7 +97,7 @@ export default function SetupGuidePage() {
       time: "Varies",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Measure jobs are the core of ZeroRemake. Every window gets measured with fraction validation
             so bad numbers can't be entered.
           </p>
@@ -122,7 +122,7 @@ export default function SetupGuidePage() {
       time: "5 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Quotes pull directly from your measurements — no retyping. Set your products and pricing,
             then send for customer approval with e-signature.
           </p>
@@ -145,12 +145,12 @@ export default function SetupGuidePage() {
       time: "2 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Every appointment type has a default duration. After each appointment, you must select an outcome
             — this keeps your pipeline moving automatically.
           </p>
           <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
-            <li>Go to <Link href="/schedule" className="text-blue-600 hover:underline">Schedule</Link> → + New Appointment</li>
+            <li>Go to <Link href="/schedule" style={{ color: "var(--zr-orange)" }} className="hover:underline">Schedule</Link> → + New Appointment</li>
             <li>Pick type: Measure, Install, Sales Consult, Service, etc.</li>
             <li>Link to a customer (auto-fills address)</li>
             <li>Send confirmation text to customer</li>
@@ -168,7 +168,7 @@ export default function SetupGuidePage() {
       time: "5 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             When you place orders with manufacturers, their shipping emails can be automatically
             parsed to update your material status. No manual tracking needed.
           </p>
@@ -237,12 +237,12 @@ export default function SetupGuidePage() {
       time: "2 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Each team member gets their own login with role-based permissions. Installers can't see pricing,
             sales reps can't change settings, etc.
           </p>
           <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
-            <li>Go to <Link href="/settings" className="text-blue-600 hover:underline">Settings</Link> → Team section</li>
+            <li>Go to <Link href="/settings" style={{ color: "var(--zr-orange)" }} className="hover:underline">Settings</Link> → Team section</li>
             <li>Copy the invite link and send it to your team member</li>
             <li>They sign up using that link — automatically joins your company</li>
             <li>Set their role (Installer, Sales, Office, etc.)</li>
@@ -275,12 +275,12 @@ export default function SetupGuidePage() {
       time: "3 min",
       content: (
         <div className="space-y-3 text-sm">
-          <p className="text-gray-600">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
             Your company info shows on quotes and customer communications. Set your defaults once
             and they apply everywhere.
           </p>
           <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
-            <li>Go to <Link href="/settings" className="text-blue-600 hover:underline">Settings</Link></li>
+            <li>Go to <Link href="/settings" style={{ color: "var(--zr-orange)" }} className="hover:underline">Settings</Link></li>
             <li>Fill in your company name, phone, email, address</li>
             <li>Set your default deposit percentage (e.g. 50%)</li>
             <li>Set your default markup multiplier (e.g. 2.5x)</li>
@@ -297,11 +297,11 @@ export default function SetupGuidePage() {
   const progressPct = Math.round((completedCount / totalSteps) * 100);
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm pb-16">
+    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm pb-16">
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-4">
-          <Link href="/" className="text-blue-600 hover:underline text-xs">← Home</Link>
+          <Link href="/" style={{ color: "var(--zr-orange)" }} className="hover:underline text-xs">← Home</Link>
           <h1 className="text-xl font-bold mt-2">Getting Started</h1>
           <p className="text-xs text-gray-400 mt-0.5">
             Follow these steps to get your ZeroRemake account up and running.

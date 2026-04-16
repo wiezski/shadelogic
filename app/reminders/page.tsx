@@ -282,7 +282,7 @@ export default function RemindersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm">
+    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
       <div className="mx-auto max-w-2xl space-y-5">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Reminders</h1>
@@ -291,8 +291,8 @@ export default function RemindersPage() {
 
         <UnmatchedEmailsSection />
 
-        {loading ? <p className="text-gray-400">Loading…</p> : reminders.length === 0 ? (
-          <div className="rounded border p-8 text-center text-gray-400">
+        {loading ? <p style={{ color: "var(--zr-text-secondary)" }} >Loading…</p> : reminders.length === 0 ? (
+          <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-8 text-center text-gray-400">
             <div className="text-3xl mb-2">✓</div>
             <div className="font-medium">You're all caught up</div>
             <div className="text-xs mt-1">Nothing needs attention right now.</div>

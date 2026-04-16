@@ -1181,19 +1181,19 @@ export default function MeasureJobPage() {
   }
 
   if (loading) {
-    return <div className="p-4">Loading...</div>;
+    return <div className="p-4" style={{ color: "var(--zr-text-primary)" }}>Loading...</div>;
   }
 
   if (loadError && !job) {
     return (
-      <main className="p-4 text-black">
+      <main className="p-4" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
         <div className="mx-auto max-w-3xl">
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Link href="/" style={{ color: "var(--zr-orange)" }} className="hover:underline">
             ← Back to customers
           </Link>
-          <div className="mt-4 rounded border border-red-300 bg-red-50 p-4">
-            <div className="font-semibold text-red-800">Could not load measure job</div>
-            <div className="mt-2 text-sm text-red-700">{loadError}</div>
+          <div className="mt-4 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid #ef4444" }}>
+            <div className="font-semibold" style={{ color: "#ef4444" }}>Could not load measure job</div>
+            <div className="mt-2 text-sm" style={{ color: "#ef4444" }}>{loadError}</div>
           </div>
         </div>
       </main>
@@ -1201,27 +1201,27 @@ export default function MeasureJobPage() {
   }
 
   if (!job) {
-    return <div className="p-4">Measure job not found.</div>;
+    return <div className="p-4" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>Measure job not found.</div>;
   }
 
   return (
     <PermissionGate require="view_customers">
-      <main className="p-3 text-sm text-black">
+      <main className="p-3 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
         <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 flex-wrap">
-            <Link href={`/customers/${job.customer_id}`} className="text-blue-600 hover:underline">
+            <Link href={`/customers/${job.customer_id}`} style={{ color: "var(--zr-orange)" }} className="hover:underline">
               ← Back to customer
             </Link>
             {job.install_mode && job.linked_measure_id && (
-              <Link href={`/measure-jobs/${job.linked_measure_id}`} className="text-purple-600 hover:underline text-xs">
+              <Link href={`/measure-jobs/${job.linked_measure_id}`} style={{ color: "var(--zr-orange)" }} className="hover:underline text-xs">
                 View measurements →
               </Link>
             )}
           </div>
           {!job.install_mode && (
             <button onClick={duplicateJob} disabled={duplicating}
-              className="text-xs border rounded px-2.5 py-1 text-gray-500 hover:bg-gray-50 disabled:opacity-50">
+              className="text-xs rounded px-2.5 py-1 disabled:opacity-50" style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}>
               {duplicating ? "Copying…" : "⎘ Duplicate Job"}
             </button>
           )}
@@ -1229,7 +1229,7 @@ export default function MeasureJobPage() {
 
         {/* New record banner */}
         {(Date.now() - new Date(job.created_at).getTime()) < 90000 && (
-          <div className={`mb-3 mt-2 rounded-lg px-4 py-3 ${job.install_mode ? "bg-green-600" : "bg-purple-600"} text-white`}>
+          <div className="mb-3 mt-2 rounded-lg px-4 py-3" style={{ background: job.install_mode ? "var(--zr-success)" : "var(--zr-orange)", color: "#fff" }}>
             <div className="font-bold text-lg">
               {job.install_mode ? "✓ New Install Job Created" : "📐 New Measure Job Created"}
             </div>
@@ -1244,17 +1244,17 @@ export default function MeasureJobPage() {
         <h1 className="mb-2 mt-1 text-xl font-bold">{job.title}</h1>
 
         {loadError && (
-          <div className="mb-3 rounded border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900">
+          <div className="mb-3 rounded p-3 text-xs" style={{ border: "1px solid var(--zr-warning)", background: "rgba(245, 158, 11, 0.1)", color: "var(--zr-warning)" }}>
             {loadError}
           </div>
         )}
 
         {validationMessages.length > 0 && mode === "measure" && (
-          <div className="mb-3 rounded border border-amber-400 bg-amber-50 p-3">
-            <div className="mb-1 font-semibold text-amber-900">
+          <div className="mb-3 rounded p-3" style={{ border: "1px solid var(--zr-warning)", background: "rgba(245, 158, 11, 0.1)" }}>
+            <div className="mb-1 font-semibold" style={{ color: "var(--zr-warning)" }}>
               Missing or incomplete measure info
             </div>
-            <ul className="list-disc pl-5 text-xs text-amber-900">
+            <ul className="list-disc pl-5 text-xs" style={{ color: "var(--zr-warning)" }}>
               {validationMessages.map((message, index) => (
                 <li key={index}>{message}</li>
               ))}
@@ -1265,17 +1265,19 @@ export default function MeasureJobPage() {
         {/* Mode toggle — only show for legacy installs (no linked_measure_id).
             Converted installs go straight to install view. */}
         {job.install_mode && !job.linked_measure_id ? (
-          <div className="mb-3 flex rounded border overflow-hidden">
+          <div className="mb-3 flex rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
             <button
               type="button"
-              className={`flex-1 py-2 text-sm font-medium ${mode === "measure" ? "bg-black text-white" : "bg-white text-black"}`}
+              className="flex-1 py-2 text-sm font-medium"
+              style={{ background: mode === "measure" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: mode === "measure" ? "#fff" : "var(--zr-text-primary)", borderRight: "1px solid var(--zr-border)" }}
               onClick={() => setMode("measure")}
             >
               Measure
             </button>
             <button
               type="button"
-              className={`flex-1 py-2 text-sm font-medium ${mode === "install" ? "bg-black text-white" : "bg-white text-black"}`}
+              className="flex-1 py-2 text-sm font-medium"
+              style={{ background: mode === "install" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: mode === "install" ? "#fff" : "var(--zr-text-primary)" }}
               onClick={() => setMode("install")}
             >
               Install
@@ -1283,45 +1285,47 @@ export default function MeasureJobPage() {
           </div>
         ) : job.install_mode && job.linked_measure_id ? (
           // Converted install — install view only, no tab toggle
-          <div className="mb-3 rounded bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700 flex items-center justify-between">
+          <div className="mb-3 rounded px-3 py-2 text-xs flex items-center justify-between" style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid var(--zr-success)", color: "var(--zr-success)" }}>
             <span>Install mode — tracking window completion</span>
-            <Link href={`/measure-jobs/${job.linked_measure_id}`} className="text-purple-600 hover:underline font-medium ml-3">
+            <Link href={`/measure-jobs/${job.linked_measure_id}`} style={{ color: "var(--zr-orange)" }} className="hover:underline font-medium ml-3">
               View measurements →
             </Link>
           </div>
         ) : (
-          <div className="mb-3 flex items-center justify-between rounded border border-green-200 bg-green-50 p-3 gap-3">
+          <div className="mb-3 flex items-center justify-between rounded p-3 gap-3" style={{ border: "1px solid rgba(34, 197, 94, 0.3)", background: "rgba(34, 197, 94, 0.05)" }}>
             <div>
-              <div className="text-sm font-medium text-green-800">Job sold?</div>
-              <div className="text-xs text-green-600 mt-0.5">Creates a separate Install record linked to this measure.</div>
+              <div className="text-sm font-medium" style={{ color: "var(--zr-success)" }}>Job sold?</div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--zr-success)" }}>Creates a separate Install record linked to this measure.</div>
             </div>
             <button
               type="button"
               onClick={convertToInstall}
               disabled={convertingToInstall}
-              className="shrink-0 rounded bg-green-700 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+              className="shrink-0 rounded px-3 py-1.5 text-sm text-white disabled:opacity-50"
+              style={{ background: "var(--zr-success)" }}
             >
               {convertingToInstall ? "Creating…" : "Convert to Install →"}
             </button>
           </div>
         )}
 
-        <div className="mb-3 rounded border p-3">
+        <div className="mb-3 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[300px_1fr]">
             <div className="space-y-1">
-              <div className="font-semibold">
+              <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>
                 {[customer?.last_name, customer?.first_name].filter(Boolean).join(", ")}
               </div>
 
-              <div>{formatAddressDisplay(customer?.address ?? null)}</div>
-              {customer?.phone && <div>{customer.phone}</div>}
-              {customer?.email && <div>{customer.email}</div>}
+              <div style={{ color: "var(--zr-text-secondary)" }}>{formatAddressDisplay(customer?.address ?? null)}</div>
+              {customer?.phone && <div style={{ color: "var(--zr-text-secondary)" }}>{customer.phone}</div>}
+              {customer?.email && <div style={{ color: "var(--zr-text-secondary)" }}>{customer.email}</div>}
 
               <div className="pt-1">
-                <label className="mb-1 block text-xs font-medium">Date</label>
+                <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Date</label>
                 <input
                   type="date"
-                  className="w-full rounded border px-2 py-1"
+                  className="w-full rounded px-2 py-1"
+                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                   value={job.scheduled_at ? job.scheduled_at.slice(0, 10) : ""}
                   onChange={(e) => updateJobLocal("scheduled_at", e.target.value)}
                   onBlur={(e) => saveJobField("scheduled_at", e.target.value || null)}
@@ -1330,9 +1334,10 @@ export default function MeasureJobPage() {
 
               <div className="flex gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Measured By</label>
+                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Measured By</label>
                   <input
-                    className="w-24 rounded border px-2 py-1"
+                    className="w-24 rounded px-2 py-1"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                     value={job.measured_by || ""}
                     onChange={(e) => updateJobLocal("measured_by", e.target.value)}
                     onBlur={(e) => saveJobField("measured_by", e.target.value || null)}
@@ -1340,10 +1345,11 @@ export default function MeasureJobPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Tallest window</label>
+                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Tallest window</label>
                   <input
                     ref={tallestWindowRef}
-                    className="w-32 rounded border px-2 py-1"
+                    className="w-32 rounded px-2 py-1"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                     value={job.tallest_window || ""}
                     onChange={(e) => handleTallestWindowChange(e.target.value)}
                     onBlur={(e) => handleTallestWindowBlur(e.target.value)}
@@ -1354,9 +1360,10 @@ export default function MeasureJobPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium">Notes</label>
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Notes</label>
               <textarea
-                className="h-24 w-full rounded border px-2 py-1"
+                className="h-24 w-full rounded px-2 py-1"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                 value={job.overall_notes || ""}
                 onChange={(e) => updateJobLocal("overall_notes", e.target.value)}
                 onBlur={(e) => saveJobField("overall_notes", e.target.value || null)}
@@ -1367,12 +1374,13 @@ export default function MeasureJobPage() {
 
         {mode === "measure" && (
         <div className="mb-3 flex gap-2">
-          <button onClick={addRoom} className="rounded bg-black px-3 py-1 text-white">
+          <button onClick={addRoom} className="rounded px-3 py-1 text-white" style={{ background: "var(--zr-orange)" }}>
             Add Room
           </button>
 
           <input
-            className="flex-1 rounded border px-2 py-1"
+            className="flex-1 rounded px-2 py-1"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
             value={newRoomName}
             onChange={(e) => setNewRoomName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRoom(); } }}
@@ -1385,17 +1393,19 @@ export default function MeasureJobPage() {
           const roomWindows = windows.filter((w) => w.room_id === room.id);
 
           return (
-            <div key={room.id} className="mb-3 rounded border p-2">
+            <div key={room.id} className="mb-3 rounded p-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
               <div className="mb-1 flex items-center gap-2">
                 <button
                   onClick={() => addWindow(room.id)}
-                  className="rounded bg-black px-2 py-1 text-xs text-white"
+                  className="rounded px-2 py-1 text-xs text-white"
+                  style={{ background: "var(--zr-orange)" }}
                 >
                   Add Window
                 </button>
 
                 <input
                   className="text-base font-semibold"
+                  style={{ background: "transparent", border: "none", color: "var(--zr-text-primary)" }}
                   value={room.name}
                   onChange={(e) => updateRoomLocal(room.id, "name", e.target.value)}
                   onBlur={(e) => saveRoomField(room.id, "name", e.target.value || null)}
@@ -1403,7 +1413,8 @@ export default function MeasureJobPage() {
               </div>
 
               <textarea
-                className="mb-2 h-12 w-full rounded border px-2 py-1"
+                className="mb-2 h-12 w-full rounded px-2 py-1"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                 placeholder="Room notes"
                 value={room.room_notes || ""}
                 onChange={(e) => updateRoomLocal(room.id, "room_notes", e.target.value)}
@@ -1411,28 +1422,31 @@ export default function MeasureJobPage() {
               />
 
               {roomWindows.map((w, index) => (
-                <div key={w.id} className="mb-2 rounded border p-2">
+                <div key={w.id} className="mb-2 rounded p-2" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                   <div className="mb-1 flex items-center justify-between">
-                    <div className="font-semibold">Window {index + 1}</div>
+                    <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>Window {index + 1}</div>
 
                     <div className="flex gap-2">
                       <button
                         onClick={() => duplicateWindow(w)}
-                        className="rounded border px-2 py-1 text-xs"
+                        className="rounded px-2 py-1 text-xs"
+                        style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
                       >
                         Duplicate
                       </button>
 
                       <button
                         onClick={() => fileInputRefs.current[w.id]?.click()}
-                        className="rounded border px-2 py-1 text-xs"
+                        className="rounded px-2 py-1 text-xs"
+                        style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
                       >
                         Add Photo
                       </button>
 
                       <button
                         onClick={() => toggleWindowPhotos(w.id)}
-                        className="rounded border px-2 py-1 text-xs"
+                        className="rounded px-2 py-1 text-xs"
+                        style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
                       >
                         {openWindowPhotos[w.id] ? "Hide Photos" : "View Photos"}
                       </button>
@@ -1459,7 +1473,8 @@ export default function MeasureJobPage() {
                       <input
                         ref={(el) => { measureInputRefs.current[`${w.id}-width`] = el; }}
                         placeholder="Width"
-                        className="w-full rounded border px-2 py-1"
+                        className="w-full rounded px-2 py-1"
+                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                         value={w.width || ""}
                         onChange={(e) => handleMeasurementChange(w.id, "width", e.target.value)}
                         onBlur={(e) => handleMeasurementBlur(w.id, "width", e.target.value)}
@@ -1468,7 +1483,8 @@ export default function MeasureJobPage() {
                       <input
                         ref={(el) => { measureInputRefs.current[`${w.id}-height`] = el; }}
                         placeholder="Height"
-                        className="w-full rounded border px-2 py-1"
+                        className="w-full rounded px-2 py-1"
+                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                         value={w.height || ""}
                         onChange={(e) => handleMeasurementChange(w.id, "height", e.target.value)}
                         onBlur={(e) => handleMeasurementBlur(w.id, "height", e.target.value)}
@@ -1505,7 +1521,8 @@ export default function MeasureJobPage() {
                       <input
                         ref={(el) => { measureInputRefs.current[`${w.id}-casing_depth`] = el; }}
                         placeholder="Casing Depth"
-                        className="w-full rounded border px-2 py-1"
+                        className="w-full rounded px-2 py-1"
+                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                         value={w.casing_depth || ""}
                         onChange={(e) =>
                           handleMeasurementChange(w.id, "casing_depth", e.target.value)
@@ -1519,7 +1536,8 @@ export default function MeasureJobPage() {
                     <div className="space-y-1">
                       <input
                         placeholder="Product"
-                        className="w-full rounded border px-2 py-1"
+                        className="w-full rounded px-2 py-1"
+                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                         value={w.product || ""}
                         onChange={(e) => updateWindowLocal(w.id, "product", e.target.value)}
                         onBlur={(e) => saveWindowField(w.id, "product", e.target.value || null)}
@@ -1527,7 +1545,8 @@ export default function MeasureJobPage() {
 
                       <input
                         placeholder="Lift System"
-                        className="w-full rounded border px-2 py-1"
+                        className="w-full rounded px-2 py-1"
+                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                         value={w.lift_system || ""}
                         onChange={(e) => updateWindowLocal(w.id, "lift_system", e.target.value)}
                         onBlur={(e) =>
@@ -1567,7 +1586,8 @@ export default function MeasureJobPage() {
                     <div>
                       <button
                         type="button"
-                        className="mb-1 text-xs text-blue-600 sm:hidden"
+                        className="mb-1 text-xs sm:hidden"
+                        style={{ color: "var(--zr-orange)" }}
                         onClick={() =>
                           setExpandedNotes((prev) => ({ ...prev, [w.id]: !prev[w.id] }))
                         }
@@ -1576,11 +1596,12 @@ export default function MeasureJobPage() {
                       </button>
                       <textarea
                         placeholder="Notes"
-                        className={`w-full rounded border px-2 py-1 ${
+                        className={`w-full rounded px-2 py-1 ${
                           expandedNotes[w.id]
                             ? "block min-h-[98px]"
                             : "hidden min-h-[98px] sm:block"
                         }`}
+                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                         value={w.notes || ""}
                         onChange={(e) => updateWindowLocal(w.id, "notes", e.target.value)}
                         onBlur={(e) => saveWindowField(w.id, "notes", e.target.value || null)}
@@ -1639,11 +1660,11 @@ export default function MeasureJobPage() {
                   </div>
 
                   {openWindowPhotos[w.id] && (
-                    <div className="mt-3 rounded border bg-gray-50 p-2">
-                      <div className="mb-2 font-medium">Window Photos</div>
+                    <div className="mt-3 rounded p-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                      <div className="mb-2 font-medium" style={{ color: "var(--zr-text-primary)" }}>Window Photos</div>
 
                       {(photosByWindow[w.id] || []).length === 0 ? (
-                        <p className="text-xs text-gray-500">No photos yet.</p>
+                        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No photos yet.</p>
                       ) : (
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                           {(photosByWindow[w.id] || []).map((photo) => (
@@ -1651,6 +1672,7 @@ export default function MeasureJobPage() {
                               key={photo.id}
                               src={publicPhotoUrl(photo.file_path)}
                               className="h-28 w-full rounded border object-cover"
+                              style={{ borderColor: "var(--zr-border)" }}
                             />
                           ))}
                         </div>
@@ -1663,39 +1685,44 @@ export default function MeasureJobPage() {
           );
         })}
 
-        {mode === "measure" && <div className="mt-4 rounded border p-3">
+        {mode === "measure" && <div className="mt-4 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowSummary((prev) => !prev)}
-              className="rounded bg-black px-3 py-1 text-white"
+              className="rounded px-3 py-1 text-white"
+              style={{ background: "var(--zr-orange)" }}
             >
               {showSummary ? "Hide Summary" : "Show Summary"}
             </button>
 
             <button
               onClick={copySummary}
-              className="rounded border px-3 py-1"
+              className="rounded px-3 py-1"
+              style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
             >
               Copy Summary
             </button>
 
             <button
               onClick={downloadCsv}
-              className="rounded border px-3 py-1"
+              className="rounded px-3 py-1"
+              style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
             >
               Download CSV
             </button>
 
             <button
               onClick={printSummary}
-              className="rounded border px-3 py-1"
+              className="rounded px-3 py-1"
+              style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
             >
               Print Summary
             </button>
 
             <button
               onClick={() => setShowAllPhotos((prev) => !prev)}
-              className="rounded border px-3 py-1"
+              className="rounded px-3 py-1"
+              style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}
             >
               {showAllPhotos ? "Hide All Photos" : "Show All Photos"}
             </button>
@@ -1703,52 +1730,53 @@ export default function MeasureJobPage() {
 
           {/* Submit Measure */}
           {windows.length > 0 && (
-            <div className="mt-4 border-t pt-4">
+            <div className="mt-4 border-t pt-4" style={{ borderTopColor: "var(--zr-border)" }}>
               {measureSubmitted ? (
-                <div className="rounded bg-purple-600 text-white px-4 py-3 text-sm font-medium">
+                <div className="rounded text-white px-4 py-3 text-sm font-medium" style={{ background: "var(--zr-success)" }}>
                   ✓ Measure submitted — customer moved to Measured
                 </div>
               ) : (
                 <button
                   onClick={submitMeasure}
                   disabled={submittingMeasure}
-                  className="w-full rounded bg-purple-600 text-white py-3 text-sm font-semibold disabled:opacity-50"
+                  className="w-full rounded text-white py-3 text-sm font-semibold disabled:opacity-50"
+                  style={{ background: "var(--zr-success)" }}
                 >
                   {submittingMeasure ? "Submitting…" : "✓ Submit Measure"}
                 </button>
               )}
-              <p className="mt-1 text-xs text-gray-400 text-center">Moves customer to Measured stage and logs activity</p>
+              <p className="mt-1 text-xs text-center" style={{ color: "var(--zr-text-muted)" }}>Moves customer to Measured stage and logs activity</p>
             </div>
           )}
 
           {showSummary && (
             <div className="mt-3 overflow-x-auto">
               {summaryRows.length === 0 ? (
-                <p className="text-gray-500">No summary rows yet.</p>
+                <p style={{ color: "var(--zr-text-muted)" }}>No summary rows yet.</p>
               ) : (
-                <table className="min-w-full border text-sm">
+                <table className="min-w-full text-sm" style={{ borderColor: "var(--zr-border)" }}>
                   <thead>
-                    <tr className="bg-gray-200 text-left">
-                      <th className="border px-3 py-2">Room / Window</th>
-                      <th className="border px-3 py-2">Dimensions</th>
-                      <th className="border px-3 py-2">Product</th>
-                      <th className="border px-3 py-2">Lift System</th>
-                      <th className="border px-3 py-2">Control</th>
-                      <th className="border px-3 py-2">Flags</th>
+                    <tr style={{ background: "var(--zr-surface-2)" }}>
+                      <th className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)", textAlign: "left" }}>Room / Window</th>
+                      <th className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)", textAlign: "left" }}>Dimensions</th>
+                      <th className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)", textAlign: "left" }}>Product</th>
+                      <th className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)", textAlign: "left" }}>Lift System</th>
+                      <th className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)", textAlign: "left" }}>Control</th>
+                      <th className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)", textAlign: "left" }}>Flags</th>
                     </tr>
                   </thead>
                   <tbody>
                     {summaryRows.map((row, index) => (
                       <tr
                         key={row.id}
-                        className={index % 2 === 0 ? "bg-white" : "bg-gray-100"}
+                        style={{ background: index % 2 === 0 ? "transparent" : "var(--zr-surface-2)" }}
                       >
-                        <td className="border px-3 py-2">{row.roomWindow}</td>
-                        <td className="border px-3 py-2">{row.dimensions}</td>
-                        <td className="border px-3 py-2">{row.product}</td>
-                        <td className="border px-3 py-2">{row.liftSystem}</td>
-                        <td className="border px-3 py-2">{row.controlSide}</td>
-                        <td className="border px-3 py-2">{row.flags}</td>
+                        <td className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)" }}>{row.roomWindow}</td>
+                        <td className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)" }}>{row.dimensions}</td>
+                        <td className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)" }}>{row.product}</td>
+                        <td className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)" }}>{row.liftSystem}</td>
+                        <td className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)" }}>{row.controlSide}</td>
+                        <td className="px-3 py-2" style={{ borderColor: "var(--zr-border)", borderWidth: "1px", color: "var(--zr-text-primary)" }}>{row.flags}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1760,11 +1788,11 @@ export default function MeasureJobPage() {
           {showAllPhotos && (
             <div className="mt-3">
               {allPhotoRows.length === 0 ? (
-                <p className="text-gray-500">No photos yet.</p>
+                <p style={{ color: "var(--zr-text-muted)" }}>No photos yet.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {allPhotoRows.map(({ photo, roomName, windowLabel }) => (
-                    <div key={photo.id} className="rounded border p-2">
+                    <div key={photo.id} className="rounded p-2" style={{ border: "1px solid var(--zr-border)", background: "var(--zr-surface-1)" }}>
                       <a
                         href={publicPhotoUrl(photo.file_path)}
                         target="_blank"
@@ -1774,10 +1802,11 @@ export default function MeasureJobPage() {
                           src={publicPhotoUrl(photo.file_path)}
                           alt={`${roomName} ${windowLabel}`}
                           className="mb-2 h-32 w-full rounded object-cover"
+                          style={{ borderColor: "var(--zr-border)" }}
                         />
                       </a>
-                      <div className="text-xs font-medium">{roomName}</div>
-                      <div className="text-xs text-gray-600">{windowLabel}</div>
+                      <div className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>{roomName}</div>
+                      <div className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>{windowLabel}</div>
                     </div>
                   ))}
                 </div>
@@ -1798,39 +1827,42 @@ export default function MeasureJobPage() {
               const allAccountedFor = total > 0 && pending === 0;
               const pct = total > 0 ? Math.round((complete / total) * 100) : 0;
               return (
-                <div className="mb-3 rounded border p-3">
-                  <div className="mb-2 flex items-center justify-between text-sm font-semibold">
+                <div className="mb-3 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                  <div className="mb-2 flex items-center justify-between text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>
                     <span>{complete} of {total} windows complete</span>
                     {issues > 0 && (
-                      <span className="text-red-600">{issues} issue{issues !== 1 ? "s" : ""}</span>
+                      <span style={{ color: "var(--zr-error)" }}>{issues} issue{issues !== 1 ? "s" : ""}</span>
                     )}
                   </div>
-                  <div className="h-2 w-full rounded bg-gray-200">
-                    <div className="h-2 rounded bg-green-500 transition-all" style={{ width: `${pct}%` }} />
+                  <div className="h-2 w-full rounded" style={{ background: "var(--zr-surface-2)" }}>
+                    <div className="h-2 rounded transition-all" style={{ width: `${pct}%`, background: "var(--zr-success)" }} />
                   </div>
 
                   {/* Completion actions — appear when all windows are accounted for */}
                   {allAccountedFor && !installCompleted && (
-                    <div className="mt-3 border-t pt-3 space-y-2">
+                    <div className="mt-3 border-t pt-3 space-y-2" style={{ borderTopColor: "var(--zr-border)" }}>
                       {checklist.length > 0 && checklist.some(c => c.required && !c.completed) && (
-                        <p className="text-xs text-amber-600 font-medium">⚠ Complete all required checklist items before finishing.</p>
+                        <p className="text-xs font-medium" style={{ color: "var(--zr-warning)" }}>⚠ Complete all required checklist items before finishing.</p>
                       )}
-                      <p className="text-xs text-gray-500 font-medium">All windows marked — choose an outcome:</p>
+                      <p className="text-xs font-medium" style={{ color: "var(--zr-text-muted)" }}>All windows marked — choose an outcome:</p>
                       <div className="flex gap-2">
                         <button onClick={() => setShowSignOff(true)}
                           disabled={installCompleting || (checklist.length > 0 && checklist.some(c => c.required && !c.completed))}
-                          className="flex-1 rounded bg-green-600 text-white py-2 text-sm font-semibold disabled:opacity-50">
+                          className="flex-1 rounded text-white py-2 text-sm font-semibold disabled:opacity-50"
+                          style={{ background: "var(--zr-success)" }}>
                           ✓ Complete with Sign-Off
                         </button>
                         <button onClick={() => completeInstall(false)}
                           disabled={installCompleting || (checklist.length > 0 && checklist.some(c => c.required && !c.completed))}
-                          className="flex-1 rounded border border-green-600 text-green-700 py-2 text-sm font-semibold disabled:opacity-50">
+                          className="flex-1 rounded py-2 text-sm font-semibold disabled:opacity-50"
+                          style={{ border: "1px solid var(--zr-success)", color: "var(--zr-success)", background: "transparent" }}>
                           ✓ Complete (No Sign-Off)
                         </button>
                       </div>
                       {issues > 0 && (
                         <button onClick={() => completeInstall(true)} disabled={installCompleting}
-                          className="w-full rounded bg-red-500 text-white py-2 text-sm font-semibold disabled:opacity-50">
+                          className="w-full rounded text-white py-2 text-sm font-semibold disabled:opacity-50"
+                          style={{ background: "var(--zr-error)" }}>
                           ⚠ Needs Rework ({issues} issue{issues !== 1 ? "s" : ""})
                         </button>
                       )}
@@ -1839,20 +1871,22 @@ export default function MeasureJobPage() {
 
                   {/* Post-completion actions */}
                   {installCompleted && showInstallDoneActions && job && (
-                    <div className="mt-3 border-t pt-3 space-y-2">
-                      <div className="rounded bg-green-600 text-white px-3 py-2 text-sm font-semibold">✓ Install Complete</div>
+                    <div className="mt-3 border-t pt-3 space-y-2" style={{ borderTopColor: "var(--zr-border)" }}>
+                      <div className="rounded text-white px-3 py-2 text-sm font-semibold" style={{ background: "var(--zr-success)" }}>✓ Install Complete</div>
                       <a
                         href={`sms:?body=${encodeURIComponent(`Hi! Your window treatment installation is complete. We hope you love them! 😊\n\nIf you have a moment, a Google review would mean the world to us: https://g.page/r/YOUR_GOOGLE_REVIEW_LINK\n\nThank you for choosing us!`)}`}
-                        className="flex items-center justify-center gap-1.5 w-full rounded bg-amber-500 text-white py-2 text-sm font-medium hover:bg-amber-600">
+                        className="flex items-center justify-center gap-1.5 w-full rounded text-white py-2 text-sm font-medium" style={{ background: "var(--zr-warning)" }}>
                         ⭐ Send Review Request
                       </a>
                       <a
                         href={`sms:?body=${encodeURIComponent(`Hi! Your window treatment installation is complete. Thank you for choosing us — we hope you love them! Reach out anytime if you need anything.`)}`}
-                        className="flex items-center justify-center gap-1.5 w-full rounded border border-blue-400 text-blue-700 py-2 text-sm hover:bg-blue-50">
+                        className="flex items-center justify-center gap-1.5 w-full rounded py-2 text-sm"
+                        style={{ border: "1px solid var(--zr-info)", color: "var(--zr-info)", background: "transparent" }}>
                         💬 Send Follow-up Text
                       </a>
                       <Link href={`/customers/${job.customer_id}`}
-                        className="flex items-center justify-center w-full rounded border py-2 text-sm hover:bg-gray-50">
+                        className="flex items-center justify-center w-full rounded py-2 text-sm"
+                        style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>
                         View Customer Record →
                       </Link>
                     </div>
@@ -1863,71 +1897,76 @@ export default function MeasureJobPage() {
 
             {/* Materials Packing List */}
             {packingItems.length > 0 && (
-              <div className="mb-3 rounded border p-3">
+              <div className="mb-3 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold">Materials Packing List</h3>
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>Materials Packing List</h3>
                   {materialsConfirmed ? (
-                    <span className="text-xs rounded bg-green-100 text-green-700 px-2 py-0.5 font-medium">✓ Loaded</span>
+                    <span className="text-xs rounded px-2 py-0.5 font-medium" style={{ background: "rgba(34, 197, 94, 0.2)", color: "var(--zr-success)" }}>✓ Loaded</span>
                   ) : (
                     <button onClick={confirmMaterials}
-                      className="text-xs rounded bg-blue-600 text-white px-2.5 py-1 hover:bg-blue-700">
+                      className="text-xs rounded text-white px-2.5 py-1"
+                      style={{ background: "var(--zr-info)" }}>
                       Confirm Materials Loaded
                     </button>
                   )}
                 </div>
                 <div className="space-y-1.5">
                   {packingItems.map(item => (
-                    <div key={item.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1.5">
+                    <div key={item.id} className="flex items-center justify-between text-sm pb-1.5" style={{ borderBottom: "1px solid var(--zr-border)" }}>
                       <div>
-                        <span className={item.status === "received" ? "text-green-700" : "text-gray-700"}>{item.description}</span>
-                        {item.vendor && <span className="text-xs text-gray-400 ml-1.5">({item.vendor})</span>}
+                        <span style={{ color: item.status === "received" ? "var(--zr-success)" : "var(--zr-text-primary)" }}>{item.description}</span>
+                        {item.vendor && <span className="text-xs ml-1.5" style={{ color: "var(--zr-text-muted)" }}>({item.vendor})</span>}
                       </div>
                       <div className="flex items-center gap-2 text-xs shrink-0">
                         {item.expected_packages && (
-                          <span className={`${(item.received_packages || 0) >= item.expected_packages ? "text-green-600" : "text-amber-600"}`}>
+                          <span style={{ color: (item.received_packages || 0) >= item.expected_packages ? "var(--zr-success)" : "var(--zr-warning)" }}>
                             {item.received_packages || 0}/{item.expected_packages} pkgs
                           </span>
                         )}
-                        <span className={`rounded px-1.5 py-0.5 ${
-                          item.status === "received" ? "bg-green-100 text-green-700" :
-                          item.status === "shipped" ? "bg-blue-100 text-blue-700" :
-                          item.status === "ordered" ? "bg-amber-100 text-amber-700" :
-                          "bg-gray-100 text-gray-500"
-                        }`}>{item.status}</span>
+                        <span className="rounded px-1.5 py-0.5" style={{
+                          background: item.status === "received" ? "rgba(34, 197, 94, 0.2)" :
+                          item.status === "shipped" ? "rgba(59, 130, 246, 0.2)" :
+                          item.status === "ordered" ? "rgba(245, 158, 11, 0.2)" :
+                          "var(--zr-surface-2)",
+                          color: item.status === "received" ? "var(--zr-success)" :
+                          item.status === "shipped" ? "var(--zr-info)" :
+                          item.status === "ordered" ? "var(--zr-warning)" :
+                          "var(--zr-text-muted)"
+                        }}>{item.status}</span>
                       </div>
                     </div>
                   ))}
                 </div>
                 {!materialsConfirmed && (
-                  <p className="text-xs text-amber-600 mt-2">⚠ Confirm materials are loaded on the truck before heading to the job.</p>
+                  <p className="text-xs mt-2" style={{ color: "var(--zr-warning)" }}>⚠ Confirm materials are loaded on the truck before heading to the job.</p>
                 )}
               </div>
             )}
 
             {/* Install Checklist */}
             {checklist.length > 0 && (
-              <div className="mb-3 rounded border p-3">
-                <h3 className="text-sm font-semibold mb-2">
+              <div className="mb-3 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--zr-text-primary)" }}>
                   Install Checklist
-                  <span className="text-xs text-gray-400 font-normal ml-2">
+                  <span className="text-xs font-normal ml-2" style={{ color: "var(--zr-text-muted)" }}>
                     {checklist.filter(c => c.completed).length}/{checklist.length}
                   </span>
                 </h3>
                 <div className="space-y-1">
                   {checklist.map(item => (
-                    <label key={item.id} className="flex items-center gap-2.5 py-1 cursor-pointer hover:bg-gray-50 rounded px-1">
+                    <label key={item.id} className="flex items-center gap-2.5 py-1 cursor-pointer rounded px-1">
                       <input type="checkbox" checked={item.completed}
                         onChange={() => toggleChecklistItem(item.id)}
                         className="h-4 w-4 shrink-0" />
-                      <span className={`text-sm ${item.completed ? "line-through text-gray-400" : "text-gray-700"}`}>
+                      <span className="text-sm" style={{ color: item.completed ? "var(--zr-text-muted)" : "var(--zr-text-primary)", textDecoration: item.completed ? "line-through" : "none" }}>
                         {item.label}
-                        {item.required && !item.completed && <span className="text-red-500 ml-0.5">*</span>}
+                        {item.required && !item.completed && <span style={{ color: "var(--zr-error)", marginLeft: "0.125rem" }}>*</span>}
                       </span>
                     </label>
                   ))}
                 </div>
                 {checklist.some(c => c.required && !c.completed) && (
-                  <p className="text-xs text-amber-600 mt-2">* Required items must be completed before marking job done.</p>
+                  <p className="text-xs mt-2" style={{ color: "var(--zr-warning)" }}>* Required items must be completed before marking job done.</p>
                 )}
               </div>
             )}
@@ -1935,19 +1974,19 @@ export default function MeasureJobPage() {
             {rooms.map((room) => {
               const roomWindows = windows.filter((w) => w.room_id === room.id);
               return (
-                <div key={room.id} className="mb-3 rounded border p-2">
-                  <div className="mb-2 text-base font-semibold">{room.name}</div>
+                <div key={room.id} className="mb-3 rounded p-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                  <div className="mb-2 text-base font-semibold" style={{ color: "var(--zr-text-primary)" }}>{room.name}</div>
 
                   {roomWindows.map((w, index) => {
                     const windowIssues = installIssues.filter((i) => i.window_id === w.id);
                     return (
-                      <div key={w.id} className="mb-2 rounded border p-2">
+                      <div key={w.id} className="mb-2 rounded p-2" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                         {/* Window header */}
                         <div className="mb-2 flex items-center justify-between">
                           <div>
-                            <span className="font-medium">Window {index + 1}</span>
-                            {w.product && <span className="ml-2 text-xs text-gray-500">{w.product}</span>}
-                            <div className="text-xs text-gray-500">
+                            <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>Window {index + 1}</span>
+                            {w.product && <span className="ml-2 text-xs" style={{ color: "var(--zr-text-muted)" }}>{w.product}</span>}
+                            <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
                               {[w.width && `W: ${w.width}`, w.height && `H: ${w.height}`, w.mount_type].filter(Boolean).join(" · ")}
                             </div>
                           </div>
@@ -1958,33 +1997,36 @@ export default function MeasureJobPage() {
                           <button
                             type="button"
                             onClick={() => setWindowInstallStatus(w.id, "not_started")}
-                            className={`rounded border px-3 py-2 text-sm font-medium ${
-                              !w.install_status || w.install_status === "not_started"
-                                ? "bg-gray-800 text-white border-gray-800"
-                                : "bg-white text-gray-600 border-gray-300"
-                            }`}
+                            className="rounded px-3 py-2 text-sm font-medium"
+                            style={{
+                              background: !w.install_status || w.install_status === "not_started" ? "var(--zr-surface-1)" : "transparent",
+                              color: !w.install_status || w.install_status === "not_started" ? "var(--zr-text-primary)" : "var(--zr-text-secondary)",
+                              border: "1px solid var(--zr-border)"
+                            }}
                           >
                             Pending
                           </button>
                           <button
                             type="button"
                             onClick={() => setWindowInstallStatus(w.id, "complete")}
-                            className={`rounded border px-3 py-2 text-sm font-medium ${
-                              w.install_status === "complete"
-                                ? "bg-green-600 text-white border-green-600"
-                                : "bg-white text-green-700 border-green-400"
-                            }`}
+                            className="rounded px-3 py-2 text-sm font-medium"
+                            style={{
+                              background: w.install_status === "complete" ? "var(--zr-success)" : "transparent",
+                              color: w.install_status === "complete" ? "#fff" : "var(--zr-success)",
+                              border: "1px solid var(--zr-success)"
+                            }}
                           >
                             ✓ Done
                           </button>
                           <button
                             type="button"
                             onClick={() => setWindowInstallStatus(w.id, "issue")}
-                            className={`rounded border px-3 py-2 text-sm font-medium ${
-                              w.install_status === "issue"
-                                ? "bg-red-600 text-white border-red-600"
-                                : "bg-white text-red-600 border-red-400"
-                            }`}
+                            className="rounded px-3 py-2 text-sm font-medium"
+                            style={{
+                              background: w.install_status === "issue" ? "var(--zr-error)" : "transparent",
+                              color: w.install_status === "issue" ? "#fff" : "var(--zr-error)",
+                              border: "1px solid var(--zr-error)"
+                            }}
                           >
                             ! Issue
                           </button>
@@ -1992,22 +2034,24 @@ export default function MeasureJobPage() {
 
                         {/* Issue section */}
                         {w.install_status === "issue" && (
-                          <div className="rounded bg-red-50 p-2">
+                          <div className="rounded p-2" style={{ background: "rgba(239, 68, 68, 0.1)" }}>
                             {/* Existing issues */}
                             {windowIssues.map((issue) => (
-                              <div key={issue.id} className="mb-2 rounded border border-red-200 bg-white p-2">
+                              <div key={issue.id} className="mb-2 rounded p-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-error)" }}>
                                 <div className="mb-1 flex items-center justify-between">
-                                  <span className="text-xs font-semibold text-red-700">{issue.issue_type}</span>
+                                  <span className="text-xs font-semibold" style={{ color: "var(--zr-error)" }}>{issue.issue_type}</span>
                                   <button
                                     onClick={() => deleteIssue(issue.id)}
-                                    className="text-xs text-gray-400 hover:text-red-500"
+                                    className="text-xs"
+                                    style={{ color: "var(--zr-text-muted)" }}
                                   >
                                     ✕
                                   </button>
                                 </div>
                                 <textarea
                                   placeholder="Add notes..."
-                                  className="mb-1 h-12 w-full rounded border px-2 py-1 text-xs"
+                                  className="mb-1 h-12 w-full rounded px-2 py-1 text-xs"
+                                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                                   value={issue.notes || ""}
                                   onChange={(e) => updateIssueNotes(issue.id, e.target.value)}
                                 />
@@ -2015,12 +2059,14 @@ export default function MeasureJobPage() {
                                   <img
                                     src={publicPhotoUrl(issue.photo_path)}
                                     className="h-20 w-auto rounded border object-cover"
+                                    style={{ borderColor: "var(--zr-border)" }}
                                   />
                                 ) : (
                                   <>
                                     <button
                                       onClick={() => issueFileInputRefs.current[issue.id]?.click()}
-                                      className="text-xs text-blue-600"
+                                      className="text-xs"
+                                      style={{ color: "var(--zr-orange)" }}
                                     >
                                       + Add photo
                                     </button>
@@ -2043,13 +2089,14 @@ export default function MeasureJobPage() {
 
                             {/* Preset buttons to log new issue */}
                             <div className="mt-1">
-                              <div className="mb-1 text-xs font-medium text-red-700">Log issue:</div>
+                              <div className="mb-1 text-xs font-medium" style={{ color: "var(--zr-error)" }}>Log issue:</div>
                               <div className="flex flex-wrap gap-1">
                                 {ISSUE_PRESETS.map((preset) => (
                                   <button
                                     key={preset}
                                     onClick={() => logInstallIssue(w.id, preset)}
-                                    className="rounded border border-red-300 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+                                    className="rounded px-2 py-1 text-xs"
+                                    style={{ border: "1px solid var(--zr-error)", color: "var(--zr-error)", background: "transparent" }}
                                   >
                                     {preset}
                                   </button>
@@ -2067,34 +2114,35 @@ export default function MeasureJobPage() {
 
             {/* Customer Sign-Off Modal */}
             {showSignOff && (
-              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4">
-                  <h3 className="text-lg font-bold">Customer Sign-Off</h3>
-                  <p className="text-sm text-gray-500">Customer confirms the installation is complete and satisfactory.</p>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0, 0, 0, 0.5)" }}>
+                <div className="rounded-2xl w-full max-w-md p-5 space-y-4" style={{ background: "var(--zr-surface-1)" }}>
+                  <h3 className="text-lg font-bold" style={{ color: "var(--zr-text-primary)" }}>Customer Sign-Off</h3>
+                  <p className="text-sm" style={{ color: "var(--zr-text-secondary)" }}>Customer confirms the installation is complete and satisfactory.</p>
 
                   <div>
-                    <label className="text-xs font-medium text-gray-500 block mb-1">Customer Name</label>
+                    <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Customer Name</label>
                     <input value={signOffName} onChange={e => setSignOffName(e.target.value)}
-                      placeholder="Full name" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
+                      placeholder="Full name" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-gray-500 block mb-1">Signature</label>
+                    <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Signature</label>
                     <canvas ref={el => { signCanvasRef.current = el; initSignCanvas(el); }}
                       width={360} height={150}
-                      className="w-full border rounded-xl bg-gray-50 touch-none" />
+                      className="w-full rounded-xl touch-none" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} />
                     <button onClick={() => {
                       const ctx = signCanvasRef.current?.getContext("2d");
                       if (ctx && signCanvasRef.current) ctx.clearRect(0, 0, signCanvasRef.current.width, signCanvasRef.current.height);
-                    }} className="text-xs text-blue-600 mt-1">Clear signature</button>
+                    }} className="text-xs mt-1" style={{ color: "var(--zr-orange)" }}>Clear signature</button>
                   </div>
 
                   <div className="flex gap-2">
-                    <button onClick={() => setShowSignOff(false)} className="flex-1 rounded border py-2.5 text-sm hover:bg-gray-50">
+                    <button onClick={() => setShowSignOff(false)} className="flex-1 rounded py-2.5 text-sm" style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>
                       Cancel
                     </button>
                     <button onClick={submitSignOff} disabled={!signOffName.trim()}
-                      className="flex-1 rounded bg-green-600 text-white py-2.5 text-sm font-semibold disabled:opacity-50">
+                      className="flex-1 rounded text-white py-2.5 text-sm font-semibold disabled:opacity-50"
+                      style={{ background: "var(--zr-success)" }}>
                       Confirm & Complete
                     </button>
                   </div>

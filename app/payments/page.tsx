@@ -108,23 +108,23 @@ export default function PaymentsPage() {
   return (
     <FeatureGate require="quoting">
       <PermissionGate require="view_financials">
-        <main className="min-h-screen bg-white p-4 text-black text-sm">
+        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
           <div className="mx-auto max-w-2xl space-y-5">
         <h1 className="text-xl font-bold">Payments</h1>
 
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded border p-3 text-center">
+          <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
             <div className="text-2xl font-bold text-red-500">{fmtMoney(totalOutstanding)}</div>
             <div className="text-xs text-gray-500 mt-0.5">Outstanding</div>
           </div>
-          <div className="rounded border p-3 text-center">
+          <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
             <div className="text-2xl font-bold text-green-600">{fmtMoney(totalCollected)}</div>
             <div className="text-xs text-gray-500 mt-0.5">Collected</div>
           </div>
         </div>
 
-        {loading ? <p className="text-gray-400">Loading…</p> : (
+        {loading ? <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p> : (
           <>
             {/* Deposit Pending */}
             <section>

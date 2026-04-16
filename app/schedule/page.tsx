@@ -167,7 +167,7 @@ function apptH(appt: Appointment): number {
 
 export default function SchedulePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-gray-400 text-sm">Loading…</div>}>
+    <Suspense fallback={<div style={{ background: "var(--zr-black)", color: "var(--zr-text-secondary)" }} className="min-h-screen flex items-center justify-center text-sm">Loading…</div>}>
       <SchedulePageInner />
     </Suspense>
   );
@@ -493,7 +493,7 @@ function SchedulePageInner() {
   return (
     <FeatureGate require="scheduling">
       <PermissionGate require={["manage_schedule", "complete_installs"]}>
-        <main className="min-h-screen bg-white text-black">
+        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen">
 
       {/* ── Top bar ── */}
       <div className="border-b px-4 py-3 flex items-center justify-between sticky top-0 bg-white z-20">
@@ -1002,7 +1002,7 @@ function MonthView({ currentDate, today, getAppts, selectedDay, onDayClick, onAp
 
       {/* Selected day detail */}
       {selectedDay && (
-        <div className="mt-3 rounded border p-3">
+        <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mt-3 rounded p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="font-medium text-sm">
               {selectedDay.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -1018,7 +1018,7 @@ function MonthView({ currentDate, today, getAppts, selectedDay, onDayClick, onAp
                 const { bg, color, label } = APPT_TYPES[a.type];
                 return (
                   <li key={a.id}>
-                    <button onClick={() => onAppt(a)} className="w-full text-left rounded border p-2 hover:bg-gray-50 flex items-center gap-2">
+                    <button onClick={() => onAppt(a)} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full text-left rounded p-2 hover:opacity-80 flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${APPT_TYPES[a.type].dot}`} />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium truncate">{a.customer_name}</div>

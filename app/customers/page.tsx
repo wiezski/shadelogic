@@ -40,7 +40,7 @@ const STAGE_BADGE: Record<string, string> = {
 
 export default function CustomersListPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm text-gray-400">Loading…</div>}>
+    <Suspense fallback={<div style={{ color: "var(--zr-text-secondary)" }} className="p-4 text-sm">Loading…</div>}>
       <CustomersListInner />
     </Suspense>
   );
@@ -111,19 +111,19 @@ function CustomersListInner() {
   }
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm">
+    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
       <div className="mx-auto max-w-2xl">
-        <Link href="/analytics" className="text-blue-600 hover:underline">← Back to Analytics</Link>
+        <Link href="/analytics" style={{ color: "var(--zr-orange)" }} className="hover:underline">← Back to Analytics</Link>
 
         <div className="mt-3 mb-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">{pageTitle()}</h1>
-          <span className="text-sm text-gray-400">{loading ? "…" : `${customers.length} customers`}</span>
+          <span style={{ color: "var(--zr-text-secondary)" }} className="text-sm">{loading ? "…" : `${customers.length} customers`}</span>
         </div>
 
         {loading ? (
-          <p className="text-gray-400">Loading…</p>
+          <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
         ) : customers.length === 0 ? (
-          <p className="text-gray-400">No customers match this filter.</p>
+          <p style={{ color: "var(--zr-text-secondary)" }}>No customers match this filter.</p>
         ) : (
           <ul className="space-y-2">
             {customers.map(c => {
@@ -132,11 +132,11 @@ function CustomersListInner() {
               return (
                 <li key={c.id}>
                   <Link href={`/customers/${c.id}`}
-                    className="flex items-start justify-between rounded border p-3 hover:bg-gray-50 gap-3">
+                    className="flex items-start justify-between rounded p-3 hover:opacity-80 gap-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
                     <div className="min-w-0">
-                      <div className="font-medium text-blue-600">{name}</div>
+                      <div style={{ color: "var(--zr-orange)" }} className="font-medium">{name}</div>
                       {c.next_action && (
-                        <div className="text-xs text-amber-700 mt-0.5 truncate">→ {c.next_action}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: "var(--zr-warning)" }}>→ {c.next_action}</div>
                       )}
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-1">
@@ -152,7 +152,7 @@ function CustomersListInner() {
                           </span>
                         )}
                       </div>
-                      <span className={`text-xs ${days > 14 ? "text-red-500 font-medium" : "text-gray-400"}`}>
+                      <span style={{ color: days > 14 ? "var(--zr-error)" : "var(--zr-text-muted)" }} className={`text-xs ${days > 14 ? "font-medium" : ""}`}>
                         {days === 0 ? "today" : `${days}d ago`}
                       </span>
                     </div>

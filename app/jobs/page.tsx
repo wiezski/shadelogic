@@ -108,19 +108,19 @@ function JobsPageInner() {
   const title = filter ? (FILTER_LABELS[filter] ?? filter) : measurer ? `Jobs by ${measurer}` : "All Jobs";
 
   return (
-    <main className="min-h-screen bg-white p-4 text-black text-sm">
+    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
       <div className="mx-auto max-w-3xl">
-        <Link href="/analytics" className="text-blue-600 hover:underline">← Back to Analytics</Link>
+        <Link href="/analytics" style={{ color: "var(--zr-orange)" }} className="hover:underline">← Back to Analytics</Link>
 
         <div className="mt-3 mb-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">{title}</h1>
-          <span className="text-sm text-gray-400">{loading ? "…" : `${jobs.length} jobs`}</span>
+          <span style={{ color: "var(--zr-text-secondary)" }} className="text-sm">{loading ? "…" : `${jobs.length} jobs`}</span>
         </div>
 
         {loading ? (
-          <p className="text-gray-400">Loading…</p>
+          <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
         ) : jobs.length === 0 ? (
-          <p className="text-gray-400">No jobs match this filter.</p>
+          <p style={{ color: "var(--zr-text-secondary)" }}>No jobs match this filter.</p>
         ) : (
           <ul className="space-y-2">
             {jobs.map(j => {

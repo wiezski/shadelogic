@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { useEmail } from "../../../lib/use-email";
+import { useAuth } from "../../auth-provider";
 import { PermissionGate } from "../../permission-gate";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -150,6 +152,11 @@ export default function QuotePage() {
   const params  = useParams();
   const quoteId = params.id as string;
   const router  = useRouter();
+  const { companyId } = useAuth();
+  const { send: sendEmailApi, sending: emailSending } = useEmail();
+  const [emailSentQuote, setEmailSentQuote] = useState(false);
+
+  const [compSettings, setCompSettings] = useState<{ name: string; phone: string | null }>({ name: "ZeroRemake", phone: null });
 
   const [quote,       setQuote]       = useState<Quote | null>(null);
   const [customer,    setCustomer]    = useState<Customer | null>(null);
@@ -219,7 +226,12 @@ export default function QuotePage() {
   const [notes,    setNotes]    = useState("");
   const [discount, setDiscount] = useState("0");
 
-  useEffect(() => { if (quoteId) load(); }, [quoteId]); // eslint-disable-line
+  useEffect(() => {
+    if (quoteId) load();
+    supabase.from("company_settings").select("name, phone").limit(1).single().then(({ data }) => {
+      if (data) setCompSettings({ name: data.name || "ZeroRemake", phone: data.phone || null });
+    });
+  }, [quoteId]); // eslint-disable-line
 
   async function load() {
     setLoading(true);
@@ -1540,8 +1552,42 @@ export default function QuotePage() {
           </a>
           <a href={`mailto:${customer?.email ?? ""}?subject=${encodeURIComponent(`Your Quote — ${title || "ZeroRemake"}`)}&body=${encodeURIComponent(emailBody)}`}
             className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
-            📧 Send via Email {customer?.email ? `(${customer.email})` : ""}
+            📧 Send via Email App {customer?.email ? `(${customer.email})` : ""}
           </a>
+          {customer?.email && (
+            <button
+              disabled={emailSending || emailSentQuote}
+              onClick={async () => {
+                const ok = await sendEmailApi({
+                  type: "quote_delivery",
+                  to: customer.email!,
+                  companyId: companyId || "",
+                  companyName: compSettings.name,
+                  companyPhone: compSettings.phone || undefined,
+                  customerId: quote.customer_id,
+                  quoteId: quoteId,
+                  customerFirstName: customerName.split(" ")[0],
+                  quoteNumber: quoteId.slice(0, 8).toUpperCase(),
+                  totalAmount: fmtMoney(total),
+                  validDays: quote.valid_days || 30,
+                });
+                if (ok) {
+                  setEmailSentQuote(true);
+                  // Auto-mark as sent if still draft
+                  if (quote.status === "draft") {
+                    await supabase.from("quotes").update({ status: "sent" }).eq("id", quoteId);
+                    setQuote({ ...quote, status: "sent" });
+                    await supabase.from("activity_log").insert([{ customer_id: quote.customer_id, type: "email", notes: `Quote emailed to ${customer.email}. Total: ${fmtMoney(total)}`, created_by: "ZeroRemake" }]);
+                  }
+                }
+              }}
+              className={`flex items-center gap-2 w-full rounded border px-3 py-2 text-sm ${
+                emailSentQuote ? "border-green-500 text-green-700 bg-green-50" : "border-orange-500 text-orange-700 hover:bg-orange-50"
+              }`}
+            >
+              {emailSentQuote ? "✓ Branded Email Sent" : emailSending ? "Sending…" : `📧 Send Branded Email to ${customer.email}`}
+            </button>
+          )}
           <Link href={`/schedule?customerId=${quote.customer_id}&customerName=${encodeURIComponent(customerName)}`}
             className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
             📅 Schedule Follow-up Appointment

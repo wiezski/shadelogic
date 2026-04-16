@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { useEmail } from "../../lib/use-email";
+import { useAuth } from "../auth-provider";
 import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
 
@@ -58,6 +60,7 @@ type CustomerOption = {
   name: string;
   address: string | null;
   phone: string | null;
+  email: string | null;
 };
 
 // ── Constants ──────────────────────────────────────────────────
@@ -175,6 +178,10 @@ export default function SchedulePage() {
 
 function SchedulePageInner() {
   const searchParams = useSearchParams();
+  const { companyId } = useAuth();
+  const { send: sendEmailApi, sending: emailSending } = useEmail();
+  const [compSettings, setCompSettings] = useState<{ name: string; phone: string | null; google_review_link: string | null }>({ name: "ZeroRemake", phone: null, google_review_link: null });
+  const [emailSent, setEmailSent] = useState(false);
   const incomingCustomerId   = searchParams.get("customerId")   ?? "";
   const incomingCustomerName = searchParams.get("customerName") ?? "";
   const incomingCustomerAddr = searchParams.get("customerAddress") ?? "";
@@ -222,7 +229,7 @@ function SchedulePageInner() {
   // stable key to avoid Date object reference churn in useEffect
   const dateKey = isoDate(currentDate);
 
-  useEffect(() => { loadCustomers(); }, []);
+  useEffect(() => { loadCustomers(); loadCompanySettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { loadAppointments(); }, [dateKey, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If arriving from a customer page, pre-fill and open the create modal
@@ -280,12 +287,17 @@ function SchedulePageInner() {
 
   async function loadCustomers() {
     const { data } = await supabase
-      .from("customers").select("id, first_name, last_name, address, phone")
+      .from("customers").select("id, first_name, last_name, address, phone, email")
       .order("last_name", { ascending: true });
     setCustomers((data || []).map((c: any) => ({
       id: c.id, name: [c.first_name, c.last_name].filter(Boolean).join(" "),
-      address: c.address, phone: c.phone ?? null,
+      address: c.address, phone: c.phone ?? null, email: c.email ?? null,
     })));
+  }
+
+  async function loadCompanySettings() {
+    const { data } = await supabase.from("company_settings").select("name, phone, google_review_link").limit(1).single();
+    if (data) setCompSettings({ name: data.name || "ZeroRemake", phone: data.phone || null, google_review_link: data.google_review_link || null });
   }
 
   function navigate(dir: -1 | 1) {
@@ -665,7 +677,7 @@ function SchedulePageInner() {
 
       {/* ══ CONFIRMATION MODAL ══ */}
       {showConfirm && selectedAppt && (
-        <Modal title="Send Confirmation" onClose={() => setShowConfirm(false)}>
+        <Modal title="Send Confirmation" onClose={() => { setShowConfirm(false); setEmailSent(false); }}>
           <div className="space-y-3">
             <p className="text-sm text-gray-500">
               Review the message for{" "}
@@ -682,16 +694,49 @@ function SchedulePageInner() {
               💬 Open in Messages App
             </a>
 
+            {/* Send email confirmation */}
+            {(() => {
+              const custEmail = customers.find(c => c.id === selectedAppt.customer_id)?.email;
+              if (!custEmail) return null;
+              return (
+                <button
+                  disabled={emailSending || emailSent}
+                  onClick={async () => {
+                    const ok = await sendEmailApi({
+                      type: "appointment_confirmation",
+                      to: custEmail,
+                      companyId: companyId || "",
+                      companyName: compSettings.name,
+                      companyPhone: compSettings.phone || undefined,
+                      customerId: selectedAppt.customer_id,
+                      appointmentId: selectedAppt.id,
+                      customerFirstName: selectedAppt.customer_name.split(" ")[0],
+                      appointmentType: selectedAppt.type,
+                      scheduledAt: selectedAppt.scheduled_at,
+                      durationMinutes: selectedAppt.duration_minutes,
+                      address: selectedAppt.address || undefined,
+                    });
+                    if (ok) setEmailSent(true);
+                  }}
+                  className={`flex items-center justify-center gap-2 w-full border rounded py-2 text-sm ${
+                    emailSent ? "border-green-600 text-green-700 bg-green-50" : "border-blue-600 text-blue-700 hover:bg-blue-50"
+                  }`}
+                >
+                  {emailSent ? "✓ Email Sent" : emailSending ? "Sending…" : `📧 Email Confirmation to ${custEmail}`}
+                </button>
+              );
+            })()}
+
             <div className="flex gap-2">
               <button onClick={sendConfirmation}
                 className="flex-1 bg-black text-white rounded py-2 text-sm">
                 ✓ Mark as Sent
               </button>
-              <button onClick={() => setShowConfirm(false)}
+              <button onClick={() => { setShowConfirm(false); setEmailSent(false); }}
                 className="border rounded py-2 px-4 text-sm">Skip</button>
             </div>
             <p className="text-xs text-gray-400">
-              "Open in Messages" pre-fills your messages app. "Mark as Sent" logs it as activity without opening Messages.
+              "Open in Messages" pre-fills your messages app. "Email Confirmation" sends a branded email. "Mark as Sent" logs activity.
             </p>
           </div>
         </Modal>

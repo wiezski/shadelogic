@@ -60,6 +60,13 @@ function CalculatorInner() {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [markupOverride, setMarkupOverride] = useState("");
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [addingCustomer, setAddingCustomer] = useState(false);
   const [creatingJob, setCreatingJob] = useState(false);
 
   useEffect(() => {
@@ -390,7 +397,8 @@ function CalculatorInner() {
       )}
       {/* Customer picker modal */}
       {showCustomerPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowCustomerPicker(false); setShowAddCustomer(false); setCustomerSearch(""); } }}>
           <div className="rounded-xl shadow-2xl w-full max-w-sm mx-4"
             style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
             <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--zr-border)" }}>
@@ -399,37 +407,134 @@ function CalculatorInner() {
                 Which customer is this measure job for?
               </div>
             </div>
-            <div className="p-3 max-h-64 overflow-y-auto flex flex-col gap-1">
-              {customers.length === 0 ? (
-                <div className="text-xs text-center py-4" style={{ color: "var(--zr-text-muted)" }}>
-                  No customers yet. Add one from the Home page first.
-                </div>
-              ) : (
-                customers.map(c => (
+
+            {/* Search */}
+            <div className="px-3 pt-3">
+              <input type="text" placeholder="Search customers..." value={customerSearch}
+                onChange={e => setCustomerSearch(e.target.value)}
+                autoFocus
+                className="w-full text-sm rounded px-2.5 py-2"
+                style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+            </div>
+
+            {/* Customer list */}
+            <div className="p-3 max-h-52 overflow-y-auto flex flex-col gap-0.5">
+              {(() => {
+                const q = customerSearch.toLowerCase().trim();
+                const filtered = q
+                  ? customers.filter(c => {
+                      const name = [c.first_name, c.last_name].filter(Boolean).join(" ").toLowerCase();
+                      return name.includes(q);
+                    })
+                  : customers;
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-xs text-center py-3" style={{ color: "var(--zr-text-muted)" }}>
+                      {customers.length === 0 ? "No customers yet." : `No matches for "${customerSearch}"`}
+                    </div>
+                  );
+                }
+                return filtered.map(c => (
                   <button key={c.id}
                     onClick={() => createMeasureJob(c.id)}
                     disabled={creatingJob}
                     className="w-full text-left px-3 py-2 rounded text-sm transition-colors"
-                    style={{ color: "var(--zr-text-primary)" }}
+                    style={{ color: "var(--zr-text-primary)", opacity: creatingJob ? 0.5 : 1 }}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--zr-surface-2)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                     {[c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed"}
                   </button>
-                ))
+                ));
+              })()}
+            </div>
+
+            {/* Add new customer inline */}
+            <div style={{ borderTop: "1px solid var(--zr-border)" }}>
+              {!showAddCustomer ? (
+                <button onClick={() => setShowAddCustomer(true)}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors"
+                  style={{ color: "var(--zr-primary)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--zr-surface-2)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  + Add New Customer
+                </button>
+              ) : (
+                <div className="px-4 py-3 flex flex-col gap-2">
+                  <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>NEW CUSTOMER</div>
+                  <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                    <input type="text" placeholder="First name" value={newFirstName}
+                      onChange={e => setNewFirstName(e.target.value)} autoFocus
+                      className="text-sm rounded px-2.5 py-1.5"
+                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                    <input type="text" placeholder="Last name" value={newLastName}
+                      onChange={e => setNewLastName(e.target.value)}
+                      className="text-sm rounded px-2.5 py-1.5"
+                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                  </div>
+                  <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                    <input type="tel" placeholder="Phone (optional)" value={newPhone}
+                      onChange={e => setNewPhone(e.target.value)}
+                      className="text-sm rounded px-2.5 py-1.5"
+                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                    <input type="email" placeholder="Email (optional)" value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      className="text-sm rounded px-2.5 py-1.5"
+                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={addCustomerAndCreate}
+                      disabled={addingCustomer || (!newFirstName.trim() && !newLastName.trim())}
+                      className="text-xs px-4 py-2 rounded font-semibold text-white"
+                      style={{ background: "var(--zr-primary)", opacity: addingCustomer || (!newFirstName.trim() && !newLastName.trim()) ? 0.5 : 1 }}>
+                      {addingCustomer ? "Creating..." : "Add & Create Measure Job"}
+                    </button>
+                    <button onClick={() => { setShowAddCustomer(false); setNewFirstName(""); setNewLastName(""); setNewPhone(""); setNewEmail(""); }}
+                      className="text-xs px-3 py-2 rounded"
+                      style={{ color: "var(--zr-text-muted)" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-            <div className="px-4 py-3" style={{ borderTop: "1px solid var(--zr-border)" }}>
-              <button onClick={() => setShowCustomerPicker(false)}
-                className="text-xs px-3 py-1.5 rounded font-medium"
-                style={{ color: "var(--zr-text-muted)" }}>
-                Cancel
-              </button>
-            </div>
+
+            {/* Close */}
+            {!showAddCustomer && (
+              <div className="px-4 py-2" style={{ borderTop: "1px solid var(--zr-border)" }}>
+                <button onClick={() => { setShowCustomerPicker(false); setCustomerSearch(""); }}
+                  className="text-xs px-3 py-1.5 rounded font-medium"
+                  style={{ color: "var(--zr-text-muted)" }}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
+
+  async function addCustomerAndCreate() {
+    if (!newFirstName.trim() && !newLastName.trim()) return;
+    setAddingCustomer(true);
+    const { data: newCust, error } = await supabase.from("customers").insert([{
+      first_name: newFirstName.trim() || null,
+      last_name: newLastName.trim() || null,
+      phone: newPhone.trim() || null,
+      email: newEmail.trim() || null,
+      lead_status: "New",
+    }]).select("id, first_name, last_name").single();
+    if (error || !newCust) {
+      alert("Error creating customer");
+      setAddingCustomer(false);
+      return;
+    }
+    // Add to local list
+    setCustomers(prev => [...prev, newCust as CustomerOption]);
+    setAddingCustomer(false);
+    // Create the measure job for this new customer
+    await createMeasureJob(newCust.id);
+  }
 
   async function createMeasureJob(customerId: string) {
     if (lines.length === 0) return;

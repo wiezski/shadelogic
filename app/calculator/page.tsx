@@ -47,21 +47,32 @@ export default function CalculatorPage() {
   );
 }
 
+type CustomerOption = { id: string; first_name: string | null; last_name: string | null };
+
 function CalculatorInner() {
   const { companyId } = useAuth();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [lines, setLines] = useState<LineItem[]>([]);
   const [nextId, setNextId] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [markupOverride, setMarkupOverride] = useState("");
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
-    supabase.from("product_catalog").select("id, name, category, manufacturer, default_cost, default_multiplier, min_width, max_width, min_height, max_height, lead_time_days")
-      .eq("active", true).order("name")
-      .then(({ data }) => { setProducts(data ?? []); setLoading(false); });
+    Promise.all([
+      supabase.from("product_catalog").select("id, name, category, manufacturer, default_cost, default_multiplier, min_width, max_width, min_height, max_height, lead_time_days")
+        .eq("active", true).order("name"),
+      supabase.from("customers").select("id, first_name, last_name").order("last_name"),
+    ]).then(([prodRes, custRes]) => {
+      setProducts(prodRes.data ?? []);
+      setCustomers(custRes.data ?? []);
+      setLoading(false);
+    });
   }, [companyId]);
 
   function addLine(productId?: string) {
@@ -370,24 +381,68 @@ function CalculatorInner() {
               </div>
             </div>
           </div>
-          <button onClick={createMeasureJob}
+          <button onClick={() => setShowCustomerPicker(true)}
             className="mt-3 w-full text-sm px-4 py-2.5 rounded-lg font-semibold transition-colors"
             style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>
             📋 Create Measure Job from Estimate
           </button>
         </div>
       )}
+      {/* Customer picker modal */}
+      {showCustomerPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
+          <div className="rounded-xl shadow-2xl w-full max-w-sm mx-4"
+            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--zr-border)" }}>
+              <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>Select Customer</div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                Which customer is this measure job for?
+              </div>
+            </div>
+            <div className="p-3 max-h-64 overflow-y-auto flex flex-col gap-1">
+              {customers.length === 0 ? (
+                <div className="text-xs text-center py-4" style={{ color: "var(--zr-text-muted)" }}>
+                  No customers yet. Add one from the Home page first.
+                </div>
+              ) : (
+                customers.map(c => (
+                  <button key={c.id}
+                    onClick={() => createMeasureJob(c.id)}
+                    disabled={creatingJob}
+                    className="w-full text-left px-3 py-2 rounded text-sm transition-colors"
+                    style={{ color: "var(--zr-text-primary)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--zr-surface-2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    {[c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed"}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="px-4 py-3" style={{ borderTop: "1px solid var(--zr-border)" }}>
+              <button onClick={() => setShowCustomerPicker(false)}
+                className="text-xs px-3 py-1.5 rounded font-medium"
+                style={{ color: "var(--zr-text-muted)" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
-  async function createMeasureJob() {
+  async function createMeasureJob(customerId: string) {
     if (lines.length === 0) return;
-    // Create a measure job with windows pre-filled from calculator lines
+    setCreatingJob(true);
+    const cust = customers.find(c => c.id === customerId);
+    const custName = cust ? [cust.first_name, cust.last_name].filter(Boolean).join(" ") : "Customer";
+
     const { data: job, error } = await supabase.from("measure_jobs").insert([{
-      title: `Calculator Estimate — ${totalWindows} windows`,
+      customer_id: customerId,
+      title: `Measure — ${custName} (${totalWindows} windows)`,
     }]).select("id").single();
 
-    if (error || !job) { alert("Error creating measure job"); return; }
+    if (error || !job) { alert("Error creating measure job"); setCreatingJob(false); return; }
 
     // Create a default room
     const { data: room } = await supabase.from("rooms").insert([{
@@ -397,7 +452,6 @@ function CalculatorInner() {
     }]).select("id").single();
 
     if (room) {
-      // Create windows with products pre-filled
       const windowInserts = lines.flatMap((l, idx) => {
         const arr = [];
         for (let q = 0; q < l.qty; q++) {
@@ -416,6 +470,8 @@ function CalculatorInner() {
       }
     }
 
+    setCreatingJob(false);
+    setShowCustomerPicker(false);
     router.push(`/measure-jobs/${job.id}`);
   }
 }

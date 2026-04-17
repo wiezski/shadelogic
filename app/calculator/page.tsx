@@ -62,8 +62,9 @@ function CalculatorInner() {
       .then(({ data }) => { setProducts(data ?? []); setLoading(false); });
   }, [companyId]);
 
-  function addLine() {
-    const prod = products.find(p => p.id === selectedProduct);
+  function addLine(productId?: string) {
+    const pid = productId || selectedProduct;
+    const prod = products.find(p => p.id === pid);
     if (!prod) return;
     setLines([...lines, {
       id: nextId,
@@ -76,6 +77,7 @@ function CalculatorInner() {
       multiplier: prod.default_multiplier,
     }]);
     setNextId(nextId + 1);
+    setSelectedProduct("");
   }
 
   function updateLine(id: number, field: string, value: string | number) {
@@ -162,14 +164,13 @@ function CalculatorInner() {
         </div>
       </div>
 
-      {/* Add product row */}
-      <div className="flex gap-2 mb-4 items-end flex-wrap">
+      {/* Add product — dropdown auto-adds on select */}
+      <div className="flex gap-2 mb-4 items-center flex-wrap">
         <div className="flex-1" style={{ minWidth: 200 }}>
-          <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Product</label>
-          <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}
-            className="w-full text-sm rounded px-2.5 py-1.5"
-            style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }}>
-            <option value="">Select a product...</option>
+          <select value="" onChange={e => { if (e.target.value) addLine(e.target.value); }}
+            className="w-full text-sm rounded px-2.5 py-2"
+            style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "2px solid var(--zr-primary)", cursor: "pointer" }}>
+            <option value="">+ Add a product to estimate...</option>
             {products.map(p => (
               <option key={p.id} value={p.id}>
                 {p.name} {p.manufacturer ? `(${p.manufacturer})` : ""} — {fmtMoney(p.default_cost)} × {p.default_multiplier}
@@ -177,11 +178,6 @@ function CalculatorInner() {
             ))}
           </select>
         </div>
-        <button onClick={addLine} disabled={!selectedProduct}
-          className="text-xs px-4 py-1.5 rounded font-medium transition-colors shrink-0"
-          style={{ background: "var(--zr-primary)", color: "#fff", opacity: selectedProduct ? 1 : 0.5 }}>
-          + Add Line
-        </button>
         {lines.length > 0 && (
           <button onClick={() => setLines([])}
             className="text-xs px-3 py-1.5 rounded font-medium transition-colors shrink-0"
@@ -326,7 +322,7 @@ function CalculatorInner() {
       {lines.length === 0 && (
         <div className="rounded-lg p-8 text-center" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
           <div className="text-sm font-medium mb-1" style={{ color: "var(--zr-text-secondary)" }}>
-            Select a product above and click "+ Add Line" to start estimating
+            Pick a product from the dropdown above or tap one below
           </div>
           <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
             Costs and markups pull from your product catalog. You can override per line.
@@ -340,7 +336,7 @@ function CalculatorInner() {
           <div className="text-xs font-semibold mb-2" style={{ color: "var(--zr-text-muted)" }}>YOUR PRODUCT CATALOG</div>
           <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
             {products.slice(0, 12).map(p => (
-              <button key={p.id} onClick={() => { setSelectedProduct(p.id); }}
+              <button key={p.id} onClick={() => { addLine(p.id); }}
                 className="text-left rounded-lg p-3 transition-colors"
                 style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--zr-primary)")}

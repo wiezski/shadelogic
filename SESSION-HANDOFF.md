@@ -96,12 +96,21 @@ Payment connections settings page and public customer-facing invoice page:
 - **Updated app/invoices/[id]/page.tsx**: added "Copy Invoice Link" section with shareable public URL
 - **Note**: Payment processor OAuth/API flows are NOT yet implemented — "Pay Now" shows placeholder alert. Manual methods work fully.
 
+### Phase 10 — Automation Engine — Complete ✓
+Full if/then automation system with daily cron processing:
+- **New tables**: automation_rules, automation_log, automation_queue
+- **Enhanced company_settings**: automation_enabled, stuck_lead_alerts, threshold settings
+- **lib/automation.ts**: Server-side engine — trigger evaluation (time_elapsed, status_change), action execution (send_email, create_task, update_field, create_activity, send_notification), stuck lead detection, dedup (7-day window), queue processing
+- **Settings → Automations page**: IF/THEN rule builder, 5 preset rules (quote follow-up, hot lead alert, new lead nudge, post-install email, warm lead reminder), enable/disable toggle, activity log tab
+- **Cron**: Integrated into daily 8am cron (send-reminders route also runs automation engine)
+- Standalone route at /api/cron/process-automation for manual testing
+
 ### Next Up
 - Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
 - Phase 8 (Builder Portal) — SKIPPED for now, may revisit later
-- Continue to Phase 10 (Automation Engine) per MVP-BUILD-PLAN.md
+- Continue to Phase 11 (Advanced Analytics) per MVP-BUILD-PLAN.md
 - Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
 
 ---

@@ -591,7 +591,24 @@ export default function HomePage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-3 flex items-center justify-between">
           <h1 style={{ color: "var(--zr-text-primary)" }} className="text-xl font-bold">Dashboard</h1>
-          <Link href="/analytics" style={{ color: "var(--zr-orange)" }} className="text-sm hover:underline">Analytics →</Link>
+          <div className="flex items-center gap-3">
+            {tab === "dashboard" && (
+              <>
+                {editingLayout && (
+                  <button onClick={resetLayout} className="text-xs px-2 py-1 rounded"
+                    style={{ color: "var(--zr-text-muted)" }}>
+                    Reset
+                  </button>
+                )}
+                <button onClick={() => setEditingLayout(!editingLayout)}
+                  className="text-xs px-2.5 py-1.5 rounded font-medium"
+                  style={{ background: editingLayout ? "var(--zr-orange)" : "var(--zr-surface-2)", color: editingLayout ? "#fff" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                  {editingLayout ? "✓ Done" : "⚙ Customize"}
+                </button>
+              </>
+            )}
+            <Link href="/analytics" style={{ color: "var(--zr-orange)" }} className="text-sm hover:underline">Analytics →</Link>
+          </div>
         </div>
 
         {/* Quick-actions */}
@@ -620,21 +637,6 @@ export default function HomePage() {
 
         {tab === "dashboard" && (
           <>
-            {/* Edit layout toggle */}
-            <div className="mb-3 flex items-center justify-end gap-2">
-              {editingLayout && (
-                <button onClick={resetLayout} className="text-xs px-2 py-1 rounded"
-                  style={{ color: "var(--zr-text-muted)" }}>
-                  Reset to Default
-                </button>
-              )}
-              <button onClick={() => setEditingLayout(!editingLayout)}
-                className="text-xs px-2.5 py-1 rounded font-medium"
-                style={{ background: editingLayout ? "var(--zr-orange)" : "var(--zr-surface-2)", color: editingLayout ? "#fff" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
-                {editingLayout ? "Done" : "⚙ Customize"}
-              </button>
-            </div>
-
             {/* Widgets in user's order */}
             {widgetOrder.map((id, idx) => (
               <div key={id} className="mb-4">

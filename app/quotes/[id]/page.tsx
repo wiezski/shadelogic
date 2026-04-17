@@ -212,6 +212,10 @@ export default function QuotePage() {
   const [showLinkMeasure, setShowLinkMeasure] = useState(false);
   const [pulling,         setPulling]         = useState(false);
 
+  // Schedule measure prompt (shown after quote sent → auto-creates measure job)
+  const [showSchedulePrompt, setShowSchedulePrompt] = useState(false);
+  const [autoMeasureJobId,   setAutoMeasureJobId]   = useState<string | null>(null);
+
   // Add custom line
   const [showAddLine,   setShowAddLine]   = useState(false);
   const [newProduct,    setNewProduct]    = useState("");
@@ -440,6 +444,57 @@ export default function QuotePage() {
         title: `Follow up on quote — ${fmtMoney(quote.total || 0)}`,
         due_date: followUpDate.toISOString().slice(0, 10),
       }]);
+
+      // Auto-create measure job from quote lines (if no linked measure already)
+      if (!quote.linked_measure_id && lines.length > 0 && customer) {
+        const custName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+        const { data: mJob } = await supabase.from("measure_jobs").insert([{
+          customer_id: quote.customer_id,
+          title: `Measure — ${custName} (${lines.length} windows)`,
+          install_mode: false,
+        }]).select("id").single();
+
+        if (mJob) {
+          // Link measure job to quote
+          await supabase.from("quotes").update({ linked_measure_id: mJob.id }).eq("id", quoteId);
+          setQuote(prev => prev ? { ...prev, linked_measure_id: mJob.id } : prev);
+
+          // Create a room + windows from line items
+          const { data: room } = await supabase.from("rooms").insert([{
+            measure_job_id: mJob.id, name: "From Quote", sort_order: 0,
+          }]).select("id").single();
+
+          if (room) {
+            const winInserts = lines.map((l, idx) => ({
+              room_id: room.id,
+              sort_order: idx,
+              product: l.product_name,
+              width: l.width || null,
+              height: l.height || null,
+              label: l.window_label || `Window ${idx + 1}`,
+            }));
+            if (winInserts.length > 0) await supabase.from("windows").insert(winInserts);
+          }
+
+          // Refresh measure jobs list
+          const { data: updatedJobs } = await supabase.from("measure_jobs")
+            .select("id, title").eq("customer_id", quote.customer_id).eq("install_mode", false)
+            .order("created_at", { ascending: false });
+          if (updatedJobs) setMeasureJobs(updatedJobs as MeasureJob[]);
+
+          // Show "Schedule Measure" prompt
+          setAutoMeasureJobId(mJob.id);
+          setShowSchedulePrompt(true);
+
+          // Also create a task reminder in case they don't schedule now
+          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          await supabase.from("tasks").insert([{
+            customer_id: quote.customer_id,
+            title: `Schedule measure for ${custName}`,
+            due_date: tomorrow.toISOString().slice(0, 10),
+          }]);
+        }
+      }
     }
     if (newStatus === "approved") {
       await supabase.from("tasks").insert([
@@ -978,6 +1033,41 @@ export default function QuotePage() {
             <div>
               <div className="text-xs font-semibold text-green-800">Signed by {quote.signed_name}</div>
               <div className="text-xs text-green-600">{new Date(quote.signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Schedule Measure Prompt — appears after quote sent & measure auto-created */}
+        {showSchedulePrompt && autoMeasureJobId && (
+          <div className="rounded-lg border-2 border-blue-400 bg-blue-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-blue-800">📋 Measure Job Created</div>
+                <div className="text-xs text-blue-600 mt-1">
+                  A measure job has been created with all {lines.length} window{lines.length !== 1 ? "s" : ""} from this quote.
+                  Schedule the measure appointment now?
+                </div>
+              </div>
+              <button onClick={() => setShowSchedulePrompt(false)}
+                className="text-blue-400 hover:text-blue-600 text-lg leading-none shrink-0">×</button>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => router.push(`/measure-jobs/${autoMeasureJobId}`)}
+                className="text-xs px-4 py-2 rounded font-semibold text-white"
+                style={{ background: "var(--zr-primary)" }}>
+                Open Measure Job →
+              </button>
+              <Link href="/schedule"
+                className="text-xs px-4 py-2 rounded font-semibold border border-blue-400 text-blue-700 hover:bg-blue-100 no-underline">
+                Go to Schedule
+              </Link>
+              <button onClick={() => setShowSchedulePrompt(false)}
+                className="text-xs px-3 py-2 rounded text-blue-500 hover:text-blue-700">
+                Later
+              </button>
+            </div>
+            <div className="text-xs text-blue-400 mt-2">
+              A reminder task has been created for tomorrow if you don't schedule now.
             </div>
           </div>
         )}

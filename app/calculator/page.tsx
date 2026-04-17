@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
 import { PermissionGate } from "../permission-gate";
@@ -48,6 +49,7 @@ export default function CalculatorPage() {
 
 function CalculatorInner() {
   const { companyId } = useAuth();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [lines, setLines] = useState<LineItem[]>([]);
@@ -297,34 +299,6 @@ function CalculatorInner() {
             })}
           </div>
 
-          {/* Totals bar */}
-          <div className="rounded-lg mt-3 px-4 py-3"
-            style={{ background: "var(--zr-primary)", color: "#fff" }}>
-            <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))" }}>
-              <div>
-                <div className="text-xs" style={{ opacity: 0.7 }}>Windows</div>
-                <div className="text-base font-bold">{totalWindows}</div>
-              </div>
-              <div>
-                <div className="text-xs" style={{ opacity: 0.7 }}>Cost</div>
-                <div className="text-base font-bold">{fmtMoney(totalCost)}</div>
-              </div>
-              <div>
-                <div className="text-xs" style={{ opacity: 0.7 }}>Retail</div>
-                <div className="text-base font-bold">{fmtMoney(totalRetail)}</div>
-              </div>
-              <div>
-                <div className="text-xs" style={{ opacity: 0.7 }}>Profit</div>
-                <div className="text-base font-bold">{fmtMoney(totalProfit)}</div>
-              </div>
-              <div>
-                <div className="text-xs" style={{ opacity: 0.7 }}>Margin</div>
-                <div className="text-base font-bold">
-                  {totalRetail > 0 ? ((totalProfit / totalRetail) * 100).toFixed(1) + "%" : "—"}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -365,6 +339,88 @@ function CalculatorInner() {
           </div>
         </div>
       )}
+
+      {/* Spacer so sticky bar doesn't cover content */}
+      {lines.length > 0 && <div style={{ height: 100 }} />}
+
+      {/* Sticky totals bar — always visible at bottom when lines exist */}
+      {lines.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-lg"
+          style={{ background: "var(--zr-primary)", color: "#fff" }}>
+          <div style={{ maxWidth: 1000, margin: "0 auto", padding: "10px 16px" }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex gap-4 flex-wrap">
+                <div>
+                  <div className="text-xs" style={{ opacity: 0.7 }}>Windows</div>
+                  <div className="text-sm font-bold">{totalWindows}</div>
+                </div>
+                <div>
+                  <div className="text-xs" style={{ opacity: 0.7 }}>Cost</div>
+                  <div className="text-sm font-bold">{fmtMoney(totalCost)}</div>
+                </div>
+                <div>
+                  <div className="text-xs" style={{ opacity: 0.7 }}>Retail</div>
+                  <div className="text-sm font-bold">{fmtMoney(totalRetail)}</div>
+                </div>
+                <div>
+                  <div className="text-xs" style={{ opacity: 0.7 }}>Profit</div>
+                  <div className="text-sm font-bold">{fmtMoney(totalProfit)}</div>
+                </div>
+                <div>
+                  <div className="text-xs" style={{ opacity: 0.7 }}>Margin</div>
+                  <div className="text-sm font-bold">
+                    {totalRetail > 0 ? ((totalProfit / totalRetail) * 100).toFixed(1) + "%" : "—"}
+                  </div>
+                </div>
+              </div>
+              <button onClick={createMeasureJob}
+                className="text-xs px-3 py-2 rounded-lg font-semibold transition-colors shrink-0"
+                style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>
+                → Create Measure Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  async function createMeasureJob() {
+    if (lines.length === 0) return;
+    // Create a measure job with windows pre-filled from calculator lines
+    const { data: job, error } = await supabase.from("measure_jobs").insert([{
+      title: `Calculator Estimate — ${totalWindows} windows`,
+    }]).select("id").single();
+
+    if (error || !job) { alert("Error creating measure job"); return; }
+
+    // Create a default room
+    const { data: room } = await supabase.from("rooms").insert([{
+      measure_job_id: job.id,
+      name: "From Calculator",
+      sort_order: 0,
+    }]).select("id").single();
+
+    if (room) {
+      // Create windows with products pre-filled
+      const windowInserts = lines.flatMap((l, idx) => {
+        const arr = [];
+        for (let q = 0; q < l.qty; q++) {
+          arr.push({
+            room_id: room.id,
+            sort_order: idx * 10 + q,
+            product: l.product_name,
+            width: l.width || null,
+            height: l.height || null,
+          });
+        }
+        return arr;
+      });
+      if (windowInserts.length > 0) {
+        await supabase.from("windows").insert(windowInserts);
+      }
+    }
+
+    router.push(`/measure-jobs/${job.id}`);
+  }
 }

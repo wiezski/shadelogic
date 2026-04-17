@@ -1,0 +1,364 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../auth-provider";
+import { PermissionGate } from "../permission-gate";
+import { FeatureGate } from "../feature-gate";
+import { Skeleton } from "../ui";
+
+type Product = {
+  id: string;
+  name: string;
+  category: string | null;
+  manufacturer: string | null;
+  default_cost: number;
+  default_multiplier: number;
+  min_width: number | null;
+  max_width: number | null;
+  min_height: number | null;
+  max_height: number | null;
+  lead_time_days: number | null;
+};
+
+type LineItem = {
+  id: number;
+  product_id: string;
+  product_name: string;
+  width: string;
+  height: string;
+  qty: number;
+  unit_cost: number;
+  multiplier: number;
+};
+
+function fmtMoney(n: number) {
+  return "$" + (n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+export default function CalculatorPage() {
+  return (
+    <FeatureGate require="quoting">
+      <PermissionGate require="view_pricing">
+        <CalculatorInner />
+      </PermissionGate>
+    </FeatureGate>
+  );
+}
+
+function CalculatorInner() {
+  const { companyId } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lines, setLines] = useState<LineItem[]>([]);
+  const [nextId, setNextId] = useState(1);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [markupOverride, setMarkupOverride] = useState("");
+
+  useEffect(() => {
+    if (!companyId) return;
+    supabase.from("product_catalog").select("id, name, category, manufacturer, default_cost, default_multiplier, min_width, max_width, min_height, max_height, lead_time_days")
+      .eq("active", true).order("name")
+      .then(({ data }) => { setProducts(data ?? []); setLoading(false); });
+  }, [companyId]);
+
+  function addLine() {
+    const prod = products.find(p => p.id === selectedProduct);
+    if (!prod) return;
+    setLines([...lines, {
+      id: nextId,
+      product_id: prod.id,
+      product_name: prod.name,
+      width: "",
+      height: "",
+      qty: 1,
+      unit_cost: prod.default_cost,
+      multiplier: prod.default_multiplier,
+    }]);
+    setNextId(nextId + 1);
+  }
+
+  function updateLine(id: number, field: string, value: string | number) {
+    setLines(lines.map(l => l.id === id ? { ...l, [field]: value } : l));
+  }
+
+  function removeLine(id: number) {
+    setLines(lines.filter(l => l.id !== id));
+  }
+
+  function duplicateLine(id: number) {
+    const src = lines.find(l => l.id === id);
+    if (!src) return;
+    setLines([...lines, { ...src, id: nextId }]);
+    setNextId(nextId + 1);
+  }
+
+  // Parse dimension (supports fractions like "36 1/2" or "36.5")
+  function parseDim(s: string): number {
+    if (!s) return 0;
+    const parts = s.trim().split(/\s+/);
+    let total = 0;
+    for (const p of parts) {
+      if (p.includes("/")) {
+        const [num, den] = p.split("/");
+        total += parseInt(num) / parseInt(den);
+      } else {
+        total += parseFloat(p) || 0;
+      }
+    }
+    return total;
+  }
+
+  // Calculate sqft for a line
+  function getSqft(l: LineItem): number {
+    const w = parseDim(l.width);
+    const h = parseDim(l.height);
+    if (!w || !h) return 0;
+    return (w * h) / 144; // inches to sqft
+  }
+
+  // Global markup override
+  const globalMultiplier = markupOverride ? parseFloat(markupOverride) : null;
+
+  // Totals
+  const totalCost = lines.reduce((s, l) => {
+    return s + l.unit_cost * l.qty;
+  }, 0);
+  const totalRetail = lines.reduce((s, l) => {
+    const mult = globalMultiplier ?? l.multiplier;
+    return s + l.unit_cost * mult * l.qty;
+  }, 0);
+  const totalProfit = totalRetail - totalCost;
+  const totalWindows = lines.reduce((s, l) => s + l.qty, 0);
+
+  if (loading) {
+    return (
+      <div style={{ padding: "24px", maxWidth: 1000, margin: "0 auto" }}>
+        <Skeleton w="200px" h="28px" />
+        <div style={{ height: 16 }} />
+        <Skeleton lines={4} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "24px", maxWidth: 1000, margin: "0 auto" }}>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>
+            Cost Calculator
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+            Quick estimates from your product catalog. Not a formal quote.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium" style={{ color: "var(--zr-text-muted)" }}>Markup override:</label>
+          <input type="number" step="0.1" placeholder="—" value={markupOverride}
+            onChange={e => setMarkupOverride(e.target.value)}
+            className="text-sm rounded px-2 py-1 w-16 text-center"
+            style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+          <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>×</span>
+        </div>
+      </div>
+
+      {/* Add product row */}
+      <div className="flex gap-2 mb-4 items-end flex-wrap">
+        <div className="flex-1" style={{ minWidth: 200 }}>
+          <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Product</label>
+          <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}
+            className="w-full text-sm rounded px-2.5 py-1.5"
+            style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }}>
+            <option value="">Select a product...</option>
+            {products.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name} {p.manufacturer ? `(${p.manufacturer})` : ""} — {fmtMoney(p.default_cost)} × {p.default_multiplier}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button onClick={addLine} disabled={!selectedProduct}
+          className="text-xs px-4 py-1.5 rounded font-medium transition-colors shrink-0"
+          style={{ background: "var(--zr-primary)", color: "#fff", opacity: selectedProduct ? 1 : 0.5 }}>
+          + Add Line
+        </button>
+        {lines.length > 0 && (
+          <button onClick={() => setLines([])}
+            className="text-xs px-3 py-1.5 rounded font-medium transition-colors shrink-0"
+            style={{ color: "var(--zr-text-muted)" }}>
+            Clear All
+          </button>
+        )}
+      </div>
+
+      {/* Lines table */}
+      {lines.length > 0 && (
+        <div className="rounded-lg overflow-hidden mb-4" style={{ border: "1px solid var(--zr-border)" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "var(--zr-surface-2)" }}>
+                  {["Product", "Width", "Height", "Qty", "Unit Cost", "Markup", "Retail", "Profit", ""].map(h => (
+                    <th key={h} className="text-left px-3 py-2 text-xs font-semibold"
+                      style={{ color: "var(--zr-text-muted)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map(l => {
+                  const mult = globalMultiplier ?? l.multiplier;
+                  const lineCost = l.unit_cost * l.qty;
+                  const lineRetail = l.unit_cost * mult * l.qty;
+                  const lineProfit = lineRetail - lineCost;
+                  const prod = products.find(p => p.id === l.product_id);
+                  const w = parseDim(l.width);
+                  const h = parseDim(l.height);
+                  const sizeWarning = prod && (
+                    (prod.min_width && w > 0 && w < prod.min_width) ||
+                    (prod.max_width && w > prod.max_width) ||
+                    (prod.min_height && h > 0 && h < prod.min_height) ||
+                    (prod.max_height && h > prod.max_height)
+                  );
+
+                  return (
+                    <tr key={l.id} style={{ borderBottom: "1px solid var(--zr-border)" }}>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-xs" style={{ color: "var(--zr-text-primary)" }}>{l.product_name}</div>
+                        {sizeWarning && (
+                          <div className="text-xs mt-0.5" style={{ color: "var(--zr-error)" }}>
+                            Size out of range
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <input type="text" placeholder='36 1/2' value={l.width}
+                          onChange={e => updateLine(l.id, "width", e.target.value)}
+                          className="text-sm rounded px-2 py-1 w-20"
+                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <input type="text" placeholder='60' value={l.height}
+                          onChange={e => updateLine(l.id, "height", e.target.value)}
+                          className="text-sm rounded px-2 py-1 w-20"
+                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <input type="number" min="1" value={l.qty}
+                          onChange={e => updateLine(l.id, "qty", parseInt(e.target.value) || 1)}
+                          className="text-sm rounded px-2 py-1 w-14 text-center"
+                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <input type="number" step="0.01" value={l.unit_cost}
+                          onChange={e => updateLine(l.id, "unit_cost", parseFloat(e.target.value) || 0)}
+                          className="text-sm rounded px-2 py-1 w-20"
+                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {!globalMultiplier ? (
+                          <input type="number" step="0.1" value={l.multiplier}
+                            onChange={e => updateLine(l.id, "multiplier", parseFloat(e.target.value) || 1)}
+                            className="text-sm rounded px-2 py-1 w-14 text-center"
+                            style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                        ) : (
+                          <span className="text-xs font-medium" style={{ color: "var(--zr-text-muted)" }}>{mult}×</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-semibold whitespace-nowrap" style={{ color: "var(--zr-text-primary)" }}>
+                        {fmtMoney(lineRetail)}
+                      </td>
+                      <td className="px-3 py-2 font-medium whitespace-nowrap" style={{ color: "var(--zr-success, #22c55e)" }}>
+                        {fmtMoney(lineProfit)}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <div className="flex gap-1">
+                          <button onClick={() => duplicateLine(l.id)} title="Duplicate"
+                            className="text-xs px-1.5 py-0.5 rounded transition-colors"
+                            style={{ color: "var(--zr-text-muted)" }}>
+                            ⧉
+                          </button>
+                          <button onClick={() => removeLine(l.id)} title="Remove"
+                            className="text-xs px-1.5 py-0.5 rounded transition-colors"
+                            style={{ color: "var(--zr-error)" }}>
+                            ×
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals bar */}
+          <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-3"
+            style={{ background: "var(--zr-surface-2)", borderTop: "1px solid var(--zr-border)" }}>
+            <div className="flex gap-5">
+              <div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Windows</div>
+                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{totalWindows}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Total Cost</div>
+                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(totalCost)}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Total Retail</div>
+                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(totalRetail)}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Profit</div>
+                <div className="text-sm font-bold" style={{ color: "var(--zr-success, #22c55e)" }}>{fmtMoney(totalProfit)}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Margin</div>
+                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>
+                  {totalRetail > 0 ? ((totalProfit / totalRetail) * 100).toFixed(1) + "%" : "—"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {lines.length === 0 && (
+        <div className="rounded-lg p-8 text-center" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+          <div className="text-sm font-medium mb-1" style={{ color: "var(--zr-text-secondary)" }}>
+            Select a product above and click "+ Add Line" to start estimating
+          </div>
+          <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+            Costs and markups pull from your product catalog. You can override per line.
+          </div>
+        </div>
+      )}
+
+      {/* Quick reference: product catalog summary */}
+      {products.length > 0 && lines.length === 0 && (
+        <div className="mt-6">
+          <div className="text-xs font-semibold mb-2" style={{ color: "var(--zr-text-muted)" }}>YOUR PRODUCT CATALOG</div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+            {products.slice(0, 12).map(p => (
+              <button key={p.id} onClick={() => { setSelectedProduct(p.id); }}
+                className="text-left rounded-lg p-3 transition-colors"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--zr-primary)")}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--zr-border)")}>
+                <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{p.name}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                  {p.manufacturer || p.category || "—"} · {fmtMoney(p.default_cost)} × {p.default_multiplier}
+                </div>
+                {p.lead_time_days && (
+                  <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                    Lead time: {p.lead_time_days} days
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

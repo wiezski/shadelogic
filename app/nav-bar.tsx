@@ -44,6 +44,7 @@ export function NavBar() {
           { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
           { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
           { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
+          { href: "/calculator", label: "Calculator", show: features.quoting && permissions.view_pricing },
           { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
           { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },

@@ -449,8 +449,29 @@ export default function CustomerPage() {
   }
 
   async function saveLeadStatus(status: string) {
+    const prevStatus = customer?.lead_status;
     updateLocal("lead_status", status);
     await saveField("lead_status", status as Customer["lead_status"]);
+
+    // Auto-set next_action based on new stage
+    const suggestedAction = STAGE_NEXT_ACTION[status] ?? null;
+    if (suggestedAction && status !== prevStatus) {
+      updateLocal("next_action", suggestedAction);
+      await supabase.from("customers").update({ next_action: suggestedAction }).eq("id", customerId);
+    }
+
+    // Log stage change as activity
+    if (status !== prevStatus) {
+      await supabase.from("activity_log").insert([{
+        customer_id: customerId, type: "Note",
+        notes: `Stage changed: ${prevStatus} → ${status}`,
+      }]);
+      // Update last_activity_at
+      const now = new Date().toISOString();
+      updateLocal("last_activity_at", now);
+      await supabase.from("customers").update({ last_activity_at: now }).eq("id", customerId);
+      loadActivities();
+    }
   }
 
   async function saveHeatScore(heat: string) {
@@ -718,6 +739,48 @@ export default function CustomerPage() {
               </button>
             </div>
           )}
+          {/* Quick follow-up actions based on current stage */}
+          {(() => {
+            const stage = customer.lead_status;
+            const actions: { label: string; icon: string; action: () => void }[] = [];
+            if (stage === "New" || stage === "Contacted") {
+              actions.push({ label: "Schedule Consult", icon: "📅", action: () => { saveLeadStatus("Consult Scheduled"); } });
+            }
+            if (stage === "Consult Scheduled" || stage === "Contacted") {
+              actions.push({ label: "Schedule Measure", icon: "📐", action: () => { saveLeadStatus("Measure Scheduled"); } });
+            }
+            if (stage === "Measured") {
+              actions.push({ label: "Create Quote", icon: "💰", action: async () => {
+                setCreatingQuote(true);
+                const { data } = await supabase.from("quotes")
+                  .insert([{ customer_id: customerId, title: `Quote for ${[customer.first_name, customer.last_name].filter(Boolean).join(" ")}`, status: "draft" }])
+                  .select("id").single();
+                setCreatingQuote(false);
+                if (data) window.location.href = `/quotes/${data.id}`;
+              }});
+            }
+            if (stage === "Quoted") {
+              actions.push({ label: "Mark as Sold", icon: "🎉", action: () => { saveLeadStatus("Sold"); } });
+            }
+            if (stage === "Sold" || stage === "Contact for Install") {
+              actions.push({ label: "Schedule Install", icon: "🔧", action: () => { saveLeadStatus("Contact for Install"); } });
+            }
+            if (stage === "Installed") {
+              actions.push({ label: "Mark Complete", icon: "✓", action: () => { saveLeadStatus("Complete"); } });
+            }
+            if (actions.length === 0) return null;
+            return (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {actions.map(a => (
+                  <button key={a.label} onClick={a.action}
+                    className="flex items-center gap-1 rounded px-2.5 py-1.5 text-xs font-medium transition-colors"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
+                    <span>{a.icon}</span> {a.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── Lead Status + Heat Score ─────────────────── */}

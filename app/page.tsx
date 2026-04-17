@@ -68,6 +68,17 @@ const heatStyle: Record<string, string> = {
   Cold: "bg-sky-400 text-white",
 };
 
+const stageStyle: Record<string, string> = {
+  New:       "bg-gray-100 text-gray-600",
+  Contacted: "bg-blue-100 text-blue-700",
+  Scheduled: "bg-purple-100 text-purple-700",
+  Measured:  "bg-amber-100 text-amber-800",
+  Quoted:    "bg-orange-100 text-orange-700",
+  Sold:      "bg-green-100 text-green-700",
+  Installed: "bg-emerald-100 text-emerald-700",
+  Lost:      "bg-red-100 text-red-700",
+};
+
 export default function HomePage() {
   const { role } = useAuth();
   const [tab, setTab] = useState<"dashboard" | "customers">("dashboard");

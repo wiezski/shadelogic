@@ -45,6 +45,7 @@ export function NavBar() {
           { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
           { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
           { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
+          { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },
           { href: "/setup-guide", label: "Setup Guide", show: permissions.access_settings || permissions.manage_team },
         ].filter(i => i.show).map(({ href, label }) => (

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "./auth-provider";
 import { NavBar } from "./nav-bar";
+import { FeedbackWidget } from "./feedback-widget";
 import { ToastProvider } from "./ui";
 import "./globals.css";
 
@@ -34,6 +35,7 @@ export default function RootLayout({
           <ToastProvider>
             <NavBar />
             {children}
+            <FeedbackWidget />
           </ToastProvider>
         </AuthProvider>
       </body>

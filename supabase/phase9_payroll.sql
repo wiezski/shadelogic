@@ -1,0 +1,5 @@
+-- Payroll & Commission Tracking — Phase 9 (applied via Supabase MCP)
+-- Tables: pay_rates, pay_entries, payroll_runs, app_feedback
+-- RLS: company-scoped on all tables
+-- Auto-set company_id triggers on pay_rates, pay_entries, payroll_runs
+-- See apply_migration for full SQL

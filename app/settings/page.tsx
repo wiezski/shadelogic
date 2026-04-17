@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
@@ -795,6 +796,21 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>These pre-fill on every new quote but can be changed per job.</p>
         </div>
+
+        {/* Payment Connections link */}
+        <Link
+          href="/settings/integrations"
+          className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
+          style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+        >
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Payment Connections</h2>
+            <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
+              Connect Stripe, Square, PayPal, QuickBooks, and more. Manage how your customers pay.
+            </p>
+          </div>
+          <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
+        </Link>
 
         <PlanSection />
         <BrandingSection />

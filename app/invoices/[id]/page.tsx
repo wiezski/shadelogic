@@ -266,6 +266,7 @@ export default function InvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     load();
@@ -509,6 +510,37 @@ export default function InvoiceDetailPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Share Invoice Link */}
+          {!["void"].includes(invoice.status) && invoice.public_token && (
+            <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-4">
+              <h2 className="font-semibold mb-2">Customer Invoice Link</h2>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${typeof window !== "undefined" ? window.location.origin : ""}/i/${invoice.public_token}`}
+                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                  className="flex-1 rounded p-2 text-xs"
+                />
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/i/${invoice.public_token}`;
+                    navigator.clipboard.writeText(url);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  style={{ background: "var(--zr-orange)" }}
+                  className="rounded px-3 py-2 text-xs font-medium text-white hover:opacity-90 shrink-0"
+                >
+                  {copied ? "Copied!" : "Copy Link"}
+                </button>
+              </div>
+              <p className="text-xs mt-2" style={{ color: "var(--zr-text-secondary)" }}>
+                Share this link with your customer. They can view the invoice and see payment options.
+              </p>
             </div>
           )}
 

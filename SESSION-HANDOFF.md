@@ -81,10 +81,8 @@ Professional invoicing system built on top of approved quotes. Replaces legacy q
 - Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
-- Reconnect GitHub → Vercel auto-deploy (Settings → Git in Vercel dashboard)
-- Phase 9 SQL migration (phase9_invoicing.sql) needs to be run in Supabase
-- Deploy and test invoice creation/payment recording flow
-- Continue to next phase per MVP-BUILD-PLAN.md
+- Phase 8 (Builder Portal) — SKIPPED for now, may revisit later
+- Continue to Phase 10 (Automation Engine) per MVP-BUILD-PLAN.md
 
 ---
 
@@ -342,7 +340,7 @@ Professional invoicing system built on top of approved quotes. Replaces legacy q
 - `supabase/phase6_install_management.sql` ✓
 - `supabase/phase7_whitelabel.sql` ✓
 - `supabase/phase8_email_outreach.sql` ✓
-- `supabase/phase9_invoicing.sql` — PENDING (invoices, invoice_line_items, payments tables + company_settings columns)
+- `supabase/phase9_invoicing.sql` ✓
 - `supabase/phase14_product_orders.sql` — PENDING (needs to be run)
 
 ---
@@ -382,7 +380,7 @@ Professional invoicing system built on top of approved quotes. Replaces legacy q
 ## Deployment
 - Stack: Next.js 16 App Router + TypeScript + Supabase + Vercel + Tailwind CSS 4
 - **Vercel CLI deploy**: `cd ~/shadelogic && npx vercel --prod`
-- **GitHub auto-deploy**: NEEDS RECONNECTION — go to Vercel dashboard → Settings → Git
+- **GitHub auto-deploy**: Connected ✓ (wiezski/shadelogic, reconnected Apr 16)
 - Git remote: `https://github.com/wiezski/shadelogic.git`
 - Local project path: `~/shadelogic` (NOT ~/zeroremake)
 - Build script: `rm -rf .next/cache && next build` (prevents stale CSS cache)

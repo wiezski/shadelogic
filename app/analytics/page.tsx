@@ -96,6 +96,7 @@ export default function AnalyticsPage() {
 
   async function loadStats() {
     setLoading(true);
+    try {
     const now = new Date();
     let since: string | null = null;
     if (range === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); since = d.toISOString(); }
@@ -223,11 +224,16 @@ export default function AnalyticsPage() {
       })
     );
     setMeasurerStats(measStats.sort((a, b) => b.jobs - a.jobs));
-    setLoading(false);
+    } catch (err) {
+      console.error("loadStats error:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadCrmStats() {
     setCrmLoading(true);
+    try {
 
     // All customers — pipeline + heat (always all-time, current state)
     const { data: custData } = await supabase
@@ -456,7 +462,11 @@ export default function AnalyticsPage() {
     const reworkRate = allInstall.length > 0 ? Math.round((reworkJobs.length / allInstall.length) * 100) : 0;
     setReMeasureRate({ total: allInstall.length, rework: reworkJobs.length, rate: reworkRate });
 
-    setCrmLoading(false);
+    } catch (err) {
+      console.error("loadCrmStats error:", err);
+    } finally {
+      setCrmLoading(false);
+    }
   }
 
   async function exportCSV() {
@@ -701,11 +711,17 @@ export default function AnalyticsPage() {
                   </div>
                 )}
 
+                {/* ── Advanced Analytics Section ─────────── */}
+                <div className="mb-4 mt-8 flex items-center gap-3">
+                  <h2 className="text-lg font-bold">Advanced Analytics</h2>
+                  <div style={{ borderTop: "1px solid var(--zr-border)" }} className="flex-1" />
+                </div>
+
                 {/* ── Revenue Forecast ── */}
-                {forecast && (
-                  <div className="mb-4 rounded border p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-sm">Revenue Forecast</h3>
+                <div className="mb-4 rounded border p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-sm">Revenue Forecast</h3>
+                    {forecast && (
                       <span className={`text-xs font-medium px-2 py-0.5 rounded ${
                         forecast.trend === "up" ? "bg-green-100 text-green-700" :
                         forecast.trend === "down" ? "bg-red-100 text-red-700" :
@@ -713,24 +729,30 @@ export default function AnalyticsPage() {
                       }`}>
                         {forecast.trend === "up" ? "↑ Trending Up" : forecast.trend === "down" ? "↓ Trending Down" : "→ Steady"}
                       </span>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <div className="text-2xl font-bold text-green-600">
-                        ${forecast.projected >= 1000 ? (forecast.projected / 1000).toFixed(1) + "k" : forecast.projected.toFixed(0)}
-                      </div>
-                      <div className="text-xs text-gray-500 mb-1">projected for {forecast.nextMonth}</div>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">Based on {monthlyPL.length}-month average + trend momentum</p>
+                    )}
                   </div>
-                )}
+                  {forecast ? (
+                    <>
+                      <div className="flex items-end gap-2">
+                        <div className="text-2xl font-bold text-green-600">
+                          ${forecast.projected >= 1000 ? (forecast.projected / 1000).toFixed(1) + "k" : forecast.projected.toFixed(0)}
+                        </div>
+                        <div className="text-xs text-gray-500 mb-1">projected for {forecast.nextMonth}</div>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">Based on {monthlyPL.length}-month average + trend momentum</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400">Needs at least 2 months of closed deals to project revenue.</p>
+                  )}
+                </div>
 
                 {/* ── Close Rate by Lead Source ── */}
-                {leadSourceStats.length > 0 && (
-                  <div className="mb-4 rounded border overflow-hidden">
-                    <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
-                      <h3 className="font-semibold text-sm">Close Rate by Lead Source</h3>
-                      <span className="text-xs text-gray-400">all time</span>
-                    </div>
+                <div className="mb-4 rounded border overflow-hidden">
+                  <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Close Rate by Lead Source</h3>
+                    <span className="text-xs text-gray-400">all time</span>
+                  </div>
+                  {leadSourceStats.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -761,16 +783,18 @@ export default function AnalyticsPage() {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="px-3 py-4 text-sm text-gray-400">Set a lead source on your customers to see close rates by source.</p>
+                  )}
+                </div>
 
                 {/* ── Installer Performance ── */}
-                {installerStats.length > 0 && (
-                  <div className="mb-4 rounded border overflow-hidden">
-                    <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
-                      <h3 className="font-semibold text-sm">Installer Performance</h3>
-                      <span className="text-xs text-gray-400">install jobs</span>
-                    </div>
+                <div className="mb-4 rounded border overflow-hidden">
+                  <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Installer Performance</h3>
+                    <span className="text-xs text-gray-400">install jobs</span>
+                  </div>
+                  {installerStats.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -806,14 +830,16 @@ export default function AnalyticsPage() {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="px-3 py-4 text-sm text-gray-400">No install jobs yet. Convert a quote to an install job to track installer performance.</p>
+                  )}
+                </div>
 
                 {/* ── Measurement Accuracy / Rework Rate ── */}
-                {reMeasureRate && reMeasureRate.total > 0 && (
-                  <div className="mb-4 rounded border p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-sm">Measurement Accuracy</h3>
+                <div className="mb-4 rounded border p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-sm">Measurement Accuracy</h3>
+                    {reMeasureRate && reMeasureRate.total > 0 && (
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                         reMeasureRate.rate <= 5 ? "bg-green-100 text-green-700" :
                         reMeasureRate.rate <= 15 ? "bg-amber-100 text-amber-700" :
@@ -821,24 +847,30 @@ export default function AnalyticsPage() {
                       }`}>
                         {100 - reMeasureRate.rate}% accurate
                       </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <div className="h-4 w-full rounded bg-gray-100 overflow-hidden">
-                          <div className="h-4 rounded bg-green-400" style={{ width: `${100 - reMeasureRate.rate}%` }} />
+                    )}
+                  </div>
+                  {reMeasureRate && reMeasureRate.total > 0 ? (
+                    <>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <div className="h-4 w-full rounded bg-gray-100 overflow-hidden">
+                            <div className="h-4 rounded bg-green-400" style={{ width: `${100 - reMeasureRate.rate}%` }} />
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500 shrink-0">
+                          {reMeasureRate.rework} rework / {reMeasureRate.total} installs
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500 shrink-0">
-                        {reMeasureRate.rework} rework / {reMeasureRate.total} installs
-                      </div>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {reMeasureRate.rate <= 5 ? "Excellent — very few installs needing rework." :
-                       reMeasureRate.rate <= 15 ? "Good — some rework needed, room to improve." :
-                       "Needs attention — high rework rate indicates measurement issues."}
-                    </p>
-                  </div>
-                )}
+                      <p className="mt-1 text-xs text-gray-400">
+                        {reMeasureRate.rate <= 5 ? "Excellent — very few installs needing rework." :
+                         reMeasureRate.rate <= 15 ? "Good — some rework needed, room to improve." :
+                         "Needs attention — high rework rate indicates measurement issues."}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400">No install jobs yet. Accuracy tracking starts once installs are completed.</p>
+                  )}
+                </div>
 
                 {/* ── Stage cards (clickable) ── */}
                 <div className="mb-4 rounded border p-4">

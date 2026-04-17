@@ -52,7 +52,12 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Password</label>
+                <Link href="/forgot-password" className="hover:underline" style={{ fontSize: "12px", color: "var(--zr-orange)" }}>
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)}
                 required placeholder="••••••••"

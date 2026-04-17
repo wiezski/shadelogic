@@ -273,7 +273,7 @@ function ConnectModal({
   };
 
   async function handleSave() {
-    if (!accountId.trim()) return;
+    if (!accountId.trim() || !provider) return;
     setSaving(true);
     await onSave(provider.provider, accountId.trim());
     setSaving(false);

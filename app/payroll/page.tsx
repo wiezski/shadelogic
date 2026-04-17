@@ -263,7 +263,7 @@ function EntriesTab({ entries, team, personSummary }: {
   personSummary: Map<string, { name: string; total: number; hours: number; jobs: number; commission: number }>;
 }) {
   if (entries.length === 0) {
-    return <EmptyState title="No pay entries yet" message="Add your first pay entry to start tracking payroll." />;
+    return <EmptyState title="No pay entries yet" subtitle="Add your first pay entry to start tracking payroll." />;
   }
 
   return (
@@ -485,7 +485,7 @@ function RatesTab({ rates, team, onUpdated }: {
 
       {/* Rates by person */}
       {byPerson.size === 0 ? (
-        <EmptyState title="No pay rates configured" message="Set up pay rates for your team members to start tracking compensation." />
+        <EmptyState title="No pay rates configured" subtitle="Set up pay rates for your team members to start tracking compensation." />
       ) : (
         <div className="flex flex-col gap-3">
           {[...byPerson.entries()].map(([pid, personRates]) => {
@@ -631,7 +631,7 @@ function RunsTab({ runs, onUpdated }: { runs: PayrollRun[]; onUpdated: () => voi
       )}
 
       {runs.length === 0 ? (
-        <EmptyState title="No payroll periods" message="Create a payroll period to group and finalize pay entries." />
+        <EmptyState title="No payroll periods" subtitle="Create a payroll period to group and finalize pay entries." />
       ) : (
         <div className="flex flex-col gap-2">
           {runs.map(r => {

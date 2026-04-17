@@ -77,12 +77,32 @@ Professional invoicing system built on top of approved quotes. Replaces legacy q
   - Supabase RLS enforced on all new tables (company_id auto-set via trigger)
   - Money formatting with toFixed(2) and comma grouping
 
+### Phase 9b — Payment Integrations & Customer Invoice View — Complete ✓
+Payment connections settings page and public customer-facing invoice page:
+- **New table**: `payment_integrations` — stores connected payment services per company (Stripe, Square, PayPal, QuickBooks, Xero)
+- **Enhanced company_settings**: +enabled_payment_methods (array), +payment_instructions (JSONB per-method)
+- **New page app/settings/integrations/page.tsx** — Payment Connections:
+  - Provider cards for Stripe, Square, PayPal & Venmo (payments) + QuickBooks, Xero (accounting)
+  - Connect modal with setup steps and account ID collection
+  - Status indicators: connected/pending/not connected, default badge
+  - Manual payment method toggles (cash, check, zelle, venmo, ACH, wire) with per-method instructions
+  - "How it works" explainer footer
+- **New page app/i/[token]/page.tsx** — Public customer-facing invoice:
+  - Accessed via public_token (no login required, like /q/[id] for quotes)
+  - Company header, status banner, line items table, totals
+  - Payment Options section: "Pay Now" buttons for connected services + manual method cards with instructions
+  - Paid confirmation screen, "Powered by ZeroRemake" footer
+- **Updated app/settings/page.tsx**: added Payment Connections link card
+- **Updated app/invoices/[id]/page.tsx**: added "Copy Invoice Link" section with shareable public URL
+- **Note**: Payment processor OAuth/API flows are NOT yet implemented — "Pay Now" shows placeholder alert. Manual methods work fully.
+
 ### Next Up
 - Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
 - Phase 8 (Builder Portal) — SKIPPED for now, may revisit later
 - Continue to Phase 10 (Automation Engine) per MVP-BUILD-PLAN.md
+- Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
 
 ---
 

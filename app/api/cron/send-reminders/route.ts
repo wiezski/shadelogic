@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../../lib/email";
 import { appointmentReminder } from "../../../../lib/email-templates";
+import { processAutomationRules, checkStuckLeads, processQueue, getServiceClient } from "../../../../lib/automation";
 
 export const dynamic = "force-dynamic";
 
@@ -138,10 +139,36 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Also run automation engine ──────────────────────────────
+  const automationResults: Record<string, any> = {};
+
+  try {
+    await processAutomationRules();
+    automationResults.rules = "processed";
+  } catch (err) {
+    automationResults.rules = `error: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  try {
+    const svc = getServiceClient();
+    const { data: companies } = await svc.from("companies").select("id").limit(1000);
+    for (const company of companies || []) {
+      await checkStuckLeads(company.id, svc);
+    }
+    automationResults.stuckLeads = `checked ${(companies || []).length} companies`;
+  } catch (err) {
+    automationResults.stuckLeads = `error: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  try {
+    await processQueue(getServiceClient());
+    automationResults.queue = "processed";
+  } catch (err) {
+    automationResults.queue = `error: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
   return NextResponse.json({
-    sent,
-    skipped,
-    errors: errors.length ? errors : undefined,
-    total: needsReminder.length,
+    reminders: { sent, skipped, errors: errors.length ? errors : undefined, total: needsReminder.length },
+    automation: automationResults,
   });
 }

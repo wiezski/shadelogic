@@ -73,7 +73,7 @@ html:root {
 [data-tenant] {
   --zr-orange:       var(--tenant-primary, #e63000);
   --zr-orange-hover: var(--tenant-primary-hover, #cc2900);
-  --zr-dark:         var(--tenant-dark,    #1a1a1a);
+  --zr-dark:         var(--tenant-dark,    #f8f9fa);
   --zr-font-display: var(--tenant-font,    'Figtree', sans-serif);
   --zr-font-body:    var(--tenant-font,    'Figtree', sans-serif);
 }
@@ -86,8 +86,10 @@ html:root {
 }
 
 body {
-  background: var(--zr-black);
-  color: var(--zr-text-primary);
+  background: #ffffff;
+  background: var(--zr-black, #ffffff);
+  color: #111827;
+  color: var(--zr-text-primary, #111827);
   font-family: var(--zr-font-body);
   -webkit-font-smoothing: antialiased;
 }
@@ -101,4 +103,18 @@ body {
   display: none;
 }
 
-/* Note: removed iOS Smart Invert override — no longer needed in light mode */
+/* LIGHT MODE SAFETY NET — ensures white backgrounds regardless of CSS cascade/cache issues */
+html:root {
+  --zr-black:         #ffffff !important;
+  --zr-dark:          #f8f9fa !important;
+  --zr-dark-2:        #f1f3f5 !important;
+  --zr-dark-3:        #e9ecef !important;
+  --zr-surface-1:     #ffffff !important;
+  --zr-surface-2:     #f9fafb !important;
+  --zr-surface-3:     #f3f4f6 !important;
+  --zr-text-primary:  #111827 !important;
+  --zr-text-secondary:#4b5563 !important;
+  --zr-text-muted:    #9ca3af !important;
+  --zr-border:        #e5e7eb !important;
+  --zr-border-light:  #d1d5db !important;
+}

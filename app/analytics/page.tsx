@@ -86,6 +86,12 @@ export default function AnalyticsPage() {
   const [avgDealSize,   setAvgDealSize]   = useState(0);
   const [monthlyPL, setMonthlyPL] = useState<{ month: string; revenue: number; cost: number; profit: number; margin: number; deals: number }[]>([]);
 
+  // Phase 11 — Advanced Analytics
+  const [leadSourceStats, setLeadSourceStats] = useState<{ source: string; total: number; sold: number; rate: number; revenue: number }[]>([]);
+  const [installerStats, setInstallerStats] = useState<{ name: string; jobs: number; completed: number; issues: number; avgDays: number }[]>([]);
+  const [forecast, setForecast] = useState<{ nextMonth: string; projected: number; trend: "up" | "down" | "flat" } | null>(null);
+  const [reMeasureRate, setReMeasureRate] = useState<{ total: number; rework: number; rate: number } | null>(null);
+
   useEffect(() => { loadStats(); loadCrmStats(); }, [range]);
 
   async function loadStats() {
@@ -226,7 +232,7 @@ export default function AnalyticsPage() {
     // All customers — pipeline + heat (always all-time, current state)
     const { data: custData } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, created_at");
+      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, created_at, lead_source");
     const customers = (custData || []) as { id: string; first_name: string | null; last_name: string | null; lead_status: string | null; heat_score: string | null; last_activity_at: string | null; created_at: string }[];
     setTotalCustomers(customers.length);
     setAnalyticsCusts(customers);
@@ -337,6 +343,118 @@ export default function AnalyticsPage() {
       const label = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
       return { month: label, revenue, cost, profit, margin, deals };
     }));
+
+    // ── Phase 11: Close Rate by Lead Source ──────────────
+    const sourceMap: Record<string, { total: number; sold: number; revenue: number }> = {};
+    customers.forEach(c => {
+      const src = (c as any).lead_source || "Unknown";
+      if (!sourceMap[src]) sourceMap[src] = { total: 0, sold: 0, revenue: 0 };
+      sourceMap[src].total++;
+      const ls = c.lead_status || "New";
+      if (["Sold", "Contact for Install", "Installed", "Complete"].includes(ls)) sourceMap[src].sold++;
+    });
+    // Attach revenue per source via quotes joined to customers
+    const { data: quoteSourceData } = await supabase
+      .from("quotes").select("customer_id, total, status").eq("status", "approved").gt("total", 0);
+    const qsByCust: Record<string, number> = {};
+    (quoteSourceData || []).forEach((q: any) => { qsByCust[q.customer_id] = (qsByCust[q.customer_id] || 0) + q.total; });
+    customers.forEach(c => {
+      const src = (c as any).lead_source || "Unknown";
+      if (qsByCust[c.id]) sourceMap[src].revenue += qsByCust[c.id];
+    });
+    const leadSrcArr = Object.entries(sourceMap)
+      .map(([source, { total, sold, revenue }]) => ({
+        source, total, sold, rate: total > 0 ? Math.round((sold / total) * 100) : 0, revenue,
+      }))
+      .filter(s => s.total >= 1)
+      .sort((a, b) => b.sold - a.sold);
+    setLeadSourceStats(leadSrcArr);
+
+    // ── Phase 11: Installer Performance ───────────────────
+    const { data: installJobs } = await supabase
+      .from("measure_jobs")
+      .select("id, measured_by, install_mode, install_status, install_scheduled_at, created_at")
+      .eq("install_mode", true);
+    const instJobs = (installJobs || []) as { id: string; measured_by: string | null; install_mode: boolean; install_status: string | null; install_scheduled_at: string | null; created_at: string }[];
+    const instMap: Record<string, { jobs: number; completed: number; totalDays: number; completedWithDays: number; jobIds: string[] }> = {};
+    const nowMs2 = Date.now();
+    instJobs.forEach(j => {
+      const name = j.measured_by || "Unassigned";
+      if (!instMap[name]) instMap[name] = { jobs: 0, completed: 0, totalDays: 0, completedWithDays: 0, jobIds: [] };
+      instMap[name].jobs++;
+      instMap[name].jobIds.push(j.id);
+      if (j.install_status === "completed") {
+        instMap[name].completed++;
+      }
+      // Avg days from scheduled to now (proxy for turnaround)
+      if (j.install_scheduled_at) {
+        const days = Math.max(1, Math.floor((nowMs2 - new Date(j.install_scheduled_at).getTime()) / 86400000));
+        if (j.install_status === "completed") {
+          instMap[name].totalDays += days;
+          instMap[name].completedWithDays++;
+        }
+      }
+    });
+    // Count issues per installer
+    const allInstJobIds = instJobs.map(j => j.id);
+    let issueCountByJob: Record<string, number> = {};
+    if (allInstJobIds.length > 0) {
+      const { data: instRooms } = await supabase.from("rooms").select("id, measure_job_id").in("measure_job_id", allInstJobIds);
+      const instRoomIds = (instRooms || []).map((r: any) => r.id);
+      const roomToJob: Record<string, string> = {};
+      (instRooms || []).forEach((r: any) => { roomToJob[r.id] = r.measure_job_id; });
+      if (instRoomIds.length > 0) {
+        const { data: instWins } = await supabase.from("windows").select("id, room_id").in("room_id", instRoomIds);
+        const winToJob: Record<string, string> = {};
+        (instWins || []).forEach((w: any) => { winToJob[w.id] = roomToJob[w.room_id]; });
+        const winIds2 = (instWins || []).map((w: any) => w.id);
+        if (winIds2.length > 0) {
+          const { data: issData2 } = await supabase.from("install_issues").select("id, window_id").in("window_id", winIds2);
+          (issData2 || []).forEach((iss: any) => {
+            const jid = winToJob[iss.window_id];
+            if (jid) issueCountByJob[jid] = (issueCountByJob[jid] || 0) + 1;
+          });
+        }
+      }
+    }
+    const instArr = Object.entries(instMap).map(([name, data]) => {
+      const issues = data.jobIds.reduce((sum, jid) => sum + (issueCountByJob[jid] || 0), 0);
+      const avgDays = data.completedWithDays > 0 ? Math.round(data.totalDays / data.completedWithDays) : 0;
+      return { name, jobs: data.jobs, completed: data.completed, issues, avgDays };
+    }).sort((a, b) => b.jobs - a.jobs);
+    setInstallerStats(instArr);
+
+    // ── Phase 11: Revenue Forecast ────────────────────────
+    // Simple linear trend from last 3 months
+    if (sortedMonths.length >= 2) {
+      const recent = sortedMonths.slice(-3);
+      const revenues = recent.map(mo => monthMap[mo]?.revenue || 0);
+      const avgRecent = revenues.reduce((s, r) => s + r, 0) / revenues.length;
+      const first = revenues[0];
+      const last = revenues[revenues.length - 1];
+      const trend = last > first * 1.05 ? "up" as const : last < first * 0.95 ? "down" as const : "flat" as const;
+      // Next month label
+      const lastMo = sortedMonths[sortedMonths.length - 1];
+      const [yr2, mn2] = lastMo.split("-").map(Number);
+      const nextDate = new Date(yr2, mn2); // mn2 is already 1-based so this gives next month
+      const nextLabel = nextDate.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+      // Project with simple momentum
+      const growth = revenues.length >= 2 ? (revenues[revenues.length - 1] - revenues[0]) / (revenues.length - 1) : 0;
+      const projected = Math.max(0, Math.round(avgRecent + growth));
+      setForecast({ nextMonth: nextLabel, projected, trend });
+    } else {
+      setForecast(null);
+    }
+
+    // ── Phase 11: Re-measure / Rework Rate ────────────────
+    const { data: allMJobs } = await supabase
+      .from("measure_jobs")
+      .select("id, install_mode, install_status")
+      .eq("install_mode", true);
+    const allInstall = (allMJobs || []) as { id: string; install_mode: boolean; install_status: string | null }[];
+    const reworkJobs = allInstall.filter(j => j.install_status === "needs_rework");
+    const reworkRate = allInstall.length > 0 ? Math.round((reworkJobs.length / allInstall.length) * 100) : 0;
+    setReMeasureRate({ total: allInstall.length, rework: reworkJobs.length, rate: reworkRate });
 
     setCrmLoading(false);
   }
@@ -567,6 +685,145 @@ export default function AnalyticsPage() {
                         </tfoot>
                       </table>
                     </div>
+                  </div>
+                )}
+
+                {/* ── Revenue Forecast ── */}
+                {forecast && (
+                  <div className="mb-4 rounded border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-sm">Revenue Forecast</h3>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                        forecast.trend === "up" ? "bg-green-100 text-green-700" :
+                        forecast.trend === "down" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {forecast.trend === "up" ? "↑ Trending Up" : forecast.trend === "down" ? "↓ Trending Down" : "→ Steady"}
+                      </span>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="text-2xl font-bold text-green-600">
+                        ${forecast.projected >= 1000 ? (forecast.projected / 1000).toFixed(1) + "k" : forecast.projected.toFixed(0)}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-1">projected for {forecast.nextMonth}</div>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">Based on {monthlyPL.length}-month average + trend momentum</p>
+                  </div>
+                )}
+
+                {/* ── Close Rate by Lead Source ── */}
+                {leadSourceStats.length > 0 && (
+                  <div className="mb-4 rounded border overflow-hidden">
+                    <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">Close Rate by Lead Source</h3>
+                      <span className="text-xs text-gray-400">all time</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-gray-500">
+                            <th className="text-left px-3 py-2">Source</th>
+                            <th className="text-right px-3 py-2">Leads</th>
+                            <th className="text-right px-3 py-2">Sold</th>
+                            <th className="text-right px-3 py-2">Close %</th>
+                            <th className="text-right px-3 py-2">Revenue</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leadSourceStats.map((s, i) => (
+                            <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                              <td className="px-3 py-2 font-medium">{s.source}</td>
+                              <td className="px-3 py-2 text-right text-gray-600">{s.total}</td>
+                              <td className="px-3 py-2 text-right text-green-700">{s.sold}</td>
+                              <td className="px-3 py-2 text-right">
+                                <span className={`font-semibold ${s.rate >= 50 ? "text-green-600" : s.rate >= 25 ? "text-amber-600" : "text-red-500"}`}>
+                                  {s.rate}%
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-right text-green-700">
+                                ${s.revenue >= 1000 ? (s.revenue / 1000).toFixed(1) + "k" : s.revenue.toFixed(0)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Installer Performance ── */}
+                {installerStats.length > 0 && (
+                  <div className="mb-4 rounded border overflow-hidden">
+                    <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">Installer Performance</h3>
+                      <span className="text-xs text-gray-400">install jobs</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-gray-500">
+                            <th className="text-left px-3 py-2">Installer</th>
+                            <th className="text-right px-3 py-2">Jobs</th>
+                            <th className="text-right px-3 py-2">Done</th>
+                            <th className="text-right px-3 py-2">Rate</th>
+                            <th className="text-right px-3 py-2">Issues</th>
+                            <th className="text-right px-3 py-2">Avg Days</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {installerStats.map((s, i) => {
+                            const rate = s.jobs > 0 ? Math.round((s.completed / s.jobs) * 100) : 0;
+                            return (
+                              <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                                <td className="px-3 py-2 font-medium">{s.name}</td>
+                                <td className="px-3 py-2 text-right text-gray-600">{s.jobs}</td>
+                                <td className="px-3 py-2 text-right text-green-700">{s.completed}</td>
+                                <td className={`px-3 py-2 text-right font-semibold ${rate >= 80 ? "text-green-600" : rate >= 50 ? "text-amber-600" : "text-red-500"}`}>
+                                  {rate}%
+                                </td>
+                                <td className={`px-3 py-2 text-right ${s.issues > 0 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                                  {s.issues}
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-600">
+                                  {s.avgDays > 0 ? `${s.avgDays}d` : "—"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Measurement Accuracy / Rework Rate ── */}
+                {reMeasureRate && reMeasureRate.total > 0 && (
+                  <div className="mb-4 rounded border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-sm">Measurement Accuracy</h3>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                        reMeasureRate.rate <= 5 ? "bg-green-100 text-green-700" :
+                        reMeasureRate.rate <= 15 ? "bg-amber-100 text-amber-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>
+                        {100 - reMeasureRate.rate}% accurate
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="h-4 w-full rounded bg-gray-100 overflow-hidden">
+                          <div className="h-4 rounded bg-green-400" style={{ width: `${100 - reMeasureRate.rate}%` }} />
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 shrink-0">
+                        {reMeasureRate.rework} rework / {reMeasureRate.total} installs
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {reMeasureRate.rate <= 5 ? "Excellent — very few installs needing rework." :
+                       reMeasureRate.rate <= 15 ? "Good — some rework needed, room to improve." :
+                       "Needs attention — high rework rate indicates measurement issues."}
+                    </p>
                   </div>
                 )}
 

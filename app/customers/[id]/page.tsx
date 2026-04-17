@@ -23,7 +23,10 @@ type Customer = {
   created_at: string;
   tags: string[] | null;
   lead_source: string | null;
+  assigned_to: string | null;
 };
+
+type TeamMember = { id: string; full_name: string | null; role: string };
 
 const PRESET_TAGS = ["Builder", "High-end", "Motorized", "Retrofit", "New Construction", "Referral", "Repeat Customer"];
 const LEAD_SOURCES = ["Referral", "Website", "Google", "Facebook", "Door Hanger", "Repeat", "Builder", "Other"];
@@ -292,6 +295,7 @@ export default function CustomerPage() {
   const [appts, setAppts] = useState<CustomerAppointment[]>([]);
   const [creating, setCreating] = useState(false);
   const [crmTab, setCrmTab] = useState<"activity" | "tasks">("activity");
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Address fields
   const [street, setStreet] = useState("");
@@ -327,7 +331,7 @@ export default function CustomerPage() {
   async function loadCustomer() {
     const { data } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at, preferred_contact, next_action, created_at, tags, lead_source")
+      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at, preferred_contact, next_action, created_at, tags, lead_source, assigned_to")
       .eq("id", customerId)
       .single();
     if (data) {
@@ -336,6 +340,11 @@ export default function CustomerPage() {
       const parsed = parseAddress(c.address);
       setStreet(parsed.street); setCity(parsed.city); setAddrState(parsed.state); setZip(parsed.zip);
     }
+  }
+
+  async function loadTeam() {
+    const { data } = await supabase.from("profiles").select("id, full_name, role").order("full_name");
+    setTeamMembers((data || []) as TeamMember[]);
   }
 
   async function loadPhones() {
@@ -420,7 +429,7 @@ export default function CustomerPage() {
 
   useEffect(() => {
     if (!customerId) return;
-    loadCustomer(); loadPhones(); loadJobs(); loadQuotes(); loadActivities(); loadTasks(); loadAppts();
+    loadCustomer(); loadPhones(); loadJobs(); loadQuotes(); loadActivities(); loadTasks(); loadAppts(); loadTeam();
   }, [customerId]);
 
   // ── Customer saves ────────────────────────────────────────
@@ -781,6 +790,27 @@ export default function CustomerPage() {
             </select>
           </div>
         </div>
+
+        {/* ── Assigned To ──────────────────────────────── */}
+        {teamMembers.length > 0 && (
+          <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Assigned To</h2>
+            <select
+              value={customer.assigned_to ?? ""}
+              onChange={async e => {
+                const val = e.target.value || null;
+                updateLocal("assigned_to", val);
+                await supabase.from("customers").update({ assigned_to: val }).eq("id", customerId);
+              }}
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+              className="w-full rounded px-2 py-1.5 text-sm">
+              <option value="">— Unassigned —</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>{m.full_name || "Unnamed"} ({m.role})</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* ── Contact Info ─────────────────────────────── */}
         <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>

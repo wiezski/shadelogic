@@ -16,6 +16,7 @@ type Customer = {
   lead_status: string | null;
   heat_score: string | null;
   last_activity_at: string | null;
+  assigned_to: string | null;
 };
 
 type TodayAppt = {
@@ -46,6 +47,8 @@ type WorkItem = {
   reason: string;
   days_inactive: number | null;
   priority: number; // 1 = highest
+  assigned_to: string | null;
+  assigned_name: string | null;
 };
 
 type DashboardJob = {
@@ -121,6 +124,9 @@ export default function HomePage() {
   const [custSearch, setCustSearch] = useState("");
   const [workQueue, setWorkQueue] = useState<WorkItem[]>([]);
   const [workQueueLoading, setWorkQueueLoading] = useState(true);
+  const [queueFilter, setQueueFilter] = useState<"mine" | "all">("all");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [teamMap, setTeamMap] = useState<Record<string, string>>({});
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [pipelineValue, setPipelineValue] = useState<Record<string, number>>({});
 
@@ -146,6 +152,15 @@ export default function HomePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Load current user ID + team map
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) setCurrentUserId(data.user.id);
+    });
+    supabase.from("profiles").select("id, full_name").then(({ data }) => {
+      const m: Record<string, string> = {};
+      (data || []).forEach((p: { id: string; full_name: string | null }) => { m[p.id] = p.full_name || "Unnamed"; });
+      setTeamMap(m);
+    });
     loadDashboard();
     loadCustomers();
     loadTasksDue();
@@ -225,7 +240,7 @@ export default function HomePage() {
   async function loadCustomers() {
     const { data } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at")
+      .select("id, first_name, last_name, address, phone, email, lead_status, heat_score, last_activity_at, assigned_to")
       .order("created_at", { ascending: false });
     setCustomers((data || []) as Customer[]);
   }
@@ -370,14 +385,19 @@ export default function HomePage() {
     // Load all active customers
     const { data: custData } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, next_action, created_at")
+      .select("id, first_name, last_name, lead_status, heat_score, last_activity_at, next_action, created_at, assigned_to")
       .not("lead_status", "in", '("Installed","Lost")')
       .order("created_at", { ascending: false });
     const customers = (custData || []) as {
       id: string; first_name: string | null; last_name: string | null;
       lead_status: string; heat_score: string; last_activity_at: string | null;
-      next_action: string | null; created_at: string;
+      next_action: string | null; created_at: string; assigned_to: string | null;
     }[];
+
+    // Load team names for assignment display
+    const { data: profileData } = await supabase.from("profiles").select("id, full_name");
+    const nameMap: Record<string, string> = {};
+    (profileData || []).forEach((p: { id: string; full_name: string | null }) => { nameMap[p.id] = p.full_name || "Unnamed"; });
 
     // Load overdue tasks grouped by customer
     const { data: taskData } = await supabase
@@ -398,62 +418,53 @@ export default function HomePage() {
         : Math.floor((now - new Date(c.created_at).getTime()) / 86400000);
       const stuckThreshold = c.heat_score === "Hot" ? 5 : c.heat_score === "Cold" ? 30 : 14;
       const overdueTasks = overdueByCustomer[c.id];
+      const base = { customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
+        next_action: c.next_action, days_inactive: daysInactive, assigned_to: c.assigned_to ?? null, assigned_name: c.assigned_to ? (nameMap[c.assigned_to] ?? null) : null };
 
       // Priority 1: overdue task
       if (overdueTasks?.length) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Overdue: ${overdueTasks[0]}${overdueTasks.length > 1 ? ` +${overdueTasks.length - 1} more` : ""}`,
-          days_inactive: daysInactive, priority: 1 });
+        items.push({ ...base, reason: `Overdue: ${overdueTasks[0]}${overdueTasks.length > 1 ? ` +${overdueTasks.length - 1} more` : ""}`, priority: 1 });
         return;
       }
       // Priority 1: hot lead stuck
       if (c.heat_score === "Hot" && daysInactive >= stuckThreshold) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Hot lead — no activity in ${daysInactive}d`, days_inactive: daysInactive, priority: 1 });
+        items.push({ ...base, reason: `Hot lead — no activity in ${daysInactive}d`, priority: 1 });
         return;
       }
       // Priority 2: new lead, never contacted
       if (c.lead_status === "New" && !c.last_activity_at) {
         const hoursOld = Math.floor((now - new Date(c.created_at).getTime()) / 3600000);
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `New lead — not yet contacted (${hoursOld < 24 ? hoursOld + "h old" : daysInactive + "d old"})`,
-          days_inactive: daysInactive, priority: 2 });
+        items.push({ ...base, reason: `New lead — not yet contacted (${hoursOld < 24 ? hoursOld + "h old" : daysInactive + "d old"})`, priority: 2 });
         return;
       }
       // Priority 2: quoted, no follow-up in 3+ days
       if (c.lead_status === "Quoted" && daysInactive >= 3) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Quote sent ${daysInactive}d ago — follow up`, days_inactive: daysInactive, priority: 2 });
+        items.push({ ...base, reason: `Quote sent ${daysInactive}d ago — follow up`, priority: 2 });
         return;
       }
       // Priority 2: measured but quote not yet sent (still in Measured stage 2+ days)
       if (c.lead_status === "Measured" && daysInactive >= 2) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Measured ${daysInactive}d ago — send the quote`, days_inactive: daysInactive, priority: 2 });
+        items.push({ ...base, reason: `Measured ${daysInactive}d ago — send the quote`, priority: 2 });
         return;
       }
       // Priority 2: measured but no quote yet
       if (c.lead_status === "Measured" && daysInactive >= 3) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Measured ${daysInactive}d ago — send quote`, days_inactive: daysInactive, priority: 2 });
+        items.push({ ...base, reason: `Measured ${daysInactive}d ago — send quote`, priority: 2 });
         return;
       }
       // Priority 2: sold but hasn't moved to contact for install
       if (c.lead_status === "Sold" && daysInactive >= 2) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Sold ${daysInactive}d ago — contact to schedule install`, days_inactive: daysInactive, priority: 2 });
+        items.push({ ...base, reason: `Sold ${daysInactive}d ago — contact to schedule install`, priority: 2 });
         return;
       }
       // Priority 2: contact for install stuck
       if (c.lead_status === "Contact for Install" && daysInactive >= 2) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `Waiting to schedule install — ${daysInactive}d inactive`, days_inactive: daysInactive, priority: 2 });
+        items.push({ ...base, reason: `Waiting to schedule install — ${daysInactive}d inactive`, priority: 2 });
         return;
       }
       // Priority 3: warm/cold stuck
       if (daysInactive >= stuckThreshold) {
-        items.push({ customer_id: c.id, customer_name: name, lead_status: c.lead_status, heat_score: c.heat_score,
-          next_action: c.next_action, reason: `No activity in ${daysInactive}d`, days_inactive: daysInactive, priority: 3 });
+        items.push({ ...base, reason: `No activity in ${daysInactive}d`, priority: 3 });
       }
     });
 
@@ -889,16 +900,37 @@ export default function HomePage() {
                 <Skeleton lines={3} />
               </div>
             )}
-            {!workQueueLoading && workQueue.length > 0 && (
+            {!workQueueLoading && workQueue.length > 0 && (() => {
+              const filteredQueue = queueFilter === "mine" && currentUserId
+                ? workQueue.filter(w => w.assigned_to === currentUserId)
+                : workQueue;
+              return (
               <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
-                <h2 style={{ color: "var(--zr-text-primary)" }} className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                  Work Queue
-                  <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${workQueue.some((w) => w.priority === 1) ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-                    {workQueue.length}
-                  </span>
-                </h2>
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 style={{ color: "var(--zr-text-primary)" }} className="flex items-center gap-2 text-sm font-semibold">
+                    Work Queue
+                    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${filteredQueue.some((w) => w.priority === 1) ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                      {filteredQueue.length}
+                    </span>
+                  </h2>
+                  <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+                    <button onClick={() => setQueueFilter("mine")}
+                      className="px-2.5 py-1 text-xs font-medium"
+                      style={{ background: queueFilter === "mine" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: queueFilter === "mine" ? "#fff" : "var(--zr-text-secondary)" }}>
+                      Mine
+                    </button>
+                    <button onClick={() => setQueueFilter("all")}
+                      className="px-2.5 py-1 text-xs font-medium"
+                      style={{ background: queueFilter === "all" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: queueFilter === "all" ? "#fff" : "var(--zr-text-secondary)", borderLeft: "1px solid var(--zr-border)" }}>
+                      All
+                    </button>
+                  </div>
+                </div>
+                {filteredQueue.length === 0 ? (
+                  <p style={{ color: "var(--zr-text-muted)" }} className="text-xs py-2 text-center">No items in your queue right now.</p>
+                ) : (
                 <ul className="space-y-1.5">
-                  {workQueue.slice(0, 8).map((w) => (
+                  {filteredQueue.slice(0, 8).map((w) => (
                     <li key={w.customer_id}>
                       <Link href={`/customers/${w.customer_id}`} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="flex items-start justify-between gap-2 rounded p-2">
                         <div className="min-w-0">
@@ -908,6 +940,9 @@ export default function HomePage() {
                               <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${w.heat_score === "Hot" ? "bg-red-500 text-white" : "bg-sky-400 text-white"}`}>{w.heat_score}</span>
                             )}
                             <span className={`rounded px-1.5 py-0.5 text-xs ${stageStyle[w.lead_status] || "bg-gray-100 text-gray-600"}`}>{w.lead_status}</span>
+                            {w.assigned_name && queueFilter === "all" && (
+                              <span className="rounded px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-700">{w.assigned_name}</span>
+                            )}
                           </div>
                           <div style={{ color: "var(--zr-text-muted)" }} className="mt-0.5 text-xs">{w.reason}</div>
                           {w.next_action && <div style={{ color: "var(--zr-warning)" }} className="mt-0.5 text-xs font-medium">→ {w.next_action}</div>}
@@ -919,11 +954,13 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-                {workQueue.length > 8 && (
-                  <p style={{ color: "var(--zr-text-muted)" }} className="mt-2 text-xs text-center">+{workQueue.length - 8} more — check Customers tab</p>
+                )}
+                {filteredQueue.length > 8 && (
+                  <p style={{ color: "var(--zr-text-muted)" }} className="mt-2 text-xs text-center">+{filteredQueue.length - 8} more — check Customers tab</p>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {/* Today's appointments */}
             {/* Ready to Install */}
@@ -1138,7 +1175,12 @@ export default function HomePage() {
                         )}
                       </div>
                     </div>
-                    <div style={{ color: "var(--zr-text-muted)" }} className="mt-0.5 text-sm">{formatAddressDisplay(customer.address)}</div>
+                    <div style={{ color: "var(--zr-text-muted)" }} className="mt-0.5 text-sm">
+                      {formatAddressDisplay(customer.address)}
+                      {customer.assigned_to && teamMap[customer.assigned_to] && (
+                        <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-700">{teamMap[customer.assigned_to]}</span>
+                      )}
+                    </div>
                     {customer.phone && <div style={{ color: "var(--zr-text-muted)" }} className="text-sm">{customer.phone}</div>}
                   </li>
                 ))}

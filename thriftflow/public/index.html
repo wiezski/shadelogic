@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1510">
+<title>Luxventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #111009; --surface: #1a1510; --surface2: #231e16; --surface3: #2e271d;
+  --border: #3a3225; --border2: #4a3f30;
+  --text: #f5f0e8; --text2: #b8ad9a; --text3: #7a7060;
+  --gold: #c9a84c; --gold2: #b8943f; --gold3: #a07e32; --gold-glow: rgba(201,168,76,0.12);
+  --cream: #f5f0e8; --green: #6fcf97; --red: #eb5757; --orange: #f2994a;
+  --blue: #7fb5e6; --purple: #bb86fc;
+  --radius: 14px; --radius-sm: 10px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+button { font-family: var(--font-body); cursor: pointer; border: none; }
+input, textarea, select { font-family: var(--font-body); font-size: 16px; }
+
+.app { display: flex; flex-direction: column; min-height: 100dvh; max-width: 600px; margin: 0 auto; }
+.header { padding: 16px 20px 12px; background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%); position: sticky; top: 0; z-index: 50; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--gold) 0%, var(--gold3) 100%); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 18px; color: #1a1510; }
+.brand h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--cream); letter-spacing: 0.5px; }
+.brand-sub { font-size: 11px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; }
+
+.content { flex: 1; padding: 0 16px 90px; }
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); z-index: 50; display: flex; justify-content: center; }
+.bottom-nav-inner { display: flex; max-width: 600px; width: 100%; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 12px; color: var(--text3); font-size: 10px; font-weight: 500; background: none; transition: color 0.2s; position: relative; }
+.nav-btn.active { color: var(--gold); }
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-badge { position: absolute; top: 4px; right: 50%; transform: translateX(14px); min-width: 16px; height: 16px; border-radius: 99px; background: var(--red); color: white; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.card-glow { box-shadow: 0 0 0 1px var(--gold3), 0 4px 20px var(--gold-glow); }
+
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+.badge-gold { background: var(--gold-glow); color: var(--gold); border: 1px solid rgba(201,168,76,0.2); }
+.badge-green { background: rgba(111,207,151,0.12); color: var(--green); }
+.badge-red { background: rgba(235,87,87,0.12); color: var(--red); }
+.badge-orange { background: rgba(242,153,74,0.12); color: var(--orange); }
+.badge-blue { background: rgba(127,181,230,0.12); color: var(--blue); }
+.badge-gray { background: var(--surface2); color: var(--text3); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; transition: all 0.2s; letter-spacing: 0.3px; }
+.btn-gold { background: linear-gradient(135deg, var(--gold) 0%, var(--gold3) 100%); color: #1a1510; }
+.btn-gold:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-sm { padding: 8px 14px; font-size: 12px; }
+.btn-block { width: 100%; }
+.btn-danger { background: rgba(235,87,87,0.12); color: var(--red); }
+.btn-outline { background: transparent; border: 1px solid var(--gold3); color: var(--gold); }
+.btn-green { background: rgba(111,207,151,0.15); color: var(--green); border: 1px solid rgba(111,207,151,0.25); }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+.form-input { width: 100%; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 15px; outline: none; transition: border-color 0.2s; }
+.form-input:focus { border-color: var(--gold); }
+textarea.form-input { resize: vertical; min-height: 80px; }
+select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237a7060' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+
+.priority-section { margin-bottom: 20px; }
+.priority-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 0 2px; }
+.priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.priority-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.priority-count { font-size: 12px; color: var(--text3); margin-left: auto; }
+
+.action-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.2s; }
+.action-card:hover { border-color: var(--border2); }
+.action-card.urgent { border-left: 3px solid var(--red); }
+.action-card.warn { border-left: 3px solid var(--orange); }
+.action-card.info { border-left: 3px solid var(--blue); }
+.action-card.gold { border-left: 3px solid var(--gold); }
+.action-card.ready { border-left: 3px solid var(--green); }
+.action-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--surface2); flex-shrink: 0; }
+.action-body { flex: 1; min-width: 0; }
+.action-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.action-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.action-time { font-size: 11px; color: var(--text3); font-weight: 600; white-space: nowrap; }
+
+.stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 8px; text-align: center; }
+.stat-num { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--cream); }
+.stat-label { font-size: 9px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.photo-slot { aspect-ratio: 1; border-radius: var(--radius-sm); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; }
+.photo-slot:hover { border-color: var(--gold3); }
+.photo-slot img { width: 100%; height: 100%; object-fit: cover; }
+.photo-slot .rm { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,0.7); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+.toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-sl { position: absolute; inset: 0; background: var(--surface3); border-radius: 24px; cursor: pointer; transition: 0.3s; }
+.toggle-sl:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: var(--text3); border-radius: 50%; transition: 0.3s; }
+.toggle input:checked + .toggle-sl { background: var(--gold); }
+.toggle input:checked + .toggle-sl:before { transform: translateX(20px); background: #1a1510; }
+
+.plat-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.plat-row:last-child { border-bottom: none; }
+.plat-info { display: flex; align-items: center; gap: 10px; }
+.plat-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; }
+
+.carousel { position: relative; width: 100%; aspect-ratio: 1; background: var(--surface2); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+.carousel img { width: 100%; height: 100%; object-fit: contain; }
+.dots { display: flex; justify-content: center; gap: 6px; padding: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface3); cursor: pointer; }
+.dot.on { background: var(--gold); }
+
+.search-wrap { position: relative; margin-bottom: 14px; }
+.search-wrap input { width: 100%; padding: 10px 12px 10px 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; }
+.search-wrap input:focus { border-color: var(--gold); }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); width: 18px; height: 18px; }
+
+.pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+.pills::-webkit-scrollbar { display: none; }
+.pill { padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--surface2); color: var(--text3); border: 1px solid transparent; cursor: pointer; }
+.pill.on { background: var(--gold-glow); color: var(--gold); border-color: rgba(201,168,76,0.25); }
+
+.cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.cat-btn { padding: 10px 6px; border-radius: var(--radius-sm); background: var(--surface2); border: 1px solid var(--border); color: var(--text3); font-size: 11px; font-weight: 600; text-align: center; cursor: pointer; }
+.cat-btn.on { background: var(--gold-glow); color: var(--gold); border-color: rgba(201,168,76,0.25); }
+
+.ptable td { padding: 5px 0; font-size: 13px; color: var(--text2); }
+.ptable td:last-child { text-align: right; font-weight: 600; color: var(--text); }
+.ptable tr.tot td { border-top: 1px solid var(--border); padding-top: 10px; font-size: 15px; font-weight: 700; }
+.ptable tr.tot td:last-child { color: var(--green); }
+
+.section { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin: 24px 0 12px; }
+
+.spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--surface3); color: var(--text); padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px; z-index: 200; animation: fadeUp 0.3s; border: 1px solid var(--border); }
+@keyframes fadeUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+.hidden { display: none !important; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+.research-link { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; background: var(--surface2); color: var(--blue); border: 1px solid rgba(127,181,230,0.2); text-decoration: none; }
+.research-link:hover { background: rgba(127,181,230,0.08); }
+
+.fab { position: fixed; bottom: 80px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--gold) 0%, var(--gold3) 100%); color: #1a1510; font-size: 28px; font-weight: 300; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(201,168,76,0.35); z-index: 45; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(201,168,76,0.5); }
+.fab:active { transform: scale(0.95); }
+@media(min-width:600px){ .fab { right: calc(50% - 280px); } }
+
+.research-card { background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); border: 1px solid var(--gold3); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.research-price { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--green); }
+.research-range { font-size: 13px; color: var(--text2); }
+.research-conf { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.research-conf.high { background: rgba(111,207,151,0.15); color: var(--green); }
+.research-conf.medium { background: rgba(201,168,76,0.15); color: var(--gold); }
+.research-conf.low { background: rgba(242,153,74,0.15); color: var(--orange); }
+.comp-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.comp-item:last-child { border-bottom: none; }
+.links-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+
+/* Analytics styles */
+.metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
+.metric-row { display: flex; justify-content: space-between; align-items: center; }
+.metric-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.metric-val { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.metric-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-top: 12px; }
+.bar { flex: 1; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.5s; position: relative; }
+.bar-label { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--text3); white-space: nowrap; }
+
+/* Setup guide */
+.setup-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
+.setup-step .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--gold-glow); color: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.setup-step a { color: var(--blue); text-decoration: none; }
+.setup-step a:hover { text-decoration: underline; }
+.copy-btn { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; background: var(--surface2); color: var(--gold); border: 1px solid var(--border); cursor: pointer; }
+.copy-btn:active { background: var(--gold-glow); }
+
+/* Email parser */
+.parse-result { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-top: 12px; }
+.parse-field { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.parse-field:last-child { border-bottom: none; }
+.parse-key { color: var(--text3); }
+.parse-val { font-weight: 600; color: var(--text); }
+
+/* List-it button */
+.list-it-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border-radius: var(--radius); background: linear-gradient(135deg, var(--green), #4db57a); color: #1a1510; font-size: 15px; font-weight: 700; border: none; cursor: pointer; margin-bottom: 12px; letter-spacing: 0.5px; }
+.list-it-btn:hover { filter: brightness(1.1); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="brand">
+      <div class="brand-icon">L</div>
+      <div>
+        <h1>Luxventory</h1>
+        <div class="brand-sub">Curated Resale Manager</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- HOME -->
+    <div id="view-home">
+      <div class="stats-bar" id="stats-bar"></div>
+      <div id="priority-sections"></div>
+      <div class="section" id="recent-header" style="display:flex;justify-content:space-between;align-items:center">
+        Recent Items <button class="btn btn-sm btn-secondary" onclick="showView('inventory')">View All</button>
+      </div>
+      <div id="recent-items"></div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div id="view-inventory" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 style="font-family:var(--font-display);font-size:20px">Inventory</h2>
+        <button class="btn btn-sm btn-secondary" onclick="showView('home')">← Home</button>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="search-input" placeholder="Search items, locations..." oninput="filterItems()">
+      </div>
+      <div class="pills" id="filter-pills"></div>
+      <div id="items-list"></div>
+    </div>
+
+    <!-- ADD ITEM -->
+    <div id="view-add" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-family:var(--font-display);font-size:20px">New Item</h2>
+        <button class="btn btn-sm btn-secondary" onclick="showView('home')">Cancel</button>
+      </div>
+      <p style="color:var(--text2);margin-bottom:12px;font-size:13px">Snap photos, add details, set your price. Everything is optional — save at any stage.</p>
+      <div class="photo-grid" id="photo-grid"></div>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(event)">
+
+      <div class="form-group"><label class="form-label">Title</label><input class="form-input" type="text" id="f-title" placeholder="e.g. Art Deco Brass Table Lamp"></div>
+      <div class="form-group"><label class="form-label">Category</label><div class="cat-grid" id="cat-grid"></div></div>
+      <div class="form-group"><label class="form-label">Era / Style</label><input class="form-input" type="text" id="f-era" placeholder="e.g. Mid-Century, Art Deco, Victorian"></div>
+      <div class="form-group"><label class="form-label">Condition</label>
+        <select class="form-input" id="f-cond"><option value="">Select...</option><option>Mint / Like New</option><option>Excellent</option><option>Good - minor wear</option><option>Fair - visible wear</option><option>Poor - needs repair</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Materials</label><input class="form-input" type="text" id="f-mat" placeholder="Brass, Glass, Wood..."></div>
+      <div class="form-group"><label class="form-label">Description / Notes</label><textarea class="form-input" id="f-notes" placeholder="Details, markings, dimensions..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label class="form-label">Cost ($)</label><input class="form-input" type="number" id="f-cost" placeholder="0" step="0.01" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="form-label">Target Profit ($)</label><input class="form-input" type="number" id="f-profit" placeholder="50" step="0.01" oninput="updatePreview()"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Storage Location</label><input class="form-input" type="text" id="f-loc" placeholder="Shelf A3, Bin 12..."></div>
+
+      <div class="section">Platforms</div>
+      <div class="card" id="plat-toggles"></div>
+      <div id="price-preview" class="hidden"><div class="section">Smart Pricing</div><div class="card" id="price-cards"></div></div>
+
+      <button class="btn btn-gold btn-block" style="margin-top:16px" onclick="saveItem()">Save Item</button>
+      <p style="text-align:center;margin-top:10px;font-size:12px;color:var(--text3)">You can always add details later</p>
+    </div>
+
+    <!-- DETAIL -->
+    <div id="view-detail" class="hidden"><div id="detail-out"></div></div>
+
+    <!-- ANALYTICS -->
+    <div id="view-analytics" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-family:var(--font-display);font-size:20px">Analytics</h2>
+        <button class="btn btn-sm btn-secondary" onclick="showView('home')">← Home</button>
+      </div>
+      <div id="analytics-out"></div>
+    </div>
+
+    <!-- SETUP / CONNECTIONS -->
+    <div id="view-setup" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-family:var(--font-display);font-size:20px">Setup &amp; Connections</h2>
+        <button class="btn btn-sm btn-secondary" onclick="showView('home')">← Home</button>
+      </div>
+      <div id="setup-out"></div>
+    </div>
+
+    <!-- EMAIL PARSER -->
+    <div id="view-email" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-family:var(--font-display);font-size:20px">Sale Parser</h2>
+        <button class="btn btn-sm btn-secondary" onclick="showView('home')">← Home</button>
+      </div>
+      <div id="email-out"></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav"><div class="bottom-nav-inner">
+    <button class="nav-btn active" data-nav="home" onclick="showView('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
+    </button>
+    <button class="nav-btn" data-nav="add" onclick="showView('add')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>Add
+    </button>
+    <button class="nav-btn" data-nav="inventory" onclick="showView('inventory')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Items
+      <span class="nav-badge hidden" id="inv-badge">0</span>
+    </button>
+    <button class="nav-btn" data-nav="analytics" onclick="showView('analytics')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Stats
+    </button>
+    <button class="nav-btn" data-nav="more" onclick="toggleMore()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>More
+    </button>
+  </div></div>
+</div>
+
+<!-- More menu dropdown -->
+<div id="more-menu" class="hidden" style="position:fixed;bottom:70px;right:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 0;z-index:100;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+  <button style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 18px;background:none;color:var(--text);font-size:14px;font-weight:500" onclick="showView('setup');hideMore()">⚙️ Setup & Connections</button>
+  <button style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 18px;background:none;color:var(--text);font-size:14px;font-weight:500" onclick="showView('email');hideMore()">📧 Sale Parser</button>
+</div>
+
+<button class="fab" id="fab-btn" onclick="showView('add')">+</button>
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL='https://vdlefskwbicigqftfxgu.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkbGVmc2t3YmljaWdxZnRmeGd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzQzMzAsImV4cCI6MjA5MjAxMDMzMH0.55jWqV0xAFx3ZWI90rnehdWyZzIl-8-Wrl6gHjmiACE';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+// ===== PLATFORMS =====
+const P={
+  ebay:{name:"eBay",icon:"e",color:"#e53238",pct:0.1313,fix:0.30,ship:"Buyer pays or free ship",on:true},
+  poshmark:{name:"Poshmark",icon:"P",color:"#7b2e8e",pct:0.20,fix:0,ship:"$7.67 prepaid label",on:true},
+  mercari:{name:"Mercari",icon:"M",color:"#4dc9f6",pct:0.10,fix:0,ship:"Prepaid labels available",on:true},
+  fbmp:{name:"FB Marketplace",icon:"f",color:"#1877f2",pct:0,fix:0,ship:"Local pickup — no fees",local:true,on:true},
+  etsy:{name:"Etsy",icon:"E",color:"#f56400",pct:0.065,fix:0.20,ship:"6.5% + listing fee",on:false}
+};
+const CATS=["Lighting","Vases","Mirrors","Frames","Furniture","Tableware","Figurines","Textiles","Art","Clocks","Barware","Jewelry","Books","Garden","Other"];
+const FILTERS=['all','intake','photographed','ready','listed','sold','shipped'];
+
+// ===== STATE =====
+let items=[],filter='all',curId=null,photos=[],selCat='',plats={};
+Object.keys(P).forEach(k=>plats[k]=P[k].on);
+
+// ===== PRICING =====
+function calcPrice(cost,profit,k){
+  const p=P[k]; if(!p)return{list:0,fees:0,profit:0,net:0};
+  const c=Number(cost)||0,pr=Number(profit)||0,need=c+pr;
+  if(need<=0)return{list:0,fees:0,profit:0,net:0};
+  if(p.local)return{list:need,fees:0,profit:pr,net:need};
+  const list=Math.ceil(((need+p.fix)/(1-p.pct))*100)/100;
+  const fees=(list*p.pct)+p.fix;
+  return{list:Math.ceil(list),fees:Math.round(fees*100)/100,profit:Math.round((list-fees-c)*100)/100,net:Math.round((list-fees)*100)/100};
+}
+
+// ===== HELPERS =====
+function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.remove('hidden');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.add('hidden'),2500)}
+function ago(d){if(!d)return'';const ms=Date.now()-new Date(d);const h=Math.floor(ms/3600000);if(h<1)return'just now';if(h<24)return h+'h ago';const days=Math.floor(h/24);return days+'d ago'}
+function thumb(item){return item.photos?.length>0?sb.storage.from('photos').getPublicUrl(item.photos.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0))[0].storage_path).data.publicUrl:null}
+
+// ===== MORE MENU =====
+function toggleMore(){document.getElementById('more-menu').classList.toggle('hidden')}
+function hideMore(){document.getElementById('more-menu').classList.add('hidden')}
+document.addEventListener('click',e=>{if(!e.target.closest('[data-nav="more"]')&&!e.target.closest('#more-menu'))hideMore()});
+
+// ===== NAV =====
+const VIEWS=['home','inventory','add','detail','analytics','setup','email'];
+function showView(v){
+  VIEWS.forEach(x=>{const el=document.getElementById('view-'+x);if(el)el.classList.toggle('hidden',x!==v)});
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    const nav=b.dataset.nav;
+    b.classList.toggle('active',nav===v||(v==='detail'&&nav==='home')||(v==='setup'&&nav==='more')||(v==='email'&&nav==='more'));
+  });
+  document.getElementById('fab-btn').classList.toggle('hidden',v==='add');
+  hideMore();
+  if(v==='home')loadItems();
+  if(v==='inventory'){loadItems();renderFilters();}
+  if(v==='add')resetForm();
+  if(v==='analytics'){loadItems().then(()=>renderAnalytics());}
+  if(v==='setup')renderSetup();
+  if(v==='email')renderEmailParser();
+}
+
+// ===== DATA =====
+async function loadItems(){
+  const{data}=await sb.from('items').select('*, photos(storage_path, sort_order)').order('created_at',{ascending:false});
+  items=data||[];
+  if(!document.getElementById('view-home').classList.contains('hidden'))renderHome();
+  if(!document.getElementById('view-inventory').classList.contains('hidden'))renderInventory();
+  const shipCount=items.filter(i=>i.status==='sold').length;
+  const badge=document.getElementById('inv-badge');
+  if(shipCount>0){badge.textContent=shipCount;badge.classList.remove('hidden');}else{badge.classList.add('hidden');}
+}
+
+// ===== HOME =====
+function renderHome(){
+  const total=items.length,listed=items.filter(i=>i.status==='listed').length;
+  const soldShipped=items.filter(i=>i.status==='sold'||i.status==='shipped');
+  const revenue=soldShipped.filter(i=>i.sold_price).reduce((s,i)=>s+Number(i.sold_price),0);
+  document.getElementById('stats-bar').innerHTML=`
+    <div class="stat"><div class="stat-num">${total}</div><div class="stat-label">Items</div></div>
+    <div class="stat"><div class="stat-num">${listed}</div><div class="stat-label">Listed</div></div>
+    <div class="stat"><div class="stat-num">${soldShipped.length}</div><div class="stat-label">Sold</div></div>
+    <div class="stat"><div class="stat-num">$${revenue.toFixed(0)}</div><div class="stat-label">Revenue</div></div>`;
+
+  const claimed=new Set();
+  function claim(list){return list.filter(i=>{if(claimed.has(i.id))return false;claimed.add(i.id);return true})}
+
+  const needsShip=claim(items.filter(i=>i.status==='sold').sort((a,b)=>new Date(a.updated_at)-new Date(b.updated_at)));
+  const readyToList=claim(items.filter(i=>i.status==='ready'));
+  const needsList=claim(items.filter(i=>i.status==='photographed'));
+  const needsWork=claim(items.filter(i=>i.status==='intake'));
+
+  let html='';
+
+  if(needsShip.length>0){
+    html+=prioritySection('red','Ship Now',needsShip.length,needsShip.map(i=>{
+      const d=Math.floor((Date.now()-new Date(i.updated_at))/86400000);
+      const urgency=d>=2?'urgent':d>=1?'warn':'info';
+      return actionCard(i,urgency,`Sold ${ago(i.updated_at)} · ${i.storage_location||'?'}`,d>=2?'OVERDUE':d>=1?'Ship today':'New sale');
+    }));
+  }
+
+  if(readyToList.length>0){
+    html+=prioritySection('green','Ready to List',readyToList.length,readyToList.slice(0,4).map(i=>
+      actionCard(i,'ready','Ready — tap to list it',ago(i.created_at))
+    ));
+  }
+
+  if(needsList.length>0){
+    html+=prioritySection('gold','Needs Pricing / Details',needsList.length,needsList.slice(0,4).map(i=>
+      actionCard(i,'gold','Has photos — needs pricing',ago(i.created_at))
+    ));
+  }
+
+  if(needsWork.length>0){
+    const whatsNeeded=i=>{
+      const missing=[];
+      if(!i.photos||i.photos.length===0)missing.push('photos');
+      if(!i.listing_price)missing.push('price');
+      if(!i.notes&&!i.materials)missing.push('details');
+      return missing.length>0?'Needs '+missing.join(', '):'Add more info';
+    };
+    html+=prioritySection('blue','Needs Attention',needsWork.length,needsWork.slice(0,4).map(i=>
+      actionCard(i,'info',whatsNeeded(i),ago(i.created_at))
+    ));
+  }
+
+  document.getElementById('priority-sections').innerHTML=html;
+
+  const recent=items.slice(0,6);
+  document.getElementById('recent-items').innerHTML=recent.length>0?recent.map(i=>itemCard(i)).join(''):'<p style="color:var(--text3);font-size:13px;padding:12px 0">No items yet. Tap + to start adding inventory.</p>';
+}
+
+function prioritySection(color,title,count,cards){
+  const c={'red':'var(--red)','gold':'var(--gold)','orange':'var(--orange)','blue':'var(--blue)','purple':'var(--purple)','green':'var(--green)'}[color]||'var(--text3)';
+  return`<div class="priority-section">
+    <div class="priority-header"><div class="priority-dot" style="background:${c}"></div><div class="priority-title" style="color:${c}">${title}</div><div class="priority-count">${count}</div></div>
+    ${cards.join('')}
+  </div>`;
+}
+
+function actionCard(item,type,sub,time){
+  const t=thumb(item);
+  return`<div class="action-card ${type}" onclick="showDetail('${item.id}')">
+    ${t?`<img class="action-thumb" src="${t}">`:`<div class="action-thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>`}
+    <div class="action-body"><div class="action-title">${item.title||'Untitled'}</div><div class="action-sub">${sub}</div></div>
+    ${time?`<div class="action-time">${time}</div>`:''}
+  </div>`;
+}
+
+// ===== INVENTORY LIST =====
+function renderFilters(){
+  document.getElementById('filter-pills').innerHTML=FILTERS.map(f=>
+    `<button class="pill ${filter===f?'on':''}" onclick="filter='${f}';renderInventory()">${f==='all'?'All':f.charAt(0).toUpperCase()+f.slice(1)}</button>`
+  ).join('');
+}
+
+function renderInventory(){
+  renderFilters();
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+  let list=items;
+  if(filter!=='all')list=list.filter(i=>i.status===filter);
+  if(q)list=list.filter(i=>(i.title||'').toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)||(i.storage_location||'').toLowerCase().includes(q));
+  document.getElementById('items-list').innerHTML=list.length>0?list.map(i=>itemCard(i)).join(''):'<div style="text-align:center;padding:40px;color:var(--text3)">No items found</div>';
+}
+function filterItems(){renderInventory();}
+
+function itemCard(item){
+  const t=thumb(item);
+  const sb2={'intake':'badge-gray','photographed':'badge-blue','ready':'badge-green','listed':'badge-gold','sold':'badge-green','shipped':'badge-green'}[item.status]||'badge-gray';
+  const ship=item.status==='sold';
+  return`<div class="card" onclick="showDetail('${item.id}')" style="cursor:pointer;padding:12px${ship?';border-left:3px solid var(--orange)':''}">
+    <div style="display:flex;gap:12px;align-items:center">
+      ${t?`<img style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0" src="${t}">`:`<div style="width:52px;height:52px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📦</div>`}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.title||'Untitled'}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${item.category||''}${item.era_style?' · '+item.era_style:''}</div>
+        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+          <span class="badge ${sb2}">${item.status}</span>
+          ${item.listing_price?`<span class="badge badge-gold">$${Number(item.listing_price).toFixed(0)}</span>`:''}
+          ${item.storage_location?`<span class="badge badge-gray">${item.storage_location}</span>`:''}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== ADD FORM =====
+function resetForm(){
+  photos=[];curId=null;selCat='';
+  ['f-title','f-era','f-mat','f-notes','f-cost','f-loc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('f-profit').value='';
+  document.getElementById('f-cond').value='';
+  Object.keys(P).forEach(k=>plats[k]=P[k].on);
+  renderPhotos();renderCats();renderPlats();updatePreview();
+}
+
+function renderPhotos(){
+  const g=document.getElementById('photo-grid');let h='';
+  for(let i=0;i<6;i++){
+    if(photos[i])h+=`<div class="photo-slot"><img src="${photos[i].preview}"><button class="rm" onclick="event.stopPropagation();photos.splice(${i},1);renderPhotos()">×</button></div>`;
+    else if(i===photos.length)h+=`<div class="photo-slot" onclick="document.getElementById('photo-input').click()"><span style="color:var(--text3);font-size:28px">+</span></div>`;
+    else h+=`<div class="photo-slot" style="opacity:0.3"><span style="color:var(--text3);font-size:28px">+</span></div>`;
+  }
+  g.innerHTML=h;
+}
+
+function handlePhotos(e){
+  Array.from(e.target.files).forEach(f=>{
+    if(photos.length>=6)return;
+    const r=new FileReader();
+    r.onload=ev=>{photos.push({file:f,preview:ev.target.result});renderPhotos();};
+    r.readAsDataURL(f);
+  });e.target.value='';
+}
+
+function renderCats(){document.getElementById('cat-grid').innerHTML=CATS.map(c=>`<button class="cat-btn ${selCat===c?'on':''}" onclick="selCat='${c}';renderCats()">${c}</button>`).join('');}
+
+function renderPlats(){
+  document.getElementById('plat-toggles').innerHTML=Object.entries(P).map(([k,p])=>`
+    <div class="plat-row"><div class="plat-info"><div class="plat-icon" style="background:${p.color}">${p.icon}</div><div>
+      <div style="font-weight:600;font-size:13px">${p.name}</div>
+      <div style="font-size:11px;color:var(--text3)">${p.local?'No fees':((p.pct*100).toFixed(1)+'%'+(p.fix?' + $'+p.fix.toFixed(2):''))}</div>
+    </div></div>
+    <label class="toggle"><input type="checkbox" ${plats[k]?'checked':''} onchange="plats['${k}']=this.checked;updatePreview()"><span class="toggle-sl"></span></label>
+    </div>`).join('');
+}
+
+function updatePreview(){
+  const cost=document.getElementById('f-cost')?.value;
+  const profit=document.getElementById('f-profit')?.value;
+  const pre=document.getElementById('price-preview'),cards=document.getElementById('price-cards');
+  const active=Object.entries(plats).filter(([k,v])=>v);
+  if((!cost&&!profit)||active.length===0){pre.classList.add('hidden');return;}
+  pre.classList.remove('hidden');
+  cards.innerHTML=active.map(([k])=>{
+    const p=P[k],c=calcPrice(cost||0,profit||50,k);
+    if(c.list<=0)return'';
+    return`<div class="plat-row" style="flex-wrap:wrap"><div class="plat-info"><div class="plat-icon" style="background:${p.color};width:26px;height:26px;font-size:12px">${p.icon}</div>
+      <span style="font-weight:600;font-size:13px">${p.name}</span></div>
+      <div style="text-align:right"><div style="font-size:16px;font-weight:700;color:var(--green)">$${c.list}</div>
+      <div style="font-size:10px;color:var(--text3)">Fees $${c.fees.toFixed(2)} · Profit $${c.profit}</div></div></div>`;
+  }).join('');
+}
+
+async function resize(file,max=1200){return new Promise(r=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');let w=i.width,h=i.height;if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max}else{w=Math.round(w*max/h);h=max}}c.width=w;c.height=h;c.getContext('2d').drawImage(i,0,0,w,h);c.toBlob(r,'image/jpeg',0.85)};i.src=URL.createObjectURL(file)})}
+
+async function saveItem(){
+  try{
+    const title=document.getElementById('f-title').value.trim();
+    const cost=document.getElementById('f-cost').value;
+    const profit=document.getElementById('f-profit').value;
+    const era=document.getElementById('f-era').value.trim();
+    const cond=document.getElementById('f-cond').value;
+    const mat=document.getElementById('f-mat').value.trim();
+    const notes=document.getElementById('f-notes').value.trim();
+    const loc=document.getElementById('f-loc').value.trim();
+
+    // Build platform prices safely
+    const pp={};
+    const activePlats=Object.entries(plats).filter(([k,v])=>v).map(([k])=>k);
+    if(cost || profit){
+      activePlats.forEach(k=>{
+        const c=calcPrice(cost||0,profit||50,k);
+        if(c && c.list>0) pp[k]=c;
+      });
+    }
+
+    // Safely compute best listing price
+    const priceVals=Object.values(pp).map(p=>p.list).filter(v=>v>0);
+    const best=priceVals.length>0?Math.max(...priceVals):null;
+
+    const{data:item,error}=await sb.from('items').insert({
+      sku:'LX-'+Date.now().toString(36).toUpperCase(),
+      title:title||null,
+      category:selCat||'Other',
+      era_style:era||null,
+      condition:cond||null,
+      materials:mat||null,
+      notes:notes||null,
+      purchase_price:cost?Number(cost):null,
+      listing_price:best||null,
+      storage_location:loc||null,
+      status:'intake',
+      ai_analysis:{platformPrices:pp,platforms:activePlats},
+    }).select().single();
+    if(error)throw error;
+    curId=item.id;
+
+    if(photos.length>0){
+      for(let i=0;i<photos.length;i++){
+        const resized=await resize(photos[i].file);
+        const path=`${item.id}/${Date.now()}-${i}.jpg`;
+        await sb.storage.from('photos').upload(path,resized,{contentType:'image/jpeg'});
+        await sb.from('photos').insert({item_id:item.id,storage_path:path,sort_order:i,filename:photos[i].file.name});
+      }
+      await sb.from('items').update({status:'photographed',updated_at:new Date().toISOString()}).eq('id',item.id);
+    }
+    toast('Item saved!');
+    researchPrice(curId);
+    showView('home');
+  }catch(err){
+    console.error('Save error:',err);
+    toast('Error saving: '+(err.message||'Unknown error'));
+  }
+}
+
+// ===== DETAIL =====
+async function showDetail(id){
+  curId=id;showView('detail');
+  const item=items.find(i=>i.id===id);
+  if(!item){toast('Not found');showView('home');return}
+  const{data:ph}=await sb.from('photos').select('*').eq('item_id',id).order('sort_order');
+  const urls=(ph||[]).map(p=>sb.storage.from('photos').getPublicUrl(p.storage_path).data.publicUrl);
+  const a=item.ai_analysis||{};
+  const pp=a.platformPrices||{};
+  const ap=a.platforms||[];
+  const ship=item.status==='sold';
+  const sb2={'intake':'badge-gray','photographed':'badge-blue','ready':'badge-green','listed':'badge-gold','sold':'badge-green','shipped':'badge-green'}[item.status]||'badge-gray';
+  const searchQ=[item.title,item.era_style,item.materials].filter(Boolean).join(' ');
+
+  // Check if item is ready to list (has photos + price + some description)
+  const hasPhotos=urls.length>0;
+  const hasPrice=!!item.listing_price;
+  const hasInfo=!!(item.title&&(item.notes||item.materials||item.era_style));
+  const canList=hasPhotos&&hasPrice&&hasInfo&&(item.status==='photographed'||item.status==='ready');
+
+  let platHtml='';
+  if(ap.length>0){
+    platHtml=`<div class="section">Platform Pricing</div>`+ap.map(k=>{
+      const p=P[k];if(!p)return'';
+      const c=pp[k]||calcPrice(item.purchase_price||0,50,k);
+      if(!c||c.list<=0)return'';
+      return`<div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:8px"><div class="plat-icon" style="background:${p.color};width:26px;height:26px;font-size:12px">${p.icon}</div>
+        <span style="font-weight:600;font-size:13px">${p.name}</span>${p.local?'<span class="badge badge-blue" style="font-size:10px">Pickup</span>':''}</div>
+        <div style="text-align:right"><div style="font-size:17px;font-weight:700;color:var(--green)">$${c.list}</div>
+        <div style="font-size:10px;color:var(--text3)">Fees $${c.fees.toFixed(2)} · Profit $${c.profit}</div></div></div>
+        <div style="margin-top:8px"><button class="btn btn-sm btn-secondary" onclick="copyListing('${id}','${k}')">Copy Listing</button></div></div>`;
+    }).join('');
+  }
+
+  document.getElementById('detail-out').innerHTML=`
+    <button class="btn btn-secondary btn-sm" onclick="showView('home')" style="margin-bottom:12px">← Back</button>
+    ${ship?`<div class="card card-glow" style="border-left:3px solid var(--red);margin-bottom:16px"><div style="font-weight:700;color:var(--red)">Ship This Item!</div><div style="font-size:13px;color:var(--text2);margin-top:4px">${item.storage_location||'No location set'} · Sold ${ago(item.updated_at)}</div>
+    <button class="btn btn-gold btn-sm" style="margin-top:8px" onclick="updateStatus('${id}','shipped')">Mark as Shipped</button></div>`:''}
+
+    ${canList?`<button class="list-it-btn" onclick="markReadyToList('${id}')">List It — Mark as Listed</button>`:''}
+    ${item.status==='ready'?`<button class="list-it-btn" onclick="updateStatus('${id}','listed');showDetail('${id}')">Confirm Listed on Platforms</button>`:''}
+
+    ${urls.length?`<div class="carousel"><img id="dp" src="${urls[0]}"></div>${urls.length>1?`<div class="dots">${urls.map((u,i)=>`<div class="dot ${i===0?'on':''}" onclick="document.getElementById('dp').src='${u}';document.querySelectorAll('.dot').forEach((d,j)=>d.classList.toggle('on',j===${i}))"></div>`).join('')}</div>`:''}`:''}
+
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+      <div><h2 style="font-family:var(--font-display);font-size:20px">${item.title||'Untitled'}</h2>
+      <p style="color:var(--text2);font-size:13px;margin-top:4px">${item.category||''}${item.era_style?' · '+item.era_style:''}</p></div>
+      <span class="badge ${sb2}" style="padding:4px 12px">${item.status}</span>
+    </div>
+
+    ${item.sku?`<p style="color:var(--text3);font-size:11px;margin-bottom:12px">SKU: ${item.sku}</p>`:''}
+
+    ${renderResearch(item, searchQ)}
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <select class="form-input" style="flex:1;padding:10px;font-size:13px" onchange="updateStatus('${id}',this.value);setTimeout(()=>showDetail('${id}'),300)">
+        ${FILTERS.slice(1).map(s=>`<option value="${s}" ${s===item.status?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="card"><div style="display:flex;justify-content:space-between">
+      <div style="text-align:center;flex:1"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Paid</div><div style="font-size:18px;font-weight:700">${item.purchase_price?'$'+Number(item.purchase_price).toFixed(0):'—'}</div></div>
+      <div style="text-align:center;flex:1;border-left:1px solid var(--border);border-right:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">List</div><div style="font-size:18px;font-weight:700;color:var(--gold)">${item.listing_price?'$'+Number(item.listing_price).toFixed(0):'—'}</div></div>
+      <div style="text-align:center;flex:1"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Sold</div><div style="font-size:18px;font-weight:700;color:var(--green)">${item.sold_price?'$'+Number(item.sold_price).toFixed(0):'—'}</div></div>
+    </div></div>
+
+    ${item.storage_location?`<div class="card" style="padding:12px"><span style="color:var(--text3);font-size:12px">Location:</span> <strong>${item.storage_location}</strong></div>`:''}
+    ${item.condition?`<div class="card" style="padding:12px"><span style="color:var(--text3);font-size:12px">Condition:</span> <strong style="font-size:14px">${item.condition}</strong></div>`:''}
+    ${item.materials?`<div class="card" style="padding:12px"><span style="color:var(--text3);font-size:12px">Materials:</span> <strong style="font-size:14px">${item.materials}</strong></div>`:''}
+
+    ${platHtml}
+
+    ${item.notes?`<div class="section">Notes</div><div class="card" style="padding:12px"><p style="font-size:13px;color:var(--text2);line-height:1.5">${item.notes}</p></div>`:''}
+
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="editItem('${id}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Delete</button>
+    </div>`;
+}
+
+async function markReadyToList(id){
+  await updateStatus(id,'ready');
+  toast('Marked as ready! Copy listings and publish on your platforms.');
+  showDetail(id);
+}
+
+function editItem(id){
+  const item=items.find(i=>i.id===id);
+  if(!item)return;
+  showView('add');
+  document.getElementById('f-title').value=item.title||'';
+  selCat=item.category||'';
+  document.getElementById('f-era').value=item.era_style||'';
+  document.getElementById('f-cond').value=item.condition||'';
+  document.getElementById('f-mat').value=item.materials||'';
+  document.getElementById('f-notes').value=item.notes||'';
+  document.getElementById('f-cost').value=item.purchase_price||'';
+  document.getElementById('f-profit').value='';
+  document.getElementById('f-loc').value=item.storage_location||'';
+  const ap=item.ai_analysis?.platforms||[];
+  Object.keys(P).forEach(k=>plats[k]=ap.includes(k));
+  curId=id;
+  renderCats();renderPlats();updatePreview();
+  // Replace save button to update instead
+  const saveBtn=document.querySelector('#view-add .btn-gold.btn-block');
+  if(saveBtn){saveBtn.textContent='Update Item';saveBtn.onclick=()=>updateItem(id);}
+}
+
+async function updateItem(id){
+  try{
+    const title=document.getElementById('f-title').value.trim();
+    const cost=document.getElementById('f-cost').value;
+    const profit=document.getElementById('f-profit').value;
+    const activePlats=Object.entries(plats).filter(([k,v])=>v).map(([k])=>k);
+    const pp={};
+    if(cost || profit){
+      activePlats.forEach(k=>{
+        const c=calcPrice(cost||0,profit||50,k);
+        if(c && c.list>0) pp[k]=c;
+      });
+    }
+    const priceVals=Object.values(pp).map(p=>p.list).filter(v=>v>0);
+    const best=priceVals.length>0?Math.max(...priceVals):null;
+
+    const item=items.find(i=>i.id===id);
+    const existingAnalysis=item?.ai_analysis||{};
+
+    await sb.from('items').update({
+      title:title||null,
+      category:selCat||'Other',
+      era_style:document.getElementById('f-era').value.trim()||null,
+      condition:document.getElementById('f-cond').value||null,
+      materials:document.getElementById('f-mat').value.trim()||null,
+      notes:document.getElementById('f-notes').value.trim()||null,
+      purchase_price:cost?Number(cost):null,
+      listing_price:best||(item?.listing_price||null),
+      storage_location:document.getElementById('f-loc').value.trim()||null,
+      ai_analysis:{...existingAnalysis,platformPrices:pp,platforms:activePlats},
+      updated_at:new Date().toISOString()
+    }).eq('id',id);
+
+    // Upload any new photos
+    if(photos.length>0){
+      for(let i=0;i<photos.length;i++){
+        const resized=await resize(photos[i].file);
+        const path=`${id}/${Date.now()}-${i}.jpg`;
+        await sb.storage.from('photos').upload(path,resized,{contentType:'image/jpeg'});
+        await sb.from('photos').insert({item_id:id,storage_path:path,sort_order:100+i,filename:photos[i].file.name});
+      }
+    }
+
+    toast('Item updated!');
+    await loadItems();
+    showDetail(id);
+  }catch(err){
+    console.error('Update error:',err);
+    toast('Error: '+(err.message||'Unknown error'));
+  }
+}
+
+function copyListing(itemId,pk){
+  const item=items.find(i=>i.id===itemId);if(!item)return;
+  const p=P[pk],c=(item.ai_analysis?.platformPrices||{})[pk]||calcPrice(item.purchase_price||0,50,pk);
+  let t=`${item.title||'Untitled'}\n\n`;
+  if(item.era_style)t+=`Era/Style: ${item.era_style}\n`;
+  if(item.materials)t+=`Materials: ${item.materials}\n`;
+  if(item.condition)t+=`Condition: ${item.condition}\n`;
+  if(item.notes)t+=`\n${item.notes}\n`;
+  t+=`\nPrice: $${c.list}`;
+  if(p.local)t+='\nLocal pickup only';
+  navigator.clipboard.writeText(t).then(()=>toast(p.name+' listing copied!')).catch(()=>toast('Copy failed'));
+}
+
+async function updateStatus(id,s){
+  await sb.from('items').update({status:s,updated_at:new Date().toISOString()}).eq('id',id);
+  const item=items.find(i=>i.id===id);
+  if(item){item.status=s;item.updated_at=new Date().toISOString()}
+  toast('Status → '+s);
+  if(s==='sold')scheduleShipReminder(item);
+}
+
+async function deleteItem(id){
+  if(!confirm('Delete this item?'))return;
+  const{data:ph}=await sb.from('photos').select('storage_path').eq('item_id',id);
+  if(ph?.length)await sb.storage.from('photos').remove(ph.map(p=>p.storage_path));
+  await sb.from('photos').delete().eq('item_id',id);
+  await sb.from('items').delete().eq('id',id);
+  toast('Deleted');showView('home');
+}
+
+// ===== PRICE RESEARCH =====
+async function researchPrice(itemId){
+  try{
+    const resp=await fetch('/api/research-price',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})});
+    const{research,links}=await resp.json();
+    if(research){toast('Price research done: $'+research.suggestedLow+'-$'+research.suggestedHigh);}
+    await loadItems();
+  }catch(e){console.log('Research failed:',e)}
+}
+
+function renderResearch(item, searchQ){
+  const r=item.ai_analysis?.priceResearch;
+  const q=encodeURIComponent(searchQ||item.title||'vintage antique');
+
+  if(r){
+    const confClass=r.confidence==='high'?'high':r.confidence==='medium'?'medium':'low';
+    let compHtml='';
+    if(r.comparables?.length){
+      compHtml=`<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Comparable Sales</div>
+        ${r.comparables.map(c=>`<div class="comp-item"><span style="color:var(--text2)">${c.title}</span><span><strong>$${c.price}</strong> <span style="color:var(--text3);font-size:11px">${c.platform}</span></span></div>`).join('')}</div>`;
+    }
+    return`<div class="research-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Suggested Price</div>
+          <div class="research-price">$${r.suggestedPrice}</div>
+          <div class="research-range">Range: $${r.suggestedLow} – $${r.suggestedHigh}</div></div>
+        <span class="research-conf ${confClass}">${r.confidence} confidence</span>
+      </div>
+      ${r.reasoning?`<p style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:8px">${r.reasoning}</p>`:''}
+      ${r.tips?`<p style="font-size:12px;color:var(--gold);margin-top:8px">${r.tips}</p>`:''}
+      ${compHtml}
+      <div class="links-grid">
+        <a href="https://www.google.com/search?tbm=isch&q=${q}+vintage+value" target="_blank" class="research-link">Google</a>
+        <a href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1" target="_blank" class="research-link">eBay Sold</a>
+        <a href="https://www.ebay.com/sch/i.html?_nkw=${q}" target="_blank" class="research-link">eBay Active</a>
+        <a href="https://poshmark.com/search?query=${q}" target="_blank" class="research-link">Poshmark</a>
+        <a href="https://www.mercari.com/search/?keyword=${q}" target="_blank" class="research-link">Mercari</a>
+        <a href="https://www.etsy.com/search?q=${q}" target="_blank" class="research-link">Etsy</a>
+      </div>
+      <button class="btn btn-sm btn-outline" style="margin-top:10px;width:100%" onclick="researchPrice('${item.id}');toast('Re-researching...')">Re-research Price</button>
+    </div>`;
+  }
+
+  // No research yet — show links + research button
+  return`<div class="card" style="padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:600">Price Research</span>
+      <button class="btn btn-sm btn-gold" onclick="researchPrice('${item.id}');toast('Researching...')">Auto-Research</button>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Or look it up yourself:</p>
+    <div class="links-grid">
+      <a href="https://www.google.com/search?tbm=isch&q=${q}+vintage+value" target="_blank" class="research-link">Google</a>
+      <a href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1" target="_blank" class="research-link">eBay Sold</a>
+      <a href="https://www.ebay.com/sch/i.html?_nkw=${q}" target="_blank" class="research-link">eBay Active</a>
+      <a href="https://poshmark.com/search?query=${q}" target="_blank" class="research-link">Poshmark</a>
+      <a href="https://www.mercari.com/search/?keyword=${q}" target="_blank" class="research-link">Mercari</a>
+      <a href="https://www.etsy.com/search?q=${q}" target="_blank" class="research-link">Etsy</a>
+    </div>
+  </div>`;
+}
+
+// ===== ANALYTICS =====
+function renderAnalytics(){
+  const sold=items.filter(i=>i.status==='sold'||i.status==='shipped');
+  const listed=items.filter(i=>i.status==='listed');
+  const totalRevenue=sold.filter(i=>i.sold_price).reduce((s,i)=>s+Number(i.sold_price),0);
+  const totalCost=sold.filter(i=>i.purchase_price).reduce((s,i)=>s+Number(i.purchase_price),0);
+  const totalProfit=totalRevenue-totalCost;
+  const totalInvested=items.filter(i=>i.purchase_price).reduce((s,i)=>s+Number(i.purchase_price),0);
+  const unsoldInvestment=items.filter(i=>i.status!=='sold'&&i.status!=='shipped'&&i.purchase_price).reduce((s,i)=>s+Number(i.purchase_price),0);
+
+  // Average days to sell
+  const sellTimes=sold.filter(i=>i.created_at&&i.updated_at).map(i=>Math.max(1,Math.round((new Date(i.updated_at)-new Date(i.created_at))/86400000)));
+  const avgDays=sellTimes.length?Math.round(sellTimes.reduce((a,b)=>a+b,0)/sellTimes.length):0;
+
+  // Category breakdown
+  const catCounts={};
+  items.forEach(i=>{const c=i.category||'Other';catCounts[c]=(catCounts[c]||0)+1});
+  const topCats=Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxCat=topCats.length?topCats[0][1]:1;
+
+  // Category revenue
+  const catRevenue={};
+  sold.filter(i=>i.sold_price).forEach(i=>{const c=i.category||'Other';catRevenue[c]=(catRevenue[c]||0)+Number(i.sold_price)});
+  const topRevCats=Object.entries(catRevenue).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // Status breakdown
+  const statuses={};
+  items.forEach(i=>{const s=i.status||'intake';statuses[s]=(statuses[s]||0)+1});
+
+  // Profit margin
+  const margin=totalRevenue>0?((totalProfit/totalRevenue)*100).toFixed(1):0;
+
+  const colors=['var(--gold)','var(--green)','var(--blue)','var(--purple)','var(--orange)','var(--red)'];
+
+  document.getElementById('analytics-out').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="metric-card"><div class="metric-label">Total Revenue</div><div class="metric-val" style="color:var(--green)">$${totalRevenue.toFixed(0)}</div><div class="metric-sub">${sold.length} items sold</div></div>
+      <div class="metric-card"><div class="metric-label">Net Profit</div><div class="metric-val" style="color:${totalProfit>=0?'var(--green)':'var(--red)'}">$${totalProfit.toFixed(0)}</div><div class="metric-sub">${margin}% margin</div></div>
+      <div class="metric-card"><div class="metric-label">Invested</div><div class="metric-val">$${totalInvested.toFixed(0)}</div><div class="metric-sub">$${unsoldInvestment.toFixed(0)} unsold</div></div>
+      <div class="metric-card"><div class="metric-label">Avg Days to Sell</div><div class="metric-val">${avgDays||'—'}</div><div class="metric-sub">${sellTimes.length} data points</div></div>
+    </div>
+
+    <div class="section">Inventory by Status</div>
+    <div class="card">
+      ${Object.entries(statuses).map(([s,c])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;font-weight:600;text-transform:capitalize">${s}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:${Math.max(20,c/items.length*120)}px;height:8px;border-radius:4px;background:var(--gold)"></div>
+          <span style="font-size:14px;font-weight:700;min-width:24px;text-align:right">${c}</span>
+        </div>
+      </div>`).join('')}
+    </div>
+
+    <div class="section">Items by Category</div>
+    <div class="card">
+      <div class="bar-chart">
+        ${topCats.map(([cat,cnt],i)=>`<div class="bar" style="height:${Math.max(8,(cnt/maxCat)*100)}%;background:${colors[i%colors.length]}"><div class="bar-label">${cat}</div></div>`).join('')}
+      </div>
+      <div style="margin-top:28px">
+        ${topCats.map(([cat,cnt],i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span style="color:var(--text2)">${cat}</span><span style="font-weight:600">${cnt}</span></div>`).join('')}
+      </div>
+    </div>
+
+    ${topRevCats.length?`<div class="section">Top Revenue Categories</div>
+    <div class="card">
+      ${topRevCats.map(([cat,rev])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;font-weight:600">${cat}</span>
+        <span style="font-size:14px;font-weight:700;color:var(--green)">$${rev.toFixed(0)}</span>
+      </div>`).join('')}
+    </div>`:''}
+
+    <div class="section">Quick Facts</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3)">Total items</span><span style="font-weight:600">${items.length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3)">Currently listed</span><span style="font-weight:600">${listed.length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3)">Awaiting shipment</span><span style="font-weight:600;color:var(--orange)">${items.filter(i=>i.status==='sold').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--text3)">Avg listing price</span><span style="font-weight:600">$${items.filter(i=>i.listing_price).length?Math.round(items.filter(i=>i.listing_price).reduce((s,i)=>s+Number(i.listing_price),0)/items.filter(i=>i.listing_price).length):'—'}</span></div>
+    </div>`;
+}
+
+// ===== SETUP & CONNECTIONS =====
+function renderSetup(){
+  document.getElementById('setup-out').innerHTML=`
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Connect your sales platforms so Luxventory can help you manage listings. Each platform has its own process.</p>
+
+    <div class="section">Platform Setup Guides</div>
+
+    <div class="setup-step">
+      <div style="display:flex;gap:12px;align-items:start">
+        <div class="plat-icon" style="background:#e53238;width:36px;height:36px;font-size:16px;flex-shrink:0">e</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px">eBay</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            <strong>How it works:</strong> Copy your listing text from Luxventory, then paste it into eBay's Sell an Item form.<br><br>
+            <strong>Steps:</strong><br>
+            1. Go to <a href="https://www.ebay.com/sl/sell" target="_blank">ebay.com/sl/sell</a><br>
+            2. In Luxventory, open your item and tap "Copy Listing" under eBay<br>
+            3. Paste the title and description into eBay's form<br>
+            4. Upload your photos (save them from Luxventory first)<br>
+            5. Set the price shown in Luxventory for eBay<br>
+            6. Publish! Then update the item status to "Listed" in Luxventory<br><br>
+            <strong>Fee:</strong> 13.13% final value fee + $0.30
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div style="display:flex;gap:12px;align-items:start">
+        <div class="plat-icon" style="background:#7b2e8e;width:36px;height:36px;font-size:16px;flex-shrink:0">P</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px">Poshmark</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            <strong>How it works:</strong> Use the Poshmark app or website to create listings with your Luxventory details.<br><br>
+            <strong>Steps:</strong><br>
+            1. Open the Poshmark app or go to <a href="https://poshmark.com" target="_blank">poshmark.com</a><br>
+            2. Tap "Sell" and upload your photos<br>
+            3. Copy the listing text from Luxventory and paste into Poshmark<br>
+            4. Set the Poshmark-specific price from Luxventory<br>
+            5. Select category, size, and brand<br>
+            6. List it! Update status in Luxventory<br><br>
+            <strong>Fee:</strong> 20% commission. Prepaid shipping label ($7.67).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div style="display:flex;gap:12px;align-items:start">
+        <div class="plat-icon" style="background:#4dc9f6;width:36px;height:36px;font-size:16px;flex-shrink:0">M</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px">Mercari</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            <strong>Steps:</strong><br>
+            1. Open <a href="https://www.mercari.com" target="_blank">mercari.com</a> or the app<br>
+            2. Tap "Sell" and add photos<br>
+            3. Copy listing details from Luxventory<br>
+            4. Set the Mercari price from Luxventory<br>
+            5. Choose shipping (prepaid label or ship on your own)<br>
+            6. List and update Luxventory status<br><br>
+            <strong>Fee:</strong> 10% selling fee.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div style="display:flex;gap:12px;align-items:start">
+        <div class="plat-icon" style="background:#1877f2;width:36px;height:36px;font-size:16px;flex-shrink:0">f</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px">Facebook Marketplace</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            <strong>Steps:</strong><br>
+            1. Open Facebook > Marketplace > "Create new listing"<br>
+            2. Select "Item for sale"<br>
+            3. Add photos and paste listing text from Luxventory<br>
+            4. Set price (no fees for local pickup!)<br>
+            5. Set to "Local pickup only"<br>
+            6. Publish and update Luxventory<br><br>
+            <strong>Fee:</strong> $0 for local pickup. Luxventory auto-sets this as local only.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div style="display:flex;gap:12px;align-items:start">
+        <div class="plat-icon" style="background:#f56400;width:36px;height:36px;font-size:16px;flex-shrink:0">E</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px">Etsy</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            <strong>Steps:</strong><br>
+            1. Go to <a href="https://www.etsy.com/sell" target="_blank">etsy.com/sell</a> or open the Sell on Etsy app<br>
+            2. Create listing, upload photos<br>
+            3. Copy details from Luxventory<br>
+            4. Set the Etsy-specific price<br>
+            5. Add tags using the keywords from Luxventory's analysis<br>
+            6. Publish and update Luxventory<br><br>
+            <strong>Fee:</strong> 6.5% transaction fee + $0.20 listing fee.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">Tracking Sales</div>
+    <div class="card">
+      <p style="font-size:13px;color:var(--text2);line-height:1.6">When an item sells on any platform, update its status to "Sold" in Luxventory. You'll get a notification to ship it ASAP.</p>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-top:8px">You can also use the <strong>Sale Parser</strong> (More menu) to quickly log sales from email notifications — just paste the email text and it will extract the details.</p>
+    </div>
+
+    <div class="section">Pro Tips</div>
+    <div class="card">
+      <p style="font-size:13px;color:var(--text2);line-height:1.6">1. <strong>Copy Listing</strong> on each platform card copies a formatted listing ready to paste.<br><br>
+      2. Luxventory calculates different prices per platform so your <strong>profit stays the same</strong> regardless of where it sells.<br><br>
+      3. Use the <strong>Auto-Research</strong> button to get AI-powered pricing suggestions based on comparable sales.<br><br>
+      4. Forward sale confirmation emails to yourself and paste them into the Sale Parser for quick logging.</p>
+    </div>`;
+}
+
+// ===== EMAIL / SALE PARSER =====
+function renderEmailParser(){
+  document.getElementById('email-out').innerHTML=`
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Paste a sale confirmation email or notification text below. Luxventory will extract the sale details and update your inventory.</p>
+
+    <div class="form-group">
+      <label class="form-label">Paste Email / Notification Text</label>
+      <textarea class="form-input" id="email-text" rows="8" placeholder="Paste the full email text here... Include subject line, body, and any order details."></textarea>
+    </div>
+
+    <button class="btn btn-gold btn-block" onclick="parseEmail()">Parse Sale Info</button>
+
+    <div id="parse-results"></div>
+
+    <div class="section" style="margin-top:24px">What to paste</div>
+    <div class="card">
+      <p style="font-size:12px;color:var(--text2);line-height:1.6">
+        Paste any of these:<br><br>
+        <strong>eBay:</strong> "You sold an item" or "Order confirmed" email<br>
+        <strong>Poshmark:</strong> "Congrats on your sale!" notification<br>
+        <strong>Mercari:</strong> "Your item has been purchased" email<br>
+        <strong>FB Marketplace:</strong> "You have a new order" notification<br>
+        <strong>Etsy:</strong> "You made a sale!" email<br><br>
+        The parser looks for: item name, sale price, buyer name, platform, order number, and shipping details.
+      </p>
+    </div>`;
+}
+
+function parseEmail(){
+  const text=document.getElementById('email-text').value.trim();
+  if(!text){toast('Paste some text first');return}
+
+  const result={};
+
+  // Platform detection
+  if(/ebay/i.test(text))result.platform='eBay';
+  else if(/poshmark/i.test(text))result.platform='Poshmark';
+  else if(/mercari/i.test(text))result.platform='Mercari';
+  else if(/facebook|marketplace/i.test(text))result.platform='FB Marketplace';
+  else if(/etsy/i.test(text))result.platform='Etsy';
+  else result.platform='Unknown';
+
+  // Price extraction
+  const priceMatch=text.match(/(?:sold\s+(?:for|price|at)|total|sale\s+price|order\s+total|amount|payment|earned)[:\s]*\$?([\d,]+\.?\d*)/i)
+    ||text.match(/\$\s*([\d,]+\.?\d*)/);
+  if(priceMatch)result.price='$'+priceMatch[1].replace(',','');
+
+  // Buyer
+  const buyerMatch=text.match(/(?:buyer|sold\s+to|purchased\s+by|customer|shipped?\s+to)[:\s]*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
+    ||text.match(/(?:from|by)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z\.]+)?)/);
+  if(buyerMatch)result.buyer=buyerMatch[1].trim();
+
+  // Order/item number
+  const orderMatch=text.match(/(?:order|transaction|item)\s*#?\s*:?\s*([A-Z0-9-]{6,})/i);
+  if(orderMatch)result.orderNum=orderMatch[1];
+
+  // Ship by date
+  const shipMatch=text.match(/(?:ship\s+by|shipping\s+deadline|must\s+ship)[:\s]*([A-Za-z]+\s+\d{1,2}(?:,?\s*\d{4})?)/i);
+  if(shipMatch)result.shipBy=shipMatch[1];
+
+  // Try to match item title to inventory
+  let matchedItem=null;
+  if(items.length>0){
+    const words=text.toLowerCase().split(/\s+/);
+    let bestScore=0;
+    items.forEach(item=>{
+      if(!item.title)return;
+      const titleWords=item.title.toLowerCase().split(/\s+/);
+      const score=titleWords.filter(w=>words.includes(w)&&w.length>2).length;
+      if(score>bestScore){bestScore=score;matchedItem=item;}
+    });
+    if(bestScore<2)matchedItem=null;
+  }
+
+  let html=`<div class="parse-result" style="margin-top:16px">
+    <div style="font-weight:700;font-size:14px;margin-bottom:10px;color:var(--gold)">Parsed Results</div>`;
+
+  if(result.platform)html+=`<div class="parse-field"><span class="parse-key">Platform</span><span class="parse-val">${result.platform}</span></div>`;
+  if(result.price)html+=`<div class="parse-field"><span class="parse-key">Sale Price</span><span class="parse-val" style="color:var(--green)">${result.price}</span></div>`;
+  if(result.buyer)html+=`<div class="parse-field"><span class="parse-key">Buyer</span><span class="parse-val">${result.buyer}</span></div>`;
+  if(result.orderNum)html+=`<div class="parse-field"><span class="parse-key">Order #</span><span class="parse-val">${result.orderNum}</span></div>`;
+  if(result.shipBy)html+=`<div class="parse-field"><span class="parse-key">Ship By</span><span class="parse-val" style="color:var(--orange)">${result.shipBy}</span></div>`;
+
+  html+=`</div>`;
+
+  // Item matching
+  if(matchedItem){
+    html+=`<div class="card" style="margin-top:12px;border-color:var(--green)">
+      <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:6px">Possible Match Found</div>
+      <div style="font-weight:600">${matchedItem.title}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">${matchedItem.category||''} · ${matchedItem.storage_location||'No location'}</div>
+      <button class="btn btn-sm btn-green" style="margin-top:10px" onclick="markSold('${matchedItem.id}','${(result.price||'').replace('$','')}')">Mark as Sold${result.price?' for '+result.price:''}</button>
+    </div>`;
+  }else{
+    html+=`<div class="card" style="margin-top:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">No matching item found. Select an item to mark as sold:</div>
+      <select class="form-input" id="parse-match" style="font-size:13px">
+        <option value="">Select item...</option>
+        ${items.filter(i=>i.status==='listed'||i.status==='ready').map(i=>`<option value="${i.id}">${i.title||'Untitled'} (${i.status})</option>`).join('')}
+      </select>
+      <button class="btn btn-sm btn-gold" style="margin-top:8px" onclick="const sel=document.getElementById('parse-match').value;if(sel)markSold(sel,'${(result.price||'').replace('$','')}');else toast('Select an item')">Mark Selected as Sold</button>
+    </div>`;
+  }
+
+  document.getElementById('parse-results').innerHTML=html;
+}
+
+async function markSold(itemId,price){
+  const updates={status:'sold',updated_at:new Date().toISOString()};
+  if(price&&!isNaN(Number(price)))updates.sold_price=Number(price);
+  await sb.from('items').update(updates).eq('id',itemId);
+  const item=items.find(i=>i.id===itemId);
+  if(item){item.status='sold';item.updated_at=new Date().toISOString();if(updates.sold_price)item.sold_price=updates.sold_price;}
+  toast('Marked as sold! Ship it ASAP.');
+  scheduleShipReminder(item);
+  await loadItems();
+}
+
+// ===== NOTIFICATIONS =====
+async function initNotifications(){
+  if(!('serviceWorker' in navigator)||!('Notification' in window))return;
+  try{
+    await navigator.serviceWorker.register('/sw.js');
+    if(Notification.permission==='default'){
+      const perm=await Notification.requestPermission();
+      if(perm==='granted')toast('Notifications enabled!');
+    }
+  }catch(e){console.log('SW reg failed:',e)}
+}
+
+function scheduleShipReminder(item){
+  if(!item||Notification.permission!=='granted')return;
+  new Notification('Luxventory: Item Sold!',{
+    body:`Ship "${item.title||'Untitled'}" — ${item.storage_location||'check location'}`,
+    tag:'ship-'+item.id
+  });
+}
+
+function checkShipAlerts(){
+  if(Notification.permission!=='granted')return;
+  const overdue=items.filter(i=>i.status==='sold'&&(Date.now()-new Date(i.updated_at))>86400000);
+  overdue.forEach(item=>{
+    new Notification('Ship Overdue!',{
+      body:`"${item.title||'Untitled'}" — sold ${ago(item.updated_at)} · ${item.storage_location||'?'}`,
+      tag:'overdue-'+item.id
+    });
+  });
+}
+
+// ===== INIT =====
+initNotifications();
+loadItems().then(()=>setTimeout(checkShipAlerts,2000));
+</script>
+</body>
+</html>

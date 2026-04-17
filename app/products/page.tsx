@@ -152,6 +152,16 @@ export default function ProductsPage() {
   const [importResult,  setImportResult]  = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
+  // PDF import
+  const [pdfPreview,   setPdfPreview]   = useState<Partial<Product>[]>([]);
+  const [pdfParsing,   setPdfParsing]   = useState(false);
+  const [pdfImporting, setPdfImporting] = useState(false);
+  const [pdfMfg,       setPdfMfg]       = useState<string | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Product spec viewer
+  const [specProductId, setSpecProductId] = useState<string | null>(null);
+
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -274,6 +284,80 @@ export default function ProductsPage() {
     }
   }
 
+  // ── PDF import handlers ──────────────────────────────────
+  async function handlePDFFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPdfParsing(true);
+    setPdfPreview([]);
+    setPdfMfg(null);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/parse-product-sheet", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.error && !data.products?.length) {
+        setImportResult(data.tip ? `${data.error} ${data.tip}` : data.error);
+      } else if (data.products?.length > 0) {
+        setPdfMfg(data.manufacturer || null);
+        const mapped = data.products.map((p: any) => ({
+          name: p.name,
+          category: p.category || "other",
+          default_cost: p.cost || 0,
+          default_multiplier: p.multiplier || 2.5,
+          manufacturer: p.manufacturer || null,
+          sku: p.sku || null,
+          min_width: p.min_width || null,
+          max_width: p.max_width || null,
+          min_height: p.min_height || null,
+          max_height: p.max_height || null,
+          lead_time_days: p.lead_time_days || null,
+          color_options: p.color_options || null,
+          notes: p.notes || null,
+        }));
+        setPdfPreview(mapped);
+      } else {
+        setImportResult("No products detected in this file. Try a different PDF or use CSV import.");
+      }
+    } catch (err) {
+      setImportResult(`Error parsing file: ${err}`);
+    }
+    setPdfParsing(false);
+  }
+
+  async function importPDF() {
+    if (pdfPreview.length === 0) return;
+    setPdfImporting(true);
+    const inserts = pdfPreview.map(p => ({
+      name: p.name || "Unnamed",
+      category: p.category || "other",
+      default_cost: p.default_cost || 0,
+      default_multiplier: p.default_multiplier || 2.5,
+      notes: p.notes || null,
+      manufacturer: p.manufacturer || pdfMfg || null,
+      sku: p.sku || null,
+      min_width: p.min_width || null,
+      max_width: p.max_width || null,
+      min_height: p.min_height || null,
+      max_height: p.max_height || null,
+      lead_time_days: p.lead_time_days || null,
+      color_options: p.color_options || null,
+      imported_from: "pdf",
+      active: true,
+    }));
+    const { error } = await supabase.from("product_catalog").insert(inserts);
+    setPdfImporting(false);
+    if (error) {
+      setImportResult(`Error: ${error.message}`);
+    } else {
+      setImportResult(`Successfully imported ${inserts.length} products from PDF`);
+      setPdfPreview([]);
+      if (pdfInputRef.current) pdfInputRef.current.value = "";
+      load();
+    }
+  }
+
   // ── Filtering ─────────────────────────────────────────────
   const active   = products.filter(p => p.active);
   const inactive = products.filter(p => !p.active);
@@ -304,10 +388,15 @@ export default function ProductsPage() {
           <div>
             <h1 className="text-xl font-bold">Product Catalog</h1>
             <p style={{ color: "var(--zr-text-secondary)" }} className="text-xs mt-0.5">
-              Manage products, costs, and specs. Import from CSV or add manually.
+              Manage products, costs, and specs. Import from CSV, PDF, or browse the manufacturer library.
             </p>
           </div>
           <div className="flex gap-1.5">
+            <Link href="/products/library"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+              className="rounded px-2.5 py-1.5 text-xs hover:opacity-80 inline-flex items-center gap-1">
+              🏭 Library
+            </Link>
             <button onClick={() => { setShowImport(!showImport); setImportResult(null); setCsvPreview([]); }}
               style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
               className="rounded px-2.5 py-1.5 text-xs hover:opacity-80">
@@ -400,6 +489,70 @@ export default function ProductsPage() {
             }} className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>
               📄 Download CSV template
             </button>
+
+            {/* PDF Import Section */}
+            <div className="border-t pt-2 mt-2" style={{ borderColor: "rgba(59,130,246,0.3)" }}>
+              <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold mb-1">Import from PDF</div>
+              <p style={{ color: "var(--zr-info)" }} className="text-xs mb-1.5">
+                Upload a manufacturer price sheet or spec sheet (PDF). We'll extract product names, prices, sizes, and specs automatically.
+              </p>
+              <div className="flex items-center gap-2">
+                <input ref={pdfInputRef} type="file" accept=".pdf,image/*"
+                  onChange={handlePDFFile}
+                  style={{ color: "var(--zr-text-primary)" }}
+                  className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:text-xs file:cursor-pointer"
+                />
+                {pdfParsing && <span className="text-xs text-blue-500 animate-pulse">Extracting products…</span>}
+              </div>
+
+              {/* PDF Preview */}
+              {pdfPreview.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  <div style={{ color: "var(--zr-info)" }} className="text-xs font-medium">
+                    Found {pdfPreview.length} products{pdfMfg ? ` from ${pdfMfg}` : ""}
+                  </div>
+                  <div style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="max-h-48 overflow-y-auto rounded">
+                    <table style={{ color: "var(--zr-text-primary)" }} className="w-full text-xs">
+                      <thead style={{ background: "var(--zr-surface-3)" }} className="sticky top-0">
+                        <tr>
+                          <th className="text-left px-2 py-1 font-medium">Name</th>
+                          <th className="text-left px-2 py-1 font-medium">Cat</th>
+                          <th className="text-left px-2 py-1 font-medium">SKU</th>
+                          <th className="text-right px-2 py-1 font-medium">Cost</th>
+                          <th className="text-right px-2 py-1 font-medium">Sizes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pdfPreview.slice(0, 25).map((p, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-2 py-1 truncate max-w-[120px]">{p.name}</td>
+                            <td className="px-2 py-1 text-gray-500">{p.category}</td>
+                            <td className="px-2 py-1 text-gray-500 truncate max-w-[60px]">{p.sku || "—"}</td>
+                            <td className="px-2 py-1 text-right">{p.default_cost ? `$${Number(p.default_cost).toFixed(2)}` : "—"}</td>
+                            <td className="px-2 py-1 text-right text-gray-400">
+                              {p.min_width && p.max_width ? `${p.min_width}–${p.max_width}"` : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                        {pdfPreview.length > 25 && (
+                          <tr><td colSpan={5} className="px-2 py-1 text-gray-400 text-center">
+                            …and {pdfPreview.length - 25} more
+                          </td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={importPDF} disabled={pdfImporting}
+                      className="bg-blue-600 text-white rounded px-3 py-1.5 text-xs disabled:opacity-50">
+                      {pdfImporting ? "Importing…" : `Import ${pdfPreview.length} Products`}
+                    </button>
+                    <button onClick={() => { setPdfPreview([]); setPdfMfg(null); if (pdfInputRef.current) pdfInputRef.current.value = ""; }}
+                      className="border rounded px-3 py-1.5 text-xs">Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -445,8 +598,8 @@ export default function ProductsPage() {
                           <span className={`text-xs rounded px-1.5 py-0.5 ${CAT_BADGE[p.category] ?? CAT_BADGE.other}`}>
                             {CATEGORIES.find(c => c.value === p.category)?.label ?? p.category}
                           </span>
-                          {p.imported_from === "csv" && (
-                            <span className="text-xs rounded px-1.5 py-0.5 bg-blue-50 text-blue-500">CSV</span>
+                          {p.imported_from && (
+                            <span className="text-xs rounded px-1.5 py-0.5 bg-blue-50 text-blue-500">{p.imported_from.toUpperCase()}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -455,19 +608,69 @@ export default function ProductsPage() {
                           {p.lead_time_days && <span className="text-xs text-gray-400">{p.lead_time_days}d lead</span>}
                         </div>
                         {p.notes && <div className="text-xs text-gray-400 mt-0.5">{p.notes}</div>}
-                        {(p.min_width || p.max_width) && (
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            Size: {p.min_width || "?"}" – {p.max_width || "?"}" W × {p.min_height || "?"}" – {p.max_height || "?"}" H
-                          </div>
-                        )}
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
+                        {(p.min_width || p.max_width || p.color_options || p.lead_time_days) && (
+                          <button onClick={() => setSpecProductId(specProductId === p.id ? null : p.id)}
+                            className={`text-xs rounded px-1.5 py-0.5 border transition-colors ${specProductId === p.id ? "bg-gray-800 text-white border-gray-800" : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"}`}>
+                            Specs {specProductId === p.id ? "▲" : "▼"}
+                          </button>
+                        )}
                         <button onClick={() => openEdit(p)}
                           className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>Edit</button>
                         <button onClick={() => toggleActive(p)}
                           className="text-xs text-gray-400 hover:text-red-500">Archive</button>
                       </div>
                     </div>
+
+                    {/* Expandable Spec Card */}
+                    {specProductId === p.id && (
+                      <div className="mt-2 rounded-lg p-3 text-xs space-y-2" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                        <div className="font-semibold text-sm" style={{ color: "var(--zr-text-primary)" }}>
+                          Product Specifications
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(p.min_width || p.max_width) && (
+                            <div className="rounded bg-white p-2 border">
+                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Width Range</div>
+                              <div className="font-semibold">{p.min_width || "?"}" – {p.max_width || "?"}"</div>
+                            </div>
+                          )}
+                          {(p.min_height || p.max_height) && (
+                            <div className="rounded bg-white p-2 border">
+                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Height Range</div>
+                              <div className="font-semibold">{p.min_height || "?"}" – {p.max_height || "?"}"</div>
+                            </div>
+                          )}
+                          {p.lead_time_days && (
+                            <div className="rounded bg-white p-2 border">
+                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Lead Time</div>
+                              <div className="font-semibold">{p.lead_time_days} days</div>
+                            </div>
+                          )}
+                          {p.manufacturer && (
+                            <div className="rounded bg-white p-2 border">
+                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Manufacturer</div>
+                              <div className="font-semibold">{p.manufacturer}</div>
+                            </div>
+                          )}
+                        </div>
+                        {p.color_options && (
+                          <div className="rounded bg-white p-2 border">
+                            <div className="text-gray-400 text-[10px] uppercase tracking-wide mb-1">Available Colors</div>
+                            <div className="flex flex-wrap gap-1">
+                              {p.color_options.split(/[|,]/).map((c, i) => (
+                                <span key={i} className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">{c.trim()}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {p.sku && (
+                          <div className="text-gray-400">SKU: <span className="text-gray-600">{p.sku}</span></div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                       <div className="rounded bg-gray-50 p-2">
                         <div className="text-gray-400">Cost</div>

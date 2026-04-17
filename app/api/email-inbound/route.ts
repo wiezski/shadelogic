@@ -82,6 +82,20 @@ function companyToken(companyId: string): string {
   return companyId.replace(/-/g, "").slice(0, 12);
 }
 
+// ── PDF attachment text extraction ────────────────────────────
+async function extractPdfText(base64Content: string): Promise<string> {
+  try {
+    const buffer = Buffer.from(base64Content, "base64");
+    // @ts-ignore — pdf-parse must be installed: npm install pdf-parse
+    const pdfParse = (await import("pdf-parse")).default;
+    const parsed = await pdfParse(buffer);
+    return parsed.text || "";
+  } catch {
+    // pdf-parse not installed or parse failed
+    return "";
+  }
+}
+
 // ── Route handler ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -120,7 +134,23 @@ export async function POST(req: NextRequest) {
     const subject  = body.Subject  ?? "";
     const textBody = body.TextBody ?? "";
     const htmlBody = body.HtmlBody ?? "";
-    const fullText = subject + " " + textBody + " " + htmlBody;
+
+    // ── Extract text from PDF attachments ────────────────────
+    let attachmentText = "";
+    const attachments = body.Attachments ?? [];
+    for (const att of attachments) {
+      const name = (att.Name ?? "").toLowerCase();
+      const contentType = (att.ContentType ?? "").toLowerCase();
+      if (name.endsWith(".pdf") || contentType.includes("pdf")) {
+        const pdfText = await extractPdfText(att.Content ?? "");
+        if (pdfText) {
+          attachmentText += " " + pdfText;
+          console.log(`[email-inbound] Extracted ${pdfText.length} chars from PDF: ${att.Name}`);
+        }
+      }
+    }
+
+    const fullText = subject + " " + textBody + " " + htmlBody + " " + attachmentText;
 
     const orderNumbers   = extractOrderNumbers(fullText);
     const trackingNums   = extractTracking(fullText);

@@ -105,13 +105,44 @@ Full if/then automation system with daily cron processing:
 - **Cron**: Integrated into daily 8am cron (send-reminders route also runs automation engine)
 - Standalone route at /api/cron/process-automation for manual testing
 
+### Phase 11 — Advanced Analytics — Complete ✓
+Enhanced analytics page with 4 new sections:
+- **Revenue Forecast**: projects next month revenue from 3-month trend with up/down/flat indicator
+- **Close Rate by Lead Source**: table showing leads, sold, close %, and revenue per lead source (Referral, Google, Builder, etc.)
+- **Installer Performance**: jobs, completions, completion rate, issues, avg turnaround days per installer
+- **Measurement Accuracy**: rework rate bar — % of installs needing re-measurement, color-coded thresholds
+- No SQL migration needed — all data from existing tables
+
+### Phase 12 — Manufacturer Library + Enhanced Imports — Complete ✓
+Major batch of features:
+- **PDF attachment parsing on shipping emails**: Email inbound handler now extracts text from PDF attachments (not just email body). Uses pdf-parse on base64 attachment content from Postmark webhook.
+- **Product import from PDF**: New API route `/api/parse-product-sheet` — upload manufacturer price sheets/spec sheets, extracts product names, prices, sizes, categories, colors, lead times. Preview before importing.
+- **Enhanced product spec viewer**: Clickable "Specs" button on each product card, expands to show width/height ranges, lead time, manufacturer, and color chips in a clean card layout.
+- **Manufacturer Library** (`/products/library`): Central product database with pre-loaded data for Hunter Douglas (12 products), Graber (8 products), Norman (6 products).
+  - Browse by manufacturer, search/filter by category
+  - "Add to My Catalog" (single or all) — imports with specs, sizes, colors, lead times
+  - "Subscribe" to manufacturers for change notifications
+  - Alerts tab with severity levels (critical/warning/info), suggestions, read/dismiss
+- **Product Change Detection** (`lib/product-change-detector.ts`):
+  - `discontinueProduct()` — marks product discontinued, auto-finds alternatives by spec similarity (size overlap, lead time, same manufacturer bonus), creates alerts for subscribed dealers
+  - `updateProductSpec()` — logs spec/price/color changes, notifies affected dealers
+  - `findAlternatives()` — scores replacement products by category match, size coverage, and lead time similarity
+  - Alerts include smart suggestions like "Consider Hunter Douglas Duette as replacement (85% match)"
+- **SQL migration**: `supabase/phase12_manufacturer_library.sql`
+  - Tables: manufacturer_library, manufacturer_brands, product_changes, dealer_library_subscriptions, dealer_product_alerts
+  - RLS: library/brands/changes are READ-ONLY for all users (admin-managed); subscriptions/alerts are company-scoped
+  - Seeded with 12 manufacturers and 26 products across Hunter Douglas, Graber, Norman
+  - product_catalog gains library_product_id FK for linking
+- **Products page updated**: "Library" button in header links to manufacturer library, import panel now supports CSV + PDF
+
 ### Next Up
+- **Deploy Phase 10 + 11 + 12**: `git add -A && git commit -m "Phases 10-12: Automation engine, Advanced analytics, Manufacturer library" && git push`
 - Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
 - Phase 8 (Builder Portal) — SKIPPED for now, may revisit later
-- Continue to Phase 11 (Advanced Analytics) per MVP-BUILD-PLAN.md
 - Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
+- **All phases 1–11 in MVP-BUILD-PLAN.md are COMPLETE** — remaining work is Phase 12+ (mobile, AI features, integrations) or polish/hardening
 
 ---
 
@@ -264,7 +295,8 @@ Full if/then automation system with daily cron processing:
 
 ### Analytics (`/analytics`)
 - **Operations section**: 5 category stats, install completion %, issues drill-down (tap to see jobs), by measurer table, recent jobs
-- **CRM section**: lead pipeline funnel with % bars + close rate, heat score counts, stuck leads count, outreach activity by type (date range aware)
+- **CRM section**: revenue summary (revenue/pipeline/avg deal), P&L by month table, lead pipeline funnel with % bars + close rate, heat score counts, stuck leads count, outreach activity by type (date range aware)
+- **Phase 11 additions**: Revenue Forecast (trend projection), Close Rate by Lead Source (table with revenue), Installer Performance (completion rate, issues, turnaround), Measurement Accuracy (rework rate bar)
 - Date range filter: 7 days / 30 days / All time
 - Architecture: sections gated by feature flags
 

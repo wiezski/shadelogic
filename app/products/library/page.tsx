@@ -66,7 +66,7 @@ const CAT_BADGE: Record<string, string> = {
 export default function ManufacturerLibraryPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [products, setProducts] = useState<LibProduct[]>([]);
-  const [subscriptions, setSubs] = useState<Subscription[]>([]);
+  const [subs, setSubscriptions] = useState<Subscription[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMfg, setSelectedMfg] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export default function ManufacturerLibraryPage() {
       supabase.from("dealer_product_alerts").select("*").eq("dismissed", false).order("created_at", { ascending: false }).limit(50),
     ]);
     setBrands((b || []) as Brand[]);
-    setSubs((s || []) as Subscription[]);
+    setSubscriptions((s || []) as Subscription[]);
     setAlerts((a || []) as Alert[]);
     setLoading(false);
   }
@@ -104,12 +104,12 @@ export default function ManufacturerLibraryPage() {
 
   async function subscribe(manufacturer: string) {
     await supabase.from("dealer_library_subscriptions").insert([{ manufacturer }]);
-    setSubs(prev => [...prev, { id: "temp", manufacturer }]);
+    setSubscriptions(prev => [...prev, { id: "temp", manufacturer }]);
   }
 
   async function unsubscribe(manufacturer: string) {
     await supabase.from("dealer_library_subscriptions").delete().eq("manufacturer", manufacturer);
-    setSubs(prev => prev.filter(s => s.manufacturer !== manufacturer));
+    setSubscriptions(prev => prev.filter(s => s.manufacturer !== manufacturer));
   }
 
   const isSubscribed = (mfg: string) => subs.some(s => s.manufacturer === mfg);

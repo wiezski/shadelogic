@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { Skeleton, SkeletonCard, EmptyState } from "./ui";
+import { Sparkline, MiniBarChart, PipelineFunnel, DonutChart, StatTrend } from "./charts";
 
 type Customer = {
   id: string;
@@ -122,6 +124,15 @@ export default function HomePage() {
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [pipelineValue, setPipelineValue] = useState<Record<string, number>>({});
 
+  // Chart data
+  const [revenueByMonth, setRevenueByMonth] = useState<{ label: string; value: number }[]>([]);
+  const [activityByWeek, setActivityByWeek] = useState<number[]>([]);
+  const [closeRate, setCloseRate] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [revenueTrend, setRevenueTrend] = useState(0);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [leadTrend, setLeadTrend] = useState(0);
+
   // Add customer form
   const [showForm, setShowForm] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -143,6 +154,7 @@ export default function HomePage() {
     loadReadyToInstall();
     loadTodayFocus();
     loadWorkQueue();
+    loadChartData();
   }, []);
 
   async function loadDashboard() {
@@ -451,6 +463,79 @@ export default function HomePage() {
     setWorkQueueLoading(false);
   }
 
+  async function loadChartData() {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString();
+
+    // Revenue by month from paid invoices
+    const { data: invData } = await supabase
+      .from("invoices")
+      .select("total, amount_paid, status, created_at")
+      .in("status", ["paid", "partial"])
+      .gte("created_at", sixMonthsAgo);
+
+    const monthBuckets: Record<string, number> = {};
+    const monthLabels = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("en-US", { month: "short" });
+      monthBuckets[key] = 0;
+      monthLabels.push({ key, label });
+    }
+    (invData || []).forEach((inv: any) => {
+      const key = inv.created_at.slice(0, 7);
+      if (monthBuckets[key] !== undefined) monthBuckets[key] += (inv.amount_paid || 0);
+    });
+    const revBars = monthLabels.map(m => ({ label: m.label, value: monthBuckets[m.key] }));
+    setRevenueByMonth(revBars);
+
+    // Revenue trend: compare last 2 months
+    const vals = revBars.map(b => b.value);
+    const curMonth = vals[vals.length - 1] || 0;
+    const prevMonth = vals[vals.length - 2] || 0;
+    setTotalRevenue(curMonth);
+    setRevenueTrend(prevMonth > 0 ? ((curMonth - prevMonth) / prevMonth) * 100 : 0);
+
+    // Activity by week (last 8 weeks)
+    const eightWeeksAgo = new Date(Date.now() - 56 * 86400000).toISOString();
+    const { data: actData } = await supabase
+      .from("activity_log")
+      .select("created_at")
+      .gte("created_at", eightWeeksAgo);
+    const weekBuckets: number[] = new Array(8).fill(0);
+    (actData || []).forEach((a: any) => {
+      const weeksAgo = Math.floor((Date.now() - new Date(a.created_at).getTime()) / (7 * 86400000));
+      const idx = 7 - Math.min(weeksAgo, 7);
+      weekBuckets[idx]++;
+    });
+    setActivityByWeek(weekBuckets);
+
+    // New leads this month vs last month
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const { count: thisMonthLeads } = await supabase
+      .from("customers").select("id", { count: "exact", head: true }).gte("created_at", thisMonthStart);
+    const { count: lastMonthLeads } = await supabase
+      .from("customers").select("id", { count: "exact", head: true })
+      .gte("created_at", lastMonthStart).lt("created_at", thisMonthStart);
+    setTotalLeads(thisMonthLeads || 0);
+    setLeadTrend(lastMonthLeads && lastMonthLeads > 0 ? (((thisMonthLeads || 0) - lastMonthLeads) / lastMonthLeads) * 100 : 0);
+
+    // Close rate: sold / (sold + lost)
+    const { count: soldCount } = await supabase
+      .from("customers").select("id", { count: "exact", head: true }).eq("lead_status", "Sold");
+    const { count: installedCount } = await supabase
+      .from("customers").select("id", { count: "exact", head: true }).eq("lead_status", "Installed");
+    const { count: completeCount } = await supabase
+      .from("customers").select("id", { count: "exact", head: true }).eq("lead_status", "Complete");
+    const { count: lostCount } = await supabase
+      .from("customers").select("id", { count: "exact", head: true }).eq("lead_status", "Lost");
+    const won = (soldCount || 0) + (installedCount || 0) + (completeCount || 0);
+    const total = won + (lostCount || 0);
+    setCloseRate(total > 0 ? (won / total) * 100 : 0);
+  }
+
   async function addCustomer(e: React.FormEvent) {
     e.preventDefault();
     const first = firstName.trim();
@@ -589,6 +674,71 @@ export default function HomePage() {
 
         {tab === "dashboard" && (
           <>
+            {/* ── KPI Strip ── */}
+            <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "10px" }}>
+                <div style={{ fontSize: "10px", color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Revenue (MTD)</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "var(--zr-text-primary)" }}>
+                    ${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toLocaleString()}
+                  </span>
+                  {revenueByMonth.length >= 2 && (
+                    <Sparkline data={revenueByMonth.map(b => b.value)} width={60} height={22} color={revenueTrend >= 0 ? "var(--zr-success)" : "var(--zr-error)"} fillColor={revenueTrend >= 0 ? "var(--zr-success)" : "var(--zr-error)"} />
+                  )}
+                </div>
+                {revenueTrend !== 0 && (
+                  <div style={{ fontSize: "10px", color: revenueTrend > 0 ? "var(--zr-success)" : "var(--zr-error)", fontWeight: 500, marginTop: "2px" }}>
+                    {revenueTrend > 0 ? "↑" : "↓"} {Math.abs(revenueTrend).toFixed(0)}% vs last mo
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "10px" }}>
+                <div style={{ fontSize: "10px", color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>New Leads (MTD)</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "var(--zr-text-primary)" }}>{totalLeads}</span>
+                  {activityByWeek.length >= 2 && (
+                    <Sparkline data={activityByWeek} width={60} height={22} color="var(--zr-info)" fillColor="var(--zr-info)" />
+                  )}
+                </div>
+                {leadTrend !== 0 && (
+                  <div style={{ fontSize: "10px", color: leadTrend > 0 ? "var(--zr-success)" : "var(--zr-error)", fontWeight: 500, marginTop: "2px" }}>
+                    {leadTrend > 0 ? "↑" : "↓"} {Math.abs(leadTrend).toFixed(0)}% vs last mo
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "10px" }}>
+                <div style={{ fontSize: "10px", color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Close Rate</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "var(--zr-text-primary)" }}>{closeRate.toFixed(0)}%</span>
+                  <DonutChart value={closeRate} size={36} strokeWidth={5} color={closeRate >= 50 ? "var(--zr-success)" : closeRate >= 30 ? "var(--zr-warning)" : "var(--zr-error)"} />
+                </div>
+              </div>
+
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "10px" }}>
+                <div style={{ fontSize: "10px", color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Activity (8wk)</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "var(--zr-text-primary)" }}>{activityByWeek.reduce((a, b) => a + b, 0)}</span>
+                  {activityByWeek.length >= 2 && (
+                    <Sparkline data={activityByWeek} width={60} height={22} color="var(--zr-orange)" fillColor="var(--zr-orange)" />
+                  )}
+                </div>
+                <div style={{ fontSize: "10px", color: "var(--zr-text-muted)", marginTop: "2px" }}>calls, texts, emails</div>
+              </div>
+            </div>
+
+            {/* ── Revenue Chart ── */}
+            {revenueByMonth.some(b => b.value > 0) && (
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "12px" }} className="mb-4">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--zr-text-muted)", fontFamily: "var(--zr-font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Revenue — Last 6 Months</span>
+                  <Link href="/analytics" style={{ color: "var(--zr-orange)", fontSize: "11px" }} className="hover:underline">Details →</Link>
+                </div>
+                <MiniBarChart bars={revenueByMonth} width={320} height={80} />
+              </div>
+            )}
+
             {/* ── Today's Focus ── */}
             {focusItems.length > 0 && (
               <div style={{ background: "var(--zr-surface-1)", border: "2px solid var(--zr-orange)" }} className="mb-4 rounded-xl p-3">
@@ -618,6 +768,24 @@ export default function HomePage() {
             <div className="mb-2 grid grid-cols-5 gap-1.5 sm:grid-cols-10">
               {ALL_STAGES.map(s => <PipelineCard key={s} stage={s} />)}
             </div>
+
+            {/* Pipeline funnel visualization */}
+            {customers.length > 0 && (
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "12px" }} className="mb-3">
+                <PipelineFunnel
+                  stages={[
+                    { label: "New", count: stageCounts["New"] || 0, value: pipelineValue["New"], color: "#9ca3af" },
+                    { label: "Contacted", count: stageCounts["Contacted"] || 0, value: pipelineValue["Contacted"], color: "#3b82f6" },
+                    { label: "Scheduled", count: (stageCounts["Consult Scheduled"] || 0) + (stageCounts["Measure Scheduled"] || 0), color: "#8b5cf6" },
+                    { label: "Measured", count: stageCounts["Measured"] || 0, value: pipelineValue["Measured"], color: "#d97706" },
+                    { label: "Quoted", count: stageCounts["Quoted"] || 0, value: pipelineValue["Quoted"], color: "#ea580c" },
+                    { label: "Sold", count: stageCounts["Sold"] || 0, value: pipelineValue["Sold"], color: "#16a34a" },
+                    { label: "Installed", count: (stageCounts["Installed"] || 0) + (stageCounts["Complete"] || 0), color: "#059669" },
+                  ]}
+                  height={22}
+                />
+              </div>
+            )}
 
             {/* Stage drill-down */}
             {selectedStage && (
@@ -714,6 +882,13 @@ export default function HomePage() {
             )}
 
             {/* Work Queue */}
+            {workQueueLoading && (
+              <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
+                <Skeleton w="100px" h="14px" />
+                <div style={{ height: 12 }} />
+                <Skeleton lines={3} />
+              </div>
+            )}
             {!workQueueLoading && workQueue.length > 0 && (
               <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-4 rounded p-3">
                 <h2 style={{ color: "var(--zr-text-primary)" }} className="mb-2 flex items-center gap-2 text-sm font-semibold">
@@ -937,7 +1112,11 @@ export default function HomePage() {
                   )
                 : customers;
               return filtered.length === 0 ? (
-                <p style={{ color: "var(--zr-text-muted)" }}>{custSearch ? "No customers match." : "No customers yet."}</p>
+                custSearch ? (
+                  <EmptyState type="search" title="No results" subtitle={`No customers match "${custSearch}"`} />
+                ) : (
+                  <EmptyState type="customers" title="No customers yet" subtitle="Add your first customer to get started." action="+ New Customer" onAction={() => setShowForm(true)} />
+                )
               ) : (
               <ul className="space-y-2">
                 {filtered.map((customer) => (

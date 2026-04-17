@@ -723,7 +723,19 @@ export default function SettingsPage() {
     );
   }
 
-  if (loading) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Loading…</div>;
+  if (loading) return (
+    <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "24px" }}>
+      <div style={{ maxWidth: 672, margin: "0 auto" }}>
+        <div className="zr-skeleton" style={{ width: "180px", height: "22px", borderRadius: "var(--zr-radius-sm)", marginBottom: "20px" }} />
+        {[1,2,3].map(i => (
+          <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "16px", marginBottom: "12px" }}>
+            <div className="zr-skeleton" style={{ width: "30%", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "10px" }} />
+            <div className="zr-skeleton" style={{ width: "100%", height: "36px", borderRadius: "var(--zr-radius-sm)" }} />
+          </div>
+        ))}
+      </div>
+    </main>
+  );
   if (!settings) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Unable to load settings. Check that your company_settings table exists and RLS is configured.</div>;
 
   return (

@@ -291,7 +291,16 @@ export default function RemindersPage() {
 
         <UnmatchedEmailsSection />
 
-        {loading ? <p style={{ color: "var(--zr-text-secondary)" }} >Loading…</p> : reminders.length === 0 ? (
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[1,2,3].map(i => (
+              <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-sm)", padding: "12px" }}>
+                <div className="zr-skeleton" style={{ width: "40%", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "6px" }} />
+                <div className="zr-skeleton" style={{ width: "65%", height: "10px", borderRadius: "var(--zr-radius-sm)" }} />
+              </div>
+            ))}
+          </div>
+        ) : reminders.length === 0 ? (
           <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-8 text-center text-gray-400">
             <div className="text-3xl mb-2">✓</div>
             <div className="font-medium">You're all caught up</div>

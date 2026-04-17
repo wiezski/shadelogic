@@ -507,7 +507,20 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {loading ? <p style={{ color: "var(--zr-text-secondary)" }}>Loading...</p> : (
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" }}>
+              {[1,2,3,4,5].map(i => (
+                <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-sm)", padding: "16px", textAlign: "center" }}>
+                  <div className="zr-skeleton" style={{ width: "50%", height: "24px", margin: "0 auto", borderRadius: "var(--zr-radius-sm)" }} />
+                  <div style={{ height: 8 }} />
+                  <div className="zr-skeleton" style={{ width: "70%", height: "12px", margin: "0 auto", borderRadius: "var(--zr-radius-sm)" }} />
+                </div>
+              ))}
+            </div>
+            <div className="zr-skeleton" style={{ width: "100%", height: "200px", borderRadius: "var(--zr-radius-md)" }} />
+          </div>
+        ) : (
           <>
             {/* ── Operations Section ───────────────────── */}
             <div className="mb-4 flex items-center gap-3">

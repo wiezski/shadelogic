@@ -8,7 +8,7 @@ import { resolveFeatures, type Features } from "../lib/features";
 import type { User } from "@supabase/supabase-js";
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/signup", "/q/", "/intake"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/q/", "/intake", "/thrift"];
 
 export type TenantBranding = {
   slug: string | null;
@@ -172,6 +172,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     applyBranding(DEFAULT_BRANDING);
     router.replace("/login");
+  }
+
+  // Public routes render immediately — no auth gate
+  if (isPublic) {
+    return (
+      <AuthContext.Provider value={{ user, companyId, role, permissions, features, plan, branding, loading, signOut }}>
+        {children}
+      </AuthContext.Provider>
+    );
   }
 
   // Show loading spinner while checking session

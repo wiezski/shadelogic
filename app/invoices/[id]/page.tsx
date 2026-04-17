@@ -355,9 +355,12 @@ export default function InvoiceDetailPage() {
   if (loading) {
     return (
       <PermissionGate require="view_financials">
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4">
-          <div className="mx-auto max-w-2xl">
-            <p>Loading…</p>
+        <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "24px" }}>
+          <div style={{ maxWidth: 672, margin: "0 auto" }}>
+            <div className="zr-skeleton" style={{ width: "120px", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "16px" }} />
+            <div className="zr-skeleton" style={{ width: "45%", height: "22px", borderRadius: "var(--zr-radius-sm)", marginBottom: "12px" }} />
+            <div className="zr-skeleton" style={{ width: "100%", height: "160px", borderRadius: "var(--zr-radius-md)", marginBottom: "12px" }} />
+            <div className="zr-skeleton" style={{ width: "100%", height: "80px", borderRadius: "var(--zr-radius-md)" }} />
           </div>
         </main>
       </PermissionGate>

@@ -562,7 +562,10 @@ function SchedulePageInner() {
 
       {/* ── Calendar ── */}
       {loading ? (
-        <div className="text-center text-gray-400 py-12 text-sm">Loading…</div>
+        <div style={{ padding: "48px 0", textAlign: "center" }}>
+          <div className="zr-skeleton" style={{ width: "100%", maxWidth: 600, height: "300px", margin: "0 auto", borderRadius: "var(--zr-radius-md)" }} />
+          <p style={{ color: "var(--zr-text-muted)", marginTop: "12px", fontSize: "13px" }}>Loading calendar...</p>
+        </div>
       ) : view === "month" ? (
         <MonthView
           currentDate={currentDate} today={today}

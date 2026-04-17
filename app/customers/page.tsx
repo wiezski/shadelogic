@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { Skeleton, EmptyState } from "../ui";
 
 type Customer = {
   id: string;
@@ -121,9 +122,17 @@ function CustomersListInner() {
         </div>
 
         {loading ? (
-          <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[1,2,3,4,5].map(i => (
+              <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-sm)", padding: "12px" }}>
+                <Skeleton w="45%" h="14px" />
+                <div style={{ height: 6 }} />
+                <Skeleton w="30%" h="10px" />
+              </div>
+            ))}
+          </div>
         ) : customers.length === 0 ? (
-          <p style={{ color: "var(--zr-text-secondary)" }}>No customers match this filter.</p>
+          <EmptyState type="customers" title="No customers found" subtitle="No customers match this filter. Try adjusting your search." />
         ) : (
           <ul className="space-y-2">
             {customers.map(c => {

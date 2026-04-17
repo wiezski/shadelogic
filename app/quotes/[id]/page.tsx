@@ -880,8 +880,22 @@ export default function QuotePage() {
 
   // ── Render ────────────────────────────────────────────────────
 
-  if (loading) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Loading…</div>;
-  if (!quote)  return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Quote not found.</div>;
+  if (loading) return (
+    <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "24px" }}>
+      <div style={{ maxWidth: 800, margin: "0 auto" }}>
+        <div className="zr-skeleton" style={{ width: "30%", height: "20px", borderRadius: "var(--zr-radius-sm)", marginBottom: "16px" }} />
+        <div className="zr-skeleton" style={{ width: "100%", height: "180px", borderRadius: "var(--zr-radius-md)", marginBottom: "12px" }} />
+        <div className="zr-skeleton" style={{ width: "100%", height: "100px", borderRadius: "var(--zr-radius-md)" }} />
+      </div>
+    </main>
+  );
+  if (!quote) return (
+    <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "48px 24px", textAlign: "center" }}>
+      <div style={{ fontSize: "32px", marginBottom: "8px" }}>📝</div>
+      <p style={{ color: "var(--zr-text-primary)", fontWeight: 600, fontSize: "15px" }}>Quote not found</p>
+      <p style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "4px" }}>This quote may have been deleted or you don't have access.</p>
+    </main>
+  );
 
   const customerName = [customer?.first_name, customer?.last_name].filter(Boolean).join(" ");
   const statusInfo   = STATUSES.find(s => s.value === quote.status) ?? STATUSES[0];

@@ -216,7 +216,19 @@ export default function ManufacturerLibraryPage() {
               </button>
             </div>
 
-            {loading ? <p style={{ color: "var(--zr-text-secondary)" }}>Loading...</p> : tab === "browse" ? (
+            {loading ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div className="zr-skeleton" style={{ width: "140px", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "6px" }} />
+                      <div className="zr-skeleton" style={{ width: "80px", height: "10px", borderRadius: "var(--zr-radius-sm)" }} />
+                    </div>
+                    <div className="zr-skeleton" style={{ width: "70px", height: "28px", borderRadius: "var(--zr-radius-sm)" }} />
+                  </div>
+                ))}
+              </div>
+            ) : tab === "browse" ? (
               <>
                 {/* Manufacturer cards */}
                 {!selectedMfg && (

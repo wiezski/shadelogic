@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-provider";
 import { ZRLogo } from "./zr-logo";
 import { supabase } from "../lib/supabase";
 
 export function NavBar() {
+  const pathname = usePathname();
   const { user, signOut, permissions, features } = useAuth();
+
+  // Hide NavBar on thrift routes (ThriftFlow has its own nav)
+  if (pathname.startsWith("/thrift")) return null;
   const [reminderCount, setReminderCount] = useState(0);
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
 import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
+import { Skeleton, EmptyState } from "../ui";
 
 // ── Types ──────────────────────────────────────────────────────
 type PaymentQuote = {
@@ -520,7 +521,18 @@ export default function PaymentsPage() {
             </div>
 
             {loading ? (
-              <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-sm)", padding: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <Skeleton w="35%" h="14px" />
+                      <Skeleton w="60px" h="14px" />
+                    </div>
+                    <div style={{ height: 6 }} />
+                    <Skeleton w="50%" h="10px" />
+                  </div>
+                ))}
+              </div>
             ) : activeTab === "invoices" ? (
               <>
                 <button
@@ -532,7 +544,7 @@ export default function PaymentsPage() {
                 </button>
 
                 {invoices.length === 0 ? (
-                  <p style={{ color: "var(--zr-text-secondary)" }}>No invoices yet. Create one from an approved quote.</p>
+                  <EmptyState type="invoices" title="No invoices yet" subtitle="Create your first invoice from an approved quote." />
                 ) : (
                   <ul className="space-y-2">
                     {invoices.map(inv => (

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "./auth-provider";
 import { NavBar } from "./nav-bar";
+import { ToastProvider } from "./ui";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,8 +31,10 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased" style={{ colorScheme: "light" }}>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--zr-font-body)" }}>
         <AuthProvider>
-          <NavBar />
-          {children}
+          <ToastProvider>
+            <NavBar />
+            {children}
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

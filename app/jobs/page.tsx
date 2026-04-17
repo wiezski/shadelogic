@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { Skeleton, EmptyState } from "../ui";
 
 type Job = {
   id: string;
@@ -118,9 +119,17 @@ function JobsPageInner() {
         </div>
 
         {loading ? (
-          <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[1,2,3,4].map(i => (
+              <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-sm)", padding: "12px" }}>
+                <Skeleton w="55%" h="14px" />
+                <div style={{ height: 6 }} />
+                <Skeleton w="35%" h="10px" />
+              </div>
+            ))}
+          </div>
         ) : jobs.length === 0 ? (
-          <p style={{ color: "var(--zr-text-secondary)" }}>No jobs match this filter.</p>
+          <EmptyState type="jobs" title="No jobs found" subtitle="No jobs match this filter." />
         ) : (
           <ul className="space-y-2">
             {jobs.map(j => {
@@ -131,12 +140,13 @@ function JobsPageInner() {
               return (
                 <li key={j.id}>
                   <Link href={`/measure-jobs/${j.id}`}
-                    className="flex items-start justify-between rounded border p-3 hover:bg-gray-50 gap-3">
+                    style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+                    className="flex items-start justify-between rounded p-3 gap-3">
                     <div className="min-w-0">
-                      <div className="font-medium text-blue-600 truncate">{j.title}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{j.customer_name}</div>
+                      <div style={{ color: "var(--zr-orange)" }} className="font-medium truncate">{j.title}</div>
+                      <div style={{ color: "var(--zr-text-muted)" }} className="text-xs mt-0.5">{j.customer_name}</div>
                       {j.measured_by && (
-                        <div className="text-xs text-gray-400 mt-0.5">Measured by: {j.measured_by}</div>
+                        <div style={{ color: "var(--zr-text-muted)" }} className="text-xs mt-0.5">Measured by: {j.measured_by}</div>
                       )}
                     </div>
                     <div className="shrink-0 text-right space-y-1">
@@ -145,7 +155,7 @@ function JobsPageInner() {
                           {j.install_mode ? "Install" : "Measure"}
                         </span>
                       </div>
-                      {dateStr && <div className="text-xs text-gray-400">{dateStr}</div>}
+                      {dateStr && <div style={{ color: "var(--zr-text-muted)" }} className="text-xs">{dateStr}</div>}
                       {j.has_issues && <div className="text-xs text-red-600 font-medium">⚠ Issues</div>}
                       {!j.has_windows && !j.install_mode && (
                         <div className="text-xs text-amber-600">{daysOld}d old</div>

@@ -666,7 +666,14 @@ export default function AutomationPage() {
             </div>
 
             {loading ? (
-              <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "14px" }}>
+                    <div className="zr-skeleton" style={{ width: "50%", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "8px" }} />
+                    <div className="zr-skeleton" style={{ width: "80%", height: "10px", borderRadius: "var(--zr-radius-sm)" }} />
+                  </div>
+                ))}
+              </div>
             ) : activeTab === "rules" ? (
               <>
                 {/* Create button */}

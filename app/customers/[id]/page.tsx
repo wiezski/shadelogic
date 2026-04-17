@@ -643,7 +643,16 @@ export default function CustomerPage() {
       : null
     : null;
 
-  if (!customer) return <div className="p-6 text-gray-500">Loading...</div>;
+  if (!customer) return (
+    <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "24px" }}>
+      <div style={{ maxWidth: 672, margin: "0 auto" }}>
+        <div className="zr-skeleton" style={{ width: "40%", height: "20px", borderRadius: "var(--zr-radius-sm)", marginBottom: "16px" }} />
+        <div className="zr-skeleton" style={{ width: "60%", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "8px" }} />
+        <div className="zr-skeleton" style={{ width: "35%", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "24px" }} />
+        <div className="zr-skeleton" style={{ width: "100%", height: "120px", borderRadius: "var(--zr-radius-md)" }} />
+      </div>
+    </main>
+  );
 
   const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
   const primaryPhone = phones.find((p) => p.is_primary) || phones[0];

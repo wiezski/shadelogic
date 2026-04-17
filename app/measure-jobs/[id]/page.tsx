@@ -1181,7 +1181,20 @@ export default function MeasureJobPage() {
   }
 
   if (loading) {
-    return <div className="p-4" style={{ color: "var(--zr-text-primary)" }}>Loading...</div>;
+    return (
+      <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "24px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div className="zr-skeleton" style={{ width: "120px", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "16px" }} />
+          <div className="zr-skeleton" style={{ width: "50%", height: "22px", borderRadius: "var(--zr-radius-sm)", marginBottom: "12px" }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div className="zr-skeleton" style={{ height: "80px", borderRadius: "var(--zr-radius-md)" }} />
+            <div className="zr-skeleton" style={{ height: "80px", borderRadius: "var(--zr-radius-md)" }} />
+          </div>
+          <div style={{ height: 16 }} />
+          <div className="zr-skeleton" style={{ width: "100%", height: "200px", borderRadius: "var(--zr-radius-md)" }} />
+        </div>
+      </main>
+    );
   }
 
   if (loadError && !job) {

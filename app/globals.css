@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap');
+@import "tailwindcss";
 
 /* ============================================================
    ZEROREMAKE DESIGN SYSTEM — CSS VARIABLES
@@ -117,4 +117,34 @@ html:root {
   --zr-text-muted:    #9ca3af !important;
   --zr-border:        #e5e7eb !important;
   --zr-border-light:  #d1d5db !important;
+}
+
+/* ── Loading Skeleton Animation ────────────────────────────── */
+.zr-skeleton {
+  background: linear-gradient(90deg, var(--zr-surface-3) 25%, var(--zr-surface-2) 50%, var(--zr-surface-3) 75%);
+  background-size: 200% 100%;
+  animation: zr-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes zr-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Toast Enter Animation ─────────────────────────────────── */
+.zr-toast-enter {
+  animation: zr-toast-slide 0.3s ease-out;
+}
+@keyframes zr-toast-slide {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Mobile Responsive Helpers ─────────────────────────────── */
+@media (max-width: 640px) {
+  .zr-hide-mobile { display: none !important; }
+  .zr-stack-mobile { flex-direction: column !important; }
+  .zr-full-mobile { width: 100% !important; min-width: 0 !important; }
+}
+@media (min-width: 641px) {
+  .zr-hide-desktop { display: none !important; }
 }

@@ -505,9 +505,17 @@ export default function IntegrationsPage() {
   if (loading) {
     return (
       <PermissionGate require="access_settings">
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4">
-          <div className="mx-auto max-w-2xl">
-            <p style={{ color: "var(--zr-text-secondary)" }}>Loading…</p>
+        <main style={{ background: "var(--zr-black)", minHeight: "100vh", padding: "24px" }}>
+          <div style={{ maxWidth: 672, margin: "0 auto" }}>
+            <div className="zr-skeleton" style={{ width: "200px", height: "22px", borderRadius: "var(--zr-radius-sm)", marginBottom: "20px" }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", padding: "16px" }}>
+                  <div className="zr-skeleton" style={{ width: "60%", height: "14px", borderRadius: "var(--zr-radius-sm)", marginBottom: "8px" }} />
+                  <div className="zr-skeleton" style={{ width: "40%", height: "10px", borderRadius: "var(--zr-radius-sm)" }} />
+                </div>
+              ))}
+            </div>
           </div>
         </main>
       </PermissionGate>

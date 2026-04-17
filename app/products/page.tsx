@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../lib/supabase";
 import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
+import { Skeleton, EmptyState } from "../ui";
 
 type Product = {
   id: string;
@@ -577,12 +578,27 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {loading ? <p className="text-gray-400">Loading…</p> : (
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[1,2,3,4,5].map(i => (
+              <div key={i} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-sm)", padding: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <Skeleton w="40%" h="14px" />
+                  <Skeleton w="60px" h="14px" />
+                </div>
+                <div style={{ height: 6 }} />
+                <Skeleton w="25%" h="10px" />
+              </div>
+            ))}
+          </div>
+        ) : (
           <>
             {filtered.length === 0 && (
-              <p className="text-gray-400 text-sm py-4 text-center">
-                {search || filter !== "all" ? "No products match your filters." : "No products yet. Add your first one above."}
-              </p>
+              search || filter !== "all" ? (
+                <EmptyState type="search" title="No products match" subtitle="Try adjusting your search or filter." />
+              ) : (
+                <EmptyState type="products" title="No products yet" subtitle="Add your first product above, or import from CSV / PDF." action="+ Add Product" onAction={() => { /* scroll to form */ }} />
+              )
             )}
 
             <ul className="space-y-2">

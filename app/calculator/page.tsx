@@ -340,46 +340,41 @@ function CalculatorInner() {
         </div>
       )}
 
-      {/* Spacer so sticky bar doesn't cover content */}
-      {lines.length > 0 && <div style={{ height: 100 }} />}
-
-      {/* Sticky totals bar — always visible at bottom when lines exist */}
+      {/* Totals summary — inline card below line items */}
       {lines.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-lg"
-          style={{ background: "var(--zr-primary)", color: "#fff" }}>
-          <div style={{ maxWidth: 1000, margin: "0 auto", padding: "10px 16px" }}>
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex gap-4 flex-wrap">
-                <div>
-                  <div className="text-xs" style={{ opacity: 0.7 }}>Windows</div>
-                  <div className="text-sm font-bold">{totalWindows}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ opacity: 0.7 }}>Cost</div>
-                  <div className="text-sm font-bold">{fmtMoney(totalCost)}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ opacity: 0.7 }}>Retail</div>
-                  <div className="text-sm font-bold">{fmtMoney(totalRetail)}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ opacity: 0.7 }}>Profit</div>
-                  <div className="text-sm font-bold">{fmtMoney(totalProfit)}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ opacity: 0.7 }}>Margin</div>
-                  <div className="text-sm font-bold">
-                    {totalRetail > 0 ? ((totalProfit / totalRetail) * 100).toFixed(1) + "%" : "—"}
-                  </div>
+        <div className="rounded-lg p-4 mb-4"
+          style={{ background: "var(--zr-primary, #e63000)", color: "#fff" }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex gap-5 flex-wrap">
+              <div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Windows</div>
+                <div className="text-lg font-bold">{totalWindows}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Cost</div>
+                <div className="text-lg font-bold">{fmtMoney(totalCost)}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Retail</div>
+                <div className="text-lg font-bold">{fmtMoney(totalRetail)}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Profit</div>
+                <div className="text-lg font-bold">{fmtMoney(totalProfit)}</div>
+              </div>
+              <div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Margin</div>
+                <div className="text-lg font-bold">
+                  {totalRetail > 0 ? ((totalProfit / totalRetail) * 100).toFixed(1) + "%" : "—"}
                 </div>
               </div>
-              <button onClick={createMeasureJob}
-                className="text-xs px-3 py-2 rounded-lg font-semibold transition-colors shrink-0"
-                style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>
-                → Create Measure Job
-              </button>
             </div>
           </div>
+          <button onClick={createMeasureJob}
+            className="mt-3 w-full text-sm px-4 py-2.5 rounded-lg font-semibold transition-colors"
+            style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>
+            📋 Create Measure Job from Estimate
+          </button>
         </div>
       )}
     </div>

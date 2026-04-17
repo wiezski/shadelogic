@@ -152,6 +152,7 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
         if (name.length < 3) continue;
         if (/^(note|warning|disclaimer|see|for|please)/i.test(name)) continue;
 
+        const sz = extractSizes(line);
         products.push({
           name,
           category: guessCategory(name),
@@ -159,7 +160,10 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
           sku: null,
           cost: null,
           multiplier: null,
-          ...extractSizes(line),
+          min_width: sz.minW,
+          max_width: sz.maxW,
+          min_height: sz.minH,
+          max_height: sz.maxH,
           lead_time_days: null,
           color_options: null,
           notes: null,

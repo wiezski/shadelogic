@@ -6,7 +6,7 @@ import { useAuth } from "../auth-provider";
 import { PermissionGate } from "../permission-gate";
 import { Skeleton, EmptyState } from "../ui";
 
-// ── Types ──────────────────────────────────────────────────────
+// ── Types (matched to actual DB schema) ────────────────────────
 type TeamMember = {
   id: string;
   full_name: string | null;
@@ -16,29 +16,32 @@ type TeamMember = {
 type PayRate = {
   id: string;
   profile_id: string;
-  pay_type: "hourly" | "per_job" | "per_window" | "salary" | "commission_only";
-  hourly_rate: number | null;
-  per_job_rate: number | null;
-  per_window_rate: number | null;
-  salary_amount: number | null;
+  pay_type: string; // hourly, per_job, per_window, salary, commission_only
+  rate: number;
   commission_pct: number | null;
-  effective_date: string;
   notes: string | null;
+  active: boolean;
+  created_at: string;
 };
 
 type PayEntry = {
   id: string;
   profile_id: string;
-  entry_date: string;
-  entry_type: "hours" | "job" | "windows" | "commission" | "bonus" | "deduction";
+  entry_type: string; // hours, job, commission, bonus, deduction
   hours: number | null;
-  job_count: number | null;
+  hourly_rate: number | null;
+  job_id: string | null;
+  job_rate: number | null;
   window_count: number | null;
-  commission_base: number | null;
-  amount: number;
-  customer_id: string | null;
-  customer_name: string | null;
+  per_window_rate: number | null;
   quote_id: string | null;
+  customer_id: string | null;
+  sale_amount: number | null;
+  commission_pct: number | null;
+  amount: number;
+  description: string | null;
+  work_date: string;
+  status: string; // pending, approved, paid
   notes: string | null;
   created_at: string;
 };
@@ -47,8 +50,11 @@ type PayrollRun = {
   id: string;
   period_start: string;
   period_end: string;
-  status: "draft" | "finalized" | "paid";
+  status: string; // draft, finalized, paid
   total_amount: number;
+  notes: string | null;
+  finalized_at: string | null;
+  paid_at: string | null;
   created_at: string;
 };
 
@@ -74,10 +80,15 @@ const PAY_TYPE_LABELS: Record<string, string> = {
 const ENTRY_TYPE_LABELS: Record<string, string> = {
   hours: "Hours",
   job: "Job",
-  windows: "Windows",
   commission: "Commission",
   bonus: "Bonus",
   deduction: "Deduction",
+};
+
+const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
+  pending: { bg: "bg-amber-100", text: "text-amber-700" },
+  approved: { bg: "bg-blue-100", text: "text-blue-700" },
+  paid: { bg: "bg-green-100", text: "text-green-700" },
 };
 
 // ── Page wrapper ───────────────────────────────────────────────
@@ -112,8 +123,8 @@ function PayrollPageInner() {
     setLoading(true);
     const [teamRes, ratesRes, entriesRes, runsRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, role").eq("company_id", companyId),
-      supabase.from("pay_rates").select("*").order("effective_date", { ascending: false }),
-      supabase.from("pay_entries").select("*").order("entry_date", { ascending: false }).limit(200),
+      supabase.from("pay_rates").select("*").eq("active", true).order("created_at", { ascending: false }),
+      supabase.from("pay_entries").select("*").order("work_date", { ascending: false }).limit(200),
       supabase.from("payroll_runs").select("*").order("period_start", { ascending: false }).limit(50),
     ]);
     setTeam(teamRes.data ?? []);
@@ -128,17 +139,17 @@ function PayrollPageInner() {
     : filterRange === "30d" ? 30 * 86400000
     : filterRange === "90d" ? 90 * 86400000
     : Infinity;
-  const cutoff = rangeMs === Infinity ? "" : new Date(Date.now() - rangeMs).toISOString();
+  const cutoff = rangeMs === Infinity ? "" : new Date(Date.now() - rangeMs).toISOString().slice(0, 10);
 
   const filteredEntries = entries.filter(e => {
     if (filterPerson !== "all" && e.profile_id !== filterPerson) return false;
-    if (cutoff && e.entry_date < cutoff) return false;
+    if (cutoff && e.work_date < cutoff) return false;
     return true;
   });
 
   const totalEarnings = filteredEntries.reduce((s, e) => s + (e.amount || 0), 0);
   const totalHours = filteredEntries.filter(e => e.entry_type === "hours").reduce((s, e) => s + (e.hours || 0), 0);
-  const totalJobs = filteredEntries.filter(e => e.entry_type === "job").reduce((s, e) => s + (e.job_count || 0), 0);
+  const totalJobs = filteredEntries.filter(e => e.entry_type === "job").reduce((s, e) => s + 1, 0);
   const totalCommission = filteredEntries.filter(e => e.entry_type === "commission").reduce((s, e) => s + (e.amount || 0), 0);
 
   // Per-person summary
@@ -151,13 +162,8 @@ function PayrollPageInner() {
     const s = personSummary.get(e.profile_id)!;
     s.total += e.amount || 0;
     if (e.entry_type === "hours") s.hours += e.hours || 0;
-    if (e.entry_type === "job") s.jobs += e.job_count || 0;
+    if (e.entry_type === "job") s.jobs += 1;
     if (e.entry_type === "commission") s.commission += e.amount || 0;
-  }
-
-  // Rate lookup for team member
-  function getRate(profileId: string): PayRate | undefined {
-    return rates.find(r => r.profile_id === profileId);
   }
 
   if (loading) {
@@ -231,7 +237,7 @@ function PayrollPageInner() {
 
       {/* Tab content */}
       {tab === "entries" && (
-        <EntriesTab entries={filteredEntries} team={team} personSummary={personSummary} />
+        <EntriesTab entries={filteredEntries} team={team} personSummary={personSummary} onUpdated={loadAll} />
       )}
       {tab === "rates" && (
         <RatesTab rates={rates} team={team} onUpdated={loadAll} />
@@ -257,11 +263,21 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 }
 
 // ── Entries Tab ────────────────────────────────────────────────
-function EntriesTab({ entries, team, personSummary }: {
+function EntriesTab({ entries, team, personSummary, onUpdated }: {
   entries: PayEntry[];
   team: TeamMember[];
   personSummary: Map<string, { name: string; total: number; hours: number; jobs: number; commission: number }>;
+  onUpdated: () => void;
 }) {
+  async function updateStatus(id: string, status: string) {
+    await supabase.from("pay_entries").update({
+      status,
+      ...(status === "approved" ? { approved_at: new Date().toISOString() } : {}),
+      ...(status === "paid" ? { paid_at: new Date().toISOString() } : {}),
+    }).eq("id", id);
+    onUpdated();
+  }
+
   if (entries.length === 0) {
     return <EmptyState title="No pay entries yet" subtitle="Add your first pay entry to start tracking payroll." />;
   }
@@ -291,7 +307,7 @@ function EntriesTab({ entries, team, personSummary }: {
         <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--zr-border)" }}>
-              {["Date", "Person", "Type", "Details", "Amount", "Notes"].map(h => (
+              {["Date", "Person", "Type", "Details", "Amount", "Status", ""].map(h => (
                 <th key={h} className="text-left px-3 py-2 text-xs font-semibold"
                   style={{ color: "var(--zr-text-muted)" }}>{h}</th>
               ))}
@@ -301,11 +317,12 @@ function EntriesTab({ entries, team, personSummary }: {
             {entries.map(e => {
               const name = team.find(t => t.id === e.profile_id)?.full_name || "—";
               let details = "";
-              if (e.entry_type === "hours" && e.hours) details = `${e.hours}h`;
-              else if (e.entry_type === "job" && e.job_count) details = `${e.job_count} job(s)`;
-              else if (e.entry_type === "windows" && e.window_count) details = `${e.window_count} windows`;
-              else if (e.entry_type === "commission" && e.commission_base) details = `on ${fmtMoney(e.commission_base)}`;
-              if (e.customer_name) details += details ? ` • ${e.customer_name}` : e.customer_name;
+              if (e.entry_type === "hours" && e.hours) details = `${e.hours}h @ ${fmtMoney(e.hourly_rate || 0)}/hr`;
+              else if (e.entry_type === "job") details = e.job_rate ? `@ ${fmtMoney(e.job_rate)}/job` : "";
+              else if (e.entry_type === "commission" && e.sale_amount) details = `${e.commission_pct || 0}% on ${fmtMoney(e.sale_amount)}`;
+              if (e.description) details += details ? ` · ${e.description}` : e.description;
+
+              const sb = STATUS_BADGE[e.status] ?? STATUS_BADGE.pending;
 
               return (
                 <tr key={e.id} style={{ borderBottom: "1px solid var(--zr-border)" }}
@@ -313,7 +330,7 @@ function EntriesTab({ entries, team, personSummary }: {
                   onMouseEnter={ev => (ev.currentTarget.style.background = "var(--zr-surface-2)")}
                   onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}>
                   <td className="px-3 py-2 whitespace-nowrap" style={{ color: "var(--zr-text-secondary)" }}>
-                    {shortDate(e.entry_date)}
+                    {shortDate(e.work_date)}
                   </td>
                   <td className="px-3 py-2 font-medium" style={{ color: "var(--zr-text-primary)" }}>{name}</td>
                   <td className="px-3 py-2">
@@ -322,14 +339,36 @@ function EntriesTab({ entries, team, personSummary }: {
                       {ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs" style={{ color: "var(--zr-text-muted)" }}>{details || "—"}</td>
+                  <td className="px-3 py-2 text-xs" style={{ color: "var(--zr-text-muted)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {details || "—"}
+                  </td>
                   <td className="px-3 py-2 font-semibold whitespace-nowrap" style={{
                     color: e.entry_type === "deduction" ? "var(--zr-error)" : "var(--zr-success, #22c55e)",
                   }}>
                     {e.entry_type === "deduction" ? "−" : ""}{fmtMoney(Math.abs(e.amount))}
                   </td>
-                  <td className="px-3 py-2 text-xs" style={{ color: "var(--zr-text-muted)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {e.notes || ""}
+                  <td className="px-3 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sb.bg} ${sb.text}`}>
+                      {e.status.charAt(0).toUpperCase() + e.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-1">
+                      {e.status === "pending" && (
+                        <button onClick={() => updateStatus(e.id, "approved")}
+                          className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
+                          style={{ color: "var(--zr-primary)" }}>
+                          Approve
+                        </button>
+                      )}
+                      {e.status === "approved" && (
+                        <button onClick={() => updateStatus(e.id, "paid")}
+                          className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
+                          style={{ color: "var(--zr-success, #22c55e)" }}>
+                          Mark Paid
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -350,10 +389,7 @@ function RatesTab({ rates, team, onUpdated }: {
   const [showForm, setShowForm] = useState(false);
   const [formPerson, setFormPerson] = useState("");
   const [formType, setFormType] = useState<string>("hourly");
-  const [formHourly, setFormHourly] = useState("");
-  const [formPerJob, setFormPerJob] = useState("");
-  const [formPerWindow, setFormPerWindow] = useState("");
-  const [formSalary, setFormSalary] = useState("");
+  const [formRate, setFormRate] = useState("");
   const [formCommission, setFormCommission] = useState("");
   const [formNotes, setFormNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -361,29 +397,39 @@ function RatesTab({ rates, team, onUpdated }: {
   async function saveRate() {
     if (!formPerson || !formType) return;
     setSaving(true);
+    // Deactivate any existing rate for this person
+    await supabase.from("pay_rates").update({ active: false }).eq("profile_id", formPerson).eq("active", true);
+    // Insert new rate
     await supabase.from("pay_rates").insert([{
       profile_id: formPerson,
       pay_type: formType,
-      hourly_rate: formHourly ? parseFloat(formHourly) : null,
-      per_job_rate: formPerJob ? parseFloat(formPerJob) : null,
-      per_window_rate: formPerWindow ? parseFloat(formPerWindow) : null,
-      salary_amount: formSalary ? parseFloat(formSalary) : null,
+      rate: formRate ? parseFloat(formRate) : 0,
       commission_pct: formCommission ? parseFloat(formCommission) : null,
-      effective_date: new Date().toISOString().slice(0, 10),
       notes: formNotes || null,
+      active: true,
     }]);
     setShowForm(false);
-    setFormPerson(""); setFormType("hourly"); setFormHourly(""); setFormPerJob("");
-    setFormPerWindow(""); setFormSalary(""); setFormCommission(""); setFormNotes("");
+    setFormPerson(""); setFormType("hourly"); setFormRate("");
+    setFormCommission(""); setFormNotes("");
     setSaving(false);
     onUpdated();
   }
 
   // Group rates by person
-  const byPerson = new Map<string, PayRate[]>();
+  const byPerson = new Map<string, PayRate>();
   for (const r of rates) {
-    if (!byPerson.has(r.profile_id)) byPerson.set(r.profile_id, []);
-    byPerson.get(r.profile_id)!.push(r);
+    if (!byPerson.has(r.profile_id)) byPerson.set(r.profile_id, r);
+  }
+
+  function getRateLabel(r: PayRate): string {
+    switch (r.pay_type) {
+      case "hourly": return `${fmtMoney(r.rate)}/hr`;
+      case "per_job": return `${fmtMoney(r.rate)}/job`;
+      case "per_window": return `${fmtMoney(r.rate)}/window`;
+      case "salary": return `${fmtMoney(r.rate)}/period`;
+      case "commission_only": return "Commission only";
+      default: return fmtMoney(r.rate);
+    }
   }
 
   return (
@@ -419,37 +465,19 @@ function RatesTab({ rates, team, onUpdated }: {
             </div>
           </div>
 
-          <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-            {(formType === "hourly" || formType === "salary") && (
-              <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>
-                  {formType === "hourly" ? "Hourly Rate ($)" : "Salary Amount ($)"}
-                </label>
-                <input type="number" step="0.01" placeholder="0.00"
-                  value={formType === "hourly" ? formHourly : formSalary}
-                  onChange={e => formType === "hourly" ? setFormHourly(e.target.value) : setFormSalary(e.target.value)}
-                  className="w-full text-sm rounded px-2.5 py-1.5"
-                  style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-              </div>
-            )}
-            {formType === "per_job" && (
-              <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Per Job Rate ($)</label>
-                <input type="number" step="0.01" placeholder="0.00" value={formPerJob}
-                  onChange={e => setFormPerJob(e.target.value)}
-                  className="w-full text-sm rounded px-2.5 py-1.5"
-                  style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-              </div>
-            )}
-            {formType === "per_window" && (
-              <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Per Window Rate ($)</label>
-                <input type="number" step="0.01" placeholder="0.00" value={formPerWindow}
-                  onChange={e => setFormPerWindow(e.target.value)}
-                  className="w-full text-sm rounded px-2.5 py-1.5"
-                  style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-              </div>
-            )}
+          <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>
+                {formType === "hourly" ? "Hourly Rate ($)" :
+                 formType === "per_job" ? "Per Job Rate ($)" :
+                 formType === "per_window" ? "Per Window Rate ($)" :
+                 formType === "salary" ? "Salary Amount ($)" : "Base Rate ($)"}
+              </label>
+              <input type="number" step="0.01" placeholder="0.00" value={formRate}
+                onChange={e => setFormRate(e.target.value)}
+                className="w-full text-sm rounded px-2.5 py-1.5"
+                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+            </div>
             {(formType === "commission_only" || formType === "salary") && (
               <div>
                 <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Commission %</label>
@@ -488,9 +516,8 @@ function RatesTab({ rates, team, onUpdated }: {
         <EmptyState title="No pay rates configured" subtitle="Set up pay rates for your team members to start tracking compensation." />
       ) : (
         <div className="flex flex-col gap-3">
-          {[...byPerson.entries()].map(([pid, personRates]) => {
+          {[...byPerson.entries()].map(([pid, r]) => {
             const member = team.find(t => t.id === pid);
-            const currentRate = personRates[0]; // Most recent
             return (
               <div key={pid} className="rounded-lg p-4"
                 style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
@@ -504,50 +531,27 @@ function RatesTab({ rates, team, onUpdated }: {
                       {member?.role || "—"}
                     </span>
                   </div>
-                  <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
-                    Effective {fmtDate(currentRate.effective_date)}
-                  </span>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div>
                     <span style={{ color: "var(--zr-text-muted)" }}>Type: </span>
                     <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>
-                      {PAY_TYPE_LABELS[currentRate.pay_type] || currentRate.pay_type}
+                      {PAY_TYPE_LABELS[r.pay_type] || r.pay_type}
                     </span>
                   </div>
-                  {currentRate.hourly_rate != null && (
-                    <div>
-                      <span style={{ color: "var(--zr-text-muted)" }}>Hourly: </span>
-                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(currentRate.hourly_rate)}</span>
-                    </div>
-                  )}
-                  {currentRate.per_job_rate != null && (
-                    <div>
-                      <span style={{ color: "var(--zr-text-muted)" }}>Per Job: </span>
-                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(currentRate.per_job_rate)}</span>
-                    </div>
-                  )}
-                  {currentRate.per_window_rate != null && (
-                    <div>
-                      <span style={{ color: "var(--zr-text-muted)" }}>Per Window: </span>
-                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(currentRate.per_window_rate)}</span>
-                    </div>
-                  )}
-                  {currentRate.salary_amount != null && (
-                    <div>
-                      <span style={{ color: "var(--zr-text-muted)" }}>Salary: </span>
-                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(currentRate.salary_amount)}</span>
-                    </div>
-                  )}
-                  {currentRate.commission_pct != null && (
+                  <div>
+                    <span style={{ color: "var(--zr-text-muted)" }}>Rate: </span>
+                    <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{getRateLabel(r)}</span>
+                  </div>
+                  {r.commission_pct != null && (
                     <div>
                       <span style={{ color: "var(--zr-text-muted)" }}>Commission: </span>
-                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{currentRate.commission_pct}%</span>
+                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{r.commission_pct}%</span>
                     </div>
                   )}
                 </div>
-                {currentRate.notes && (
-                  <div className="mt-1 text-xs" style={{ color: "var(--zr-text-muted)" }}>{currentRate.notes}</div>
+                {r.notes && (
+                  <div className="mt-1 text-xs" style={{ color: "var(--zr-text-muted)" }}>{r.notes}</div>
                 )}
               </div>
             );
@@ -581,7 +585,11 @@ function RunsTab({ runs, onUpdated }: { runs: PayrollRun[]; onUpdated: () => voi
   }
 
   async function updateRunStatus(id: string, status: string) {
-    await supabase.from("payroll_runs").update({ status }).eq("id", id);
+    await supabase.from("payroll_runs").update({
+      status,
+      ...(status === "finalized" ? { finalized_at: new Date().toISOString() } : {}),
+      ...(status === "paid" ? { paid_at: new Date().toISOString() } : {}),
+    }).eq("id", id);
     onUpdated();
   }
 
@@ -603,7 +611,7 @@ function RunsTab({ runs, onUpdated }: { runs: PayrollRun[]; onUpdated: () => voi
       </div>
 
       {creating && (
-        <div className="mb-4 rounded-lg p-4 flex items-end gap-3"
+        <div className="mb-4 rounded-lg p-4 flex items-end gap-3 flex-wrap"
           style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
           <div>
             <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Start</label>
@@ -684,52 +692,47 @@ function AddEntryButton({ team, rates, onAdded }: {
   const [open, setOpen] = useState(false);
   const [person, setPerson] = useState("");
   const [entryType, setEntryType] = useState<string>("hours");
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [workDate, setWorkDate] = useState(new Date().toISOString().slice(0, 10));
   const [hours, setHours] = useState("");
-  const [jobCount, setJobCount] = useState("");
-  const [windowCount, setWindowCount] = useState("");
-  const [commissionBase, setCommissionBase] = useState("");
+  const [saleAmount, setSaleAmount] = useState("");
   const [amount, setAmount] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Auto-calculate amount based on rate
   useEffect(() => {
     if (!person) return;
-    const rate = rates.find(r => r.profile_id === person);
+    const rate = rates.find(r => r.profile_id === person && r.active);
     if (!rate) return;
 
-    if (entryType === "hours" && hours && rate.hourly_rate) {
-      setAmount((parseFloat(hours) * rate.hourly_rate).toFixed(2));
-    } else if (entryType === "job" && jobCount && rate.per_job_rate) {
-      setAmount((parseInt(jobCount) * rate.per_job_rate).toFixed(2));
-    } else if (entryType === "windows" && windowCount && rate.per_window_rate) {
-      setAmount((parseInt(windowCount) * rate.per_window_rate).toFixed(2));
-    } else if (entryType === "commission" && commissionBase && rate.commission_pct) {
-      setAmount((parseFloat(commissionBase) * rate.commission_pct / 100).toFixed(2));
+    if (entryType === "hours" && hours && rate.pay_type === "hourly") {
+      setAmount((parseFloat(hours) * rate.rate).toFixed(2));
+    } else if (entryType === "commission" && saleAmount && rate.commission_pct) {
+      setAmount((parseFloat(saleAmount) * rate.commission_pct / 100).toFixed(2));
     }
-  }, [person, entryType, hours, jobCount, windowCount, commissionBase, rates]); // eslint-disable-line
+  }, [person, entryType, hours, saleAmount, rates]); // eslint-disable-line
 
   async function save() {
     if (!person || !amount) return;
     setSaving(true);
+    const rate = rates.find(r => r.profile_id === person && r.active);
     await supabase.from("pay_entries").insert([{
       profile_id: person,
-      entry_date: entryDate,
       entry_type: entryType,
-      hours: hours ? parseFloat(hours) : null,
-      job_count: jobCount ? parseInt(jobCount) : null,
-      window_count: windowCount ? parseInt(windowCount) : null,
-      commission_base: commissionBase ? parseFloat(commissionBase) : null,
+      work_date: workDate,
+      hours: entryType === "hours" && hours ? parseFloat(hours) : null,
+      hourly_rate: entryType === "hours" ? (rate?.rate ?? null) : null,
+      sale_amount: entryType === "commission" && saleAmount ? parseFloat(saleAmount) : null,
+      commission_pct: entryType === "commission" ? (rate?.commission_pct ?? null) : null,
       amount: parseFloat(amount),
-      customer_name: customerName || null,
+      description: description || null,
       notes: notes || null,
+      status: "pending",
     }]);
     setOpen(false);
-    setPerson(""); setEntryType("hours"); setHours(""); setJobCount("");
-    setWindowCount(""); setCommissionBase(""); setAmount("");
-    setCustomerName(""); setNotes("");
+    setPerson(""); setEntryType("hours"); setHours("");
+    setSaleAmount(""); setAmount(""); setDescription(""); setNotes("");
     setSaving(false);
     onAdded();
   }
@@ -770,7 +773,7 @@ function AddEntryButton({ team, rates, onAdded }: {
                 </div>
                 <div>
                   <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Date</label>
-                  <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
+                  <input type="date" value={workDate} onChange={e => setWorkDate(e.target.value)}
                     className="w-full text-sm rounded px-2.5 py-1.5"
                     style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
                 </div>
@@ -786,29 +789,11 @@ function AddEntryButton({ team, rates, onAdded }: {
                     style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
                 </div>
               )}
-              {entryType === "job" && (
-                <div>
-                  <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Number of Jobs</label>
-                  <input type="number" placeholder="0" value={jobCount}
-                    onChange={e => setJobCount(e.target.value)}
-                    className="w-full text-sm rounded px-2.5 py-1.5"
-                    style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                </div>
-              )}
-              {entryType === "windows" && (
-                <div>
-                  <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Number of Windows</label>
-                  <input type="number" placeholder="0" value={windowCount}
-                    onChange={e => setWindowCount(e.target.value)}
-                    className="w-full text-sm rounded px-2.5 py-1.5"
-                    style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                </div>
-              )}
               {entryType === "commission" && (
                 <div>
                   <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Sale Amount (commission base)</label>
-                  <input type="number" step="0.01" placeholder="0.00" value={commissionBase}
-                    onChange={e => setCommissionBase(e.target.value)}
+                  <input type="number" step="0.01" placeholder="0.00" value={saleAmount}
+                    onChange={e => setSaleAmount(e.target.value)}
                     className="w-full text-sm rounded px-2.5 py-1.5"
                     style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
                 </div>
@@ -816,7 +801,7 @@ function AddEntryButton({ team, rates, onAdded }: {
 
               <div>
                 <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>
-                  Amount ($) {person && rates.find(r => r.profile_id === person) ? "(auto-calculated from rate)" : ""}
+                  Amount ($) {person && rates.find(r => r.profile_id === person && r.active) ? "(auto-calculated)" : ""}
                 </label>
                 <input type="number" step="0.01" placeholder="0.00" value={amount}
                   onChange={e => setAmount(e.target.value)}
@@ -825,16 +810,16 @@ function AddEntryButton({ team, rates, onAdded }: {
               </div>
 
               <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Customer (optional)</label>
-                <input type="text" placeholder="Customer name" value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
+                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Description (optional)</label>
+                <input type="text" placeholder="e.g. Johnson residence install" value={description}
+                  onChange={e => setDescription(e.target.value)}
                   className="w-full text-sm rounded px-2.5 py-1.5"
                   style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
               </div>
 
               <div>
                 <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Notes (optional)</label>
-                <input type="text" placeholder="Description" value={notes}
+                <input type="text" placeholder="Additional details" value={notes}
                   onChange={e => setNotes(e.target.value)}
                   className="w-full text-sm rounded px-2.5 py-1.5"
                   style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />

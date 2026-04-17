@@ -187,129 +187,139 @@ function CalculatorInner() {
         )}
       </div>
 
-      {/* Lines table */}
+      {/* Line items — card layout for mobile */}
       {lines.length > 0 && (
-        <div className="rounded-lg overflow-hidden mb-4" style={{ border: "1px solid var(--zr-border)" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "var(--zr-surface-2)" }}>
-                  {["Product", "Width", "Height", "Qty", "Unit Cost", "Markup", "Retail", "Profit", ""].map(h => (
-                    <th key={h} className="text-left px-3 py-2 text-xs font-semibold"
-                      style={{ color: "var(--zr-text-muted)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map(l => {
-                  const mult = globalMultiplier ?? l.multiplier;
-                  const lineCost = l.unit_cost * l.qty;
-                  const lineRetail = l.unit_cost * mult * l.qty;
-                  const lineProfit = lineRetail - lineCost;
-                  const prod = products.find(p => p.id === l.product_id);
-                  const w = parseDim(l.width);
-                  const h = parseDim(l.height);
-                  const sizeWarning = prod && (
-                    (prod.min_width && w > 0 && w < prod.min_width) ||
-                    (prod.max_width && w > prod.max_width) ||
-                    (prod.min_height && h > 0 && h < prod.min_height) ||
-                    (prod.max_height && h > prod.max_height)
-                  );
+        <div className="mb-4">
+          <div className="flex flex-col gap-3">
+            {lines.map(l => {
+              const mult = globalMultiplier ?? l.multiplier;
+              const lineCost = l.unit_cost * l.qty;
+              const lineRetail = l.unit_cost * mult * l.qty;
+              const lineProfit = lineRetail - lineCost;
+              const prod = products.find(p => p.id === l.product_id);
+              const w = parseDim(l.width);
+              const h = parseDim(l.height);
+              const sizeWarning = prod && (
+                (prod.min_width && w > 0 && w < prod.min_width) ||
+                (prod.max_width && w > prod.max_width) ||
+                (prod.min_height && h > 0 && h < prod.min_height) ||
+                (prod.max_height && h > prod.max_height)
+              );
 
-                  return (
-                    <tr key={l.id} style={{ borderBottom: "1px solid var(--zr-border)" }}>
-                      <td className="px-3 py-2">
-                        <div className="font-medium text-xs" style={{ color: "var(--zr-text-primary)" }}>{l.product_name}</div>
-                        {sizeWarning && (
-                          <div className="text-xs mt-0.5" style={{ color: "var(--zr-error)" }}>
-                            Size out of range
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input type="text" placeholder='36 1/2' value={l.width}
-                          onChange={e => updateLine(l.id, "width", e.target.value)}
-                          className="text-sm rounded px-2 py-1 w-20"
-                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input type="text" placeholder='60' value={l.height}
-                          onChange={e => updateLine(l.id, "height", e.target.value)}
-                          className="text-sm rounded px-2 py-1 w-20"
-                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input type="number" min="1" value={l.qty}
-                          onChange={e => updateLine(l.id, "qty", parseInt(e.target.value) || 1)}
-                          className="text-sm rounded px-2 py-1 w-14 text-center"
-                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input type="number" step="0.01" value={l.unit_cost}
-                          onChange={e => updateLine(l.id, "unit_cost", parseFloat(e.target.value) || 0)}
-                          className="text-sm rounded px-2 py-1 w-20"
-                          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                      </td>
-                      <td className="px-3 py-1.5">
-                        {!globalMultiplier ? (
-                          <input type="number" step="0.1" value={l.multiplier}
-                            onChange={e => updateLine(l.id, "multiplier", parseFloat(e.target.value) || 1)}
-                            className="text-sm rounded px-2 py-1 w-14 text-center"
-                            style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-                        ) : (
-                          <span className="text-xs font-medium" style={{ color: "var(--zr-text-muted)" }}>{mult}×</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 font-semibold whitespace-nowrap" style={{ color: "var(--zr-text-primary)" }}>
-                        {fmtMoney(lineRetail)}
-                      </td>
-                      <td className="px-3 py-2 font-medium whitespace-nowrap" style={{ color: "var(--zr-success, #22c55e)" }}>
-                        {fmtMoney(lineProfit)}
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <div className="flex gap-1">
-                          <button onClick={() => duplicateLine(l.id)} title="Duplicate"
-                            className="text-xs px-1.5 py-0.5 rounded transition-colors"
-                            style={{ color: "var(--zr-text-muted)" }}>
-                            ⧉
-                          </button>
-                          <button onClick={() => removeLine(l.id)} title="Remove"
-                            className="text-xs px-1.5 py-0.5 rounded transition-colors"
-                            style={{ color: "var(--zr-error)" }}>
-                            ×
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              return (
+                <div key={l.id} className="rounded-lg p-3"
+                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                  {/* Row 1: product name + actions */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="font-semibold text-sm" style={{ color: "var(--zr-text-primary)" }}>{l.product_name}</span>
+                      {sizeWarning && (
+                        <span className="ml-2 text-xs" style={{ color: "var(--zr-error)" }}>Size out of range</span>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => duplicateLine(l.id)} title="Duplicate"
+                        className="text-xs px-2 py-1 rounded transition-colors"
+                        style={{ color: "var(--zr-text-muted)", background: "var(--zr-surface-1)" }}>
+                        ⧉
+                      </button>
+                      <button onClick={() => removeLine(l.id)} title="Remove"
+                        className="text-xs px-2 py-1 rounded transition-colors"
+                        style={{ color: "var(--zr-error)", background: "var(--zr-surface-1)" }}>
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  {/* Row 2: inputs grid */}
+                  <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr 0.7fr" }}>
+                    <div>
+                      <label className="text-xs mb-0.5 block" style={{ color: "var(--zr-text-muted)" }}>Width</label>
+                      <input type="text" placeholder='36 1/2' value={l.width}
+                        onChange={e => updateLine(l.id, "width", e.target.value)}
+                        className="w-full text-sm rounded px-2 py-1.5"
+                        style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-0.5 block" style={{ color: "var(--zr-text-muted)" }}>Height</label>
+                      <input type="text" placeholder='60' value={l.height}
+                        onChange={e => updateLine(l.id, "height", e.target.value)}
+                        className="w-full text-sm rounded px-2 py-1.5"
+                        style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-0.5 block" style={{ color: "var(--zr-text-muted)" }}>Qty</label>
+                      <input type="number" min="1" value={l.qty}
+                        onChange={e => updateLine(l.id, "qty", parseInt(e.target.value) || 1)}
+                        className="w-full text-sm rounded px-2 py-1.5 text-center"
+                        style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                    </div>
+                  </div>
+                  {/* Row 3: cost + markup */}
+                  <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                    <div>
+                      <label className="text-xs mb-0.5 block" style={{ color: "var(--zr-text-muted)" }}>Unit Cost</label>
+                      <input type="number" step="0.01" value={l.unit_cost}
+                        onChange={e => updateLine(l.id, "unit_cost", parseFloat(e.target.value) || 0)}
+                        className="w-full text-sm rounded px-2 py-1.5"
+                        style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-0.5 block" style={{ color: "var(--zr-text-muted)" }}>Markup</label>
+                      {!globalMultiplier ? (
+                        <input type="number" step="0.1" value={l.multiplier}
+                          onChange={e => updateLine(l.id, "multiplier", parseFloat(e.target.value) || 1)}
+                          className="w-full text-sm rounded px-2 py-1.5 text-center"
+                          style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+                      ) : (
+                        <div className="text-sm font-medium py-1.5 text-center" style={{ color: "var(--zr-text-muted)" }}>{mult}×</div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Row 4: results */}
+                  <div className="flex items-center justify-between mt-2.5 pt-2" style={{ borderTop: "1px solid var(--zr-border)" }}>
+                    <div className="flex gap-4">
+                      <div>
+                        <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Retail</div>
+                        <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(lineRetail)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Profit</div>
+                        <div className="text-sm font-bold" style={{ color: "var(--zr-success, #22c55e)" }}>{fmtMoney(lineProfit)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Cost</div>
+                        <div className="text-sm font-medium" style={{ color: "var(--zr-text-secondary)" }}>{fmtMoney(lineCost)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Totals bar */}
-          <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-3"
-            style={{ background: "var(--zr-surface-2)", borderTop: "1px solid var(--zr-border)" }}>
-            <div className="flex gap-5">
+          <div className="rounded-lg mt-3 px-4 py-3"
+            style={{ background: "var(--zr-primary)", color: "#fff" }}>
+            <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))" }}>
               <div>
-                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Windows</div>
-                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{totalWindows}</div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Windows</div>
+                <div className="text-base font-bold">{totalWindows}</div>
               </div>
               <div>
-                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Total Cost</div>
-                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(totalCost)}</div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Cost</div>
+                <div className="text-base font-bold">{fmtMoney(totalCost)}</div>
               </div>
               <div>
-                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Total Retail</div>
-                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(totalRetail)}</div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Retail</div>
+                <div className="text-base font-bold">{fmtMoney(totalRetail)}</div>
               </div>
               <div>
-                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Profit</div>
-                <div className="text-sm font-bold" style={{ color: "var(--zr-success, #22c55e)" }}>{fmtMoney(totalProfit)}</div>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Profit</div>
+                <div className="text-base font-bold">{fmtMoney(totalProfit)}</div>
               </div>
               <div>
-                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Margin</div>
-                <div className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>
+                <div className="text-xs" style={{ opacity: 0.7 }}>Margin</div>
+                <div className="text-base font-bold">
                   {totalRetail > 0 ? ((totalProfit / totalRetail) * 100).toFixed(1) + "%" : "—"}
                 </div>
               </div>

@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-provider";
 import { ZRLogo } from "./zr-logo";
 import { supabase } from "../lib/supabase";
 
+// Routes where the nav bar should never appear (public-facing portals)
+const HIDE_NAV_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/forgot-password", "/reset-password"];
+
 export function NavBar() {
   const { user, signOut, permissions, features } = useAuth();
+  const pathname = usePathname();
   const [reminderCount, setReminderCount] = useState(0);
 
   useEffect(() => {
@@ -27,8 +32,9 @@ export function NavBar() {
     loadBadge();
   }, [user]);
 
-  // Don't show nav on public pages
-  if (!user) return null;
+  // Don't show nav on public pages or when not logged in
+  const isPublicRoute = HIDE_NAV_ROUTES.some(r => pathname.startsWith(r));
+  if (!user || isPublicRoute) return null;
 
   return (
     <header className="sticky top-0 z-40 shrink-0"

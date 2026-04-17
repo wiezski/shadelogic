@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./auth-provider";
 
@@ -12,8 +13,12 @@ const CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
+// Hide on public-facing portals
+const HIDE_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup"];
+
 export function FeedbackWidget() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -23,7 +28,8 @@ export function FeedbackWidget() {
   const [saving, setSaving] = useState(false);
   const [sent, setSent] = useState(false);
 
-  if (!user) return null;
+  const isPublicRoute = HIDE_ROUTES.some(r => pathname.startsWith(r));
+  if (!user || isPublicRoute) return null;
 
   async function submit() {
     if (!message.trim()) return;

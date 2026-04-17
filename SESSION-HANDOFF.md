@@ -20,7 +20,7 @@ Full calendar (day/week/month), 7 appointment types, forced outcomes, customer c
 ### Phase 4 — Quoting — Complete ✓
 Quote builder, pricing engine, templates, e-signature, PDF print, customer approval link, payments/deposits.
 
-### Phase 14 — Product Catalog + Order/Package Tracking — Complete ✓ (NEW)
+### Phase 14 — Product Catalog + Order/Package Tracking — Complete ✓
 Enhanced product catalog with manufacturer fields, CSV import, order PDF upload, package-level tracking. See details below.
 
 ### Phase 15 — Permission Guards + Client Setup Guide — Complete ✓
@@ -30,45 +30,61 @@ Page-level permission enforcement on all protected routes. Client-facing getting
 Full auth system with Supabase Auth, RLS on all 19 tables, auto-set company_id triggers, subscription plans (trial/basic/pro/enterprise), feature flags with per-company overrides, FeatureGate component. See details below.
 
 ### Phase 6 — Full Install Management — Complete ✓
-Quote→Install conversion, installer checklist system, materials packing list, customer sign-off with signature, enhanced completion flow. See details below.
+Quote→Install conversion, installer checklist system, materials packing list, customer sign-off with signature, enhanced completion flow. SQL migration run ✓.
 
 ### Phase 7 — Rebrand to ZeroRemake + White-Label — Complete ✓
-Full rebrand from ShadeLogic to ZeroRemake. Light mode with orange primary (#e63000), Figtree font, SVG logo component. White-label infrastructure: per-tenant branding via CSS custom properties, runtime injection from companies table, Settings UI for brand customization.
+Full rebrand from ShadeLogic to ZeroRemake. Light mode with orange primary (#e63000), Figtree font, SVG logo component. White-label infrastructure: per-tenant branding via CSS custom properties, runtime injection from companies table, Settings UI for brand customization. SQL migration run ✓.
 
-### Phase 7.5 — Light Mode Switch — Complete ✓ (NEW)
-Switched entire app from dark theme to light mode. All CSS variables in globals.css flipped to white/light values. Every page that uses --zr-* vars automatically became light. ZRLogo SVG hardcoded to stay dark (#1a1a1a bg). Schedule/calendar page explicitly white. Text brightened for readability. Settings page auto-creates company_settings row if missing (was showing "Run phase9 SQL" error). New app icons generated.
+### Phase 7.5 — Light Mode Fix — Complete ✓
+**Root cause found and fixed**: Turbopack cached old dark-theme CSS chunks that overrode light values. Also, Vercel's GitHub webhook was disconnected (not auto-deploying). Fix involved:
+- `globals.css`: Changed `:root` to `html:root` (higher CSS specificity beats cached `:root`)
+- Added `color-scheme: light` to CSS and `<html>` element
+- Added `!important` safety net block at bottom of globals.css for all light color values
+- Fixed `[data-tenant]` fallback for `--zr-dark` from `#1a1a1a` to `#f8f9fa`
+- Added `rm -rf .next/cache` to build script to prevent stale CSS
+- Deployed via `npx vercel --prod` CLI (GitHub webhook was broken)
+- Changed cron schedule from every-4-hours to daily (Hobby plan limit)
+- Vercel CLI linked to project (`.vercel` directory created on user's machine)
 
-### Phase 8 — Automated Email Outreach with Resend — Complete ✓ (NEW)
-Transactional email system using Resend (free tier: 100/day). Includes:
-- `lib/email.ts` — Resend API integration, email logging, HTML layout wrapper
-- `lib/email-templates.ts` — 5 templates: appointment confirmation, appointment reminder, quote delivery, install follow-up, quote follow-up
-- `lib/use-email.ts` — client-side React hook for sending emails
-- `/api/send-email` — POST route that renders template + sends via Resend + logs to email_log table
-- `/api/cron/send-reminders` — GET route (Vercel Cron every 4hrs) finds appointments 18-30hrs away, sends reminder emails, deduplicates
-- `vercel.json` — cron config for automated reminders
-- Schedule page: "Email Confirmation" button in confirmation modal (shows when customer has email)
-- Quotes page: "Send Branded Email" button sends professional quote email with "View & Approve" link, auto-marks quote as sent
-- `supabase/phase8_email_outreach.sql` — email_log table with RLS, indexes, auto company_id trigger, email_opted_out column on customers
+### Phase 8 — Automated Email Outreach with Resend — Complete ✓
+Transactional email system using Resend (free tier: 100/day). SQL migration run ✓.
 
-### CRITICAL ISSUE — App Still Shows Dark Mode on Vercel
-The CSS variables in globals.css ARE set to light values (--zr-black: #ffffff, --zr-surface-1: #ffffff, etc.). All code is committed and pushed to origin/main. BUT the deployed app at https://shadelogic-git-main-wiezskis-projects.vercel.app still appears dark to the user. 
-
-Possible causes (investigate in order):
-1. **Vercel Deployment Protection** — `curl` to the Vercel URL returns "Authentication Required" SSO page instead of app content. This may be serving a cached/old build or blocking proper deployment.
-2. **Browser/PWA cache** — User may need to clear Safari cache and delete old PWA from home screen
-3. **Vercel build error** — Check Vercel deployment logs to see if the build actually succeeded
-4. **Vercel not rebuilding** — Even though git shows commits pushed, Vercel may not have triggered a new deployment
-
-First thing next session: Have user check Vercel dashboard → Deployments to see if the latest deploy succeeded. Also try incognito browser window. If those don't work, check for Deployment Protection settings in Vercel project settings.
+### Phase 9 — Enhanced Payments/Invoicing System — Complete ✓
+Professional invoicing system built on top of approved quotes. Replaces legacy quote-based payments with proper invoice management:
+- **New database tables created** (phase9_invoicing.sql): invoices, invoice_line_items, payments
+- **Enhanced company_settings**: invoice_prefix, next_invoice_number, default_payment_terms_days, invoice_footer, accepted_payment_methods
+- **Updated app/payments/page.tsx**:
+  - Two tabs: "Invoices" (new, default) and "Quotes" (legacy grouping preserved)
+  - Summary stats: Total Outstanding, Total Collected, Overdue count
+  - "Create Invoice" modal to generate invoices from approved quotes
+  - Auto-generates invoice numbers with company prefix (e.g., "INV-0001")
+  - Copies quote line items as snapshots into invoice_line_items
+  - Calculates deposits, balance, full, or custom invoice types
+  - Sets due dates based on company default payment terms
+- **New page app/invoices/[id]/page.tsx** — Invoice Detail view:
+  - Invoice header with number, status badge, customer info, dates
+  - Line items table (description, qty, unit price, total)
+  - Totals section: subtotal, tax, total, amount paid, amount due
+  - "Record Payment" modal: amount, method (cash/check/zelle/venmo/card/ach/wire/other), reference, date, notes
+  - Payment history list showing all payments on invoice
+  - Invoice actions: Mark as Sent, Record Payment, Void Invoice
+  - Status transitions: draft → sent → partial/paid; any status → void
+  - Updates invoice.amount_paid and marks fully paid when appropriate
+- **All existing patterns followed**:
+  - "use client" components with useState/useEffect
+  - FeatureGate (require="quoting") + PermissionGate (require="view_financials")
+  - CSS variables for styling (--zr-* colors)
+  - Supabase RLS enforced on all new tables (company_id auto-set via trigger)
+  - Money formatting with toFixed(2) and comma grouping
 
 ### Next Up
-- **FIX DARK MODE** — #1 priority (see above)
-- Run `supabase/phase8_email_outreach.sql` in Supabase SQL editor (creates email_log table)
 - Verify Resend env vars are set in Vercel (RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EMAIL_FROM_ADDRESS, NEXT_PUBLIC_APP_URL, CRON_SECRET)
-- User needs to delete old "ShadeLogic" PWA from home screen and re-add from Safari for new ZeroRemake icon
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
-- Still pending from phase 6/7: Run `supabase/phase6_install_management.sql` and `supabase/phase7_whitelabel.sql` if not already done
+- Reconnect GitHub → Vercel auto-deploy (Settings → Git in Vercel dashboard)
+- Phase 9 SQL migration (phase9_invoicing.sql) needs to be run in Supabase
+- Deploy and test invoice creation/payment recording flow
+- Continue to next phase per MVP-BUILD-PLAN.md
 
 ---
 
@@ -141,7 +157,7 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
   - "All materials received" green banner triggers ready-to-install flow
   - ETA display from email or PDF
 
-### Permission Guards (NEW)
+### Permission Guards
 - `PermissionGate` component wraps every protected page
 - If user doesn't have the required permission, shows "Access Restricted" screen with back link
 - Owner role always has full access regardless of individual permissions
@@ -149,7 +165,7 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 - Pages guarded: analytics (view_reports), payments (view_financials), products (access_settings), settings (access_settings), schedule (manage_schedule OR complete_installs), customers (view_customers), quotes (create_quotes OR view_pricing), measure-jobs (view_customers)
 - Nav bar continues to hide links without permission (defense in depth)
 
-### Setup Guide (`/setup-guide`) (NEW)
+### Setup Guide (`/setup-guide`)
 - Step-by-step getting-started guide for new clients
 - 8 steps: Add Products, First Customer, Measure Job, Build Quote, Schedule, Order Tracking (email forwarding), Invite Team, Company Settings
 - Each step expandable with detailed instructions
@@ -160,7 +176,7 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 - Visible in nav for users with access_settings or manage_team permission
 - Celebration screen when all steps marked done
 
-### Auth + Multi-Tenancy (NEW)
+### Auth + Multi-Tenancy
 - **Supabase Auth**: login/signup pages, email+password, session management
 - **Profiles table**: id (= auth uid), company_id, full_name, role, permissions JSONB
 - **Companies table**: name, plan (trial/basic/pro/enterprise), features JSONB, trial_ends_at
@@ -176,7 +192,7 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 - **Nav bar**: hides links based on BOTH feature flags AND permissions (defense in depth)
 - **Pages with FeatureGate**: analytics (analytics), schedule (scheduling), products (inventory), payments (quoting)
 
-### Full Install Management (NEW)
+### Full Install Management
 - **Quote→Install conversion**: button on approved quotes creates install job with all windows from line items, stamps checklist
 - **Install checklist system**:
   - Company-defined checklist items (Settings → Install Checklist)
@@ -200,16 +216,15 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
   - "Needs Rework" creates tasks for each issue window
   - Post-completion: review request text, follow-up text, view customer link
 - **Settings → Install Checklist**: owner can add/remove items, toggle required, load defaults
-- **Nav bar**: hides links based on BOTH feature flags AND permissions (defense in depth)
-- **Pages with FeatureGate**: analytics (analytics), schedule (scheduling), products (inventory), payments (quoting)
 
-### ZeroRemake Rebrand + White-Label (NEW)
+### ZeroRemake Rebrand + White-Label
 - **Full rebrand**: all references to "ShadeLogic" replaced with "ZeroRemake" across entire codebase
 - **Design system**: LIGHT MODE (white bg), orange primary (#e63000), Figtree font, DM Mono for labels
 - **CSS variables**: complete variable system (--zr-*) in globals.css — colors, surfaces, typography, spacing, radius, shadows
+- **Light mode enforcement**: `html:root` selector + `color-scheme: light` + `!important` safety net
 - **SVG logo component**: `ZRLogo` component at 3 sizes (sm/md/lg) with "Z" mark + wordmark
-- **Login/signup pages**: rebranded with dark theme, ZeroRemake logo, orange CTA buttons
-- **Nav bar**: uses ZRLogo, dark theme surfaces, --zr-* colors
+- **Login/signup pages**: rebranded with ZeroRemake logo, orange CTA buttons
+- **Nav bar**: uses ZRLogo, light surfaces, --zr-* colors
 - **White-label infrastructure**:
   - Companies table: brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark
   - Auth-provider: loads branding on login, injects `data-tenant` attribute + --tenant-* CSS vars on `<html>`
@@ -218,8 +233,7 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
   - ZRLogo: auto-swaps to tenant logo image when brand_logo_url is set
   - Settings → Branding: owner can set slug, colors (with color picker), font, logo URL, logo mark
   - Preview swatch in settings shows color on dark background
-  - Default: no branding = ZeroRemake orange/dark theme
-- **SQL migration**: `supabase/phase7_whitelabel.sql` adds branding columns to companies table
+  - Default: no branding = ZeroRemake orange/light theme
 
 ### Analytics (`/analytics`)
 - **Operations section**: 5 category stats, install completion %, issues drill-down (tap to see jobs), by measurer table, recent jobs
@@ -245,13 +259,55 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 - Falls back gracefully if pdf-parse not installed
 - Used by Materials tab PDF upload feature
 
+### Automated Email Outreach (Phase 8)
+- `lib/email.ts` — Resend API integration, email logging, HTML layout wrapper
+- `lib/email-templates.ts` — 5 templates: appointment confirmation, reminder, quote delivery, install follow-up, quote follow-up
+- `lib/use-email.ts` — client-side React hook for sending emails
+- `/api/send-email` — POST route that renders template + sends via Resend + logs to email_log table
+- `/api/cron/send-reminders` — GET route (Vercel Cron daily at 8am) finds appointments 18-30hrs away, sends reminder emails, deduplicates
+- `vercel.json` — cron config for automated reminders
+- Schedule page: "Email Confirmation" button in confirmation modal (shows when customer has email)
+- Quotes page: "Send Branded Email" button sends professional quote email with "View & Approve" link, auto-marks quote as sent
+
+### Payments & Invoicing (`/payments` and `/invoices/[id]`) — Phase 9
+- **Enhanced Payments Page** (`app/payments/page.tsx`):
+  - Two tabs: "Invoices" (new, default) and "Quotes" (legacy view preserved)
+  - **Invoices tab**: lists all invoices with status badges, customer name, amount due, due date
+    - Summary stats: Total Outstanding, Total Collected, Overdue count
+    - "Create Invoice" button opens modal to generate invoice from approved quote
+    - Clicking invoice row navigates to `/invoices/[id]` for details
+  - **Quotes tab**: original deposit pending/balance due/paid in full grouping (unchanged from before)
+  - Both tabs share the same summary bar logic but display different data
+- **Invoice Detail Page** (`app/invoices/[id]/page.tsx`):
+  - Displays invoice header: number, status badge, customer info, dates
+  - Line items table: description, qty, unit price, total (snapshot from quote)
+  - Totals section: subtotal, tax, total, amount paid, amount due
+  - **Record Payment modal**:
+    - Amount field (pre-filled with amount_due)
+    - Method dropdown: cash, check, zelle, venmo, credit card, debit card, ACH, wire, other
+    - Reference field (check #, transaction ID, etc.)
+    - Date received (defaults to today)
+    - Notes
+    - On save: inserts payment record, updates invoice.amount_paid, auto-marks as paid if fully paid
+  - **Payment History section**: list of all payments for this invoice
+  - **Invoice Actions**: Mark as Sent, Record Payment, Void Invoice
+  - Status transitions: draft → sent → partial/paid; any → void
+- **Invoice Generation Logic** (from modal in payments page):
+  1. Get company_settings for invoice_prefix + next_invoice_number
+  2. Generate invoice_number as `{prefix}-{number padded to 4 digits}` (e.g., "INV-0001")
+  3. Increment next_invoice_number in company_settings
+  4. Create invoice with subtotal/tax/total from quote
+  5. Copy quote line items into invoice_line_items as snapshot
+  6. Set type based on invoice (deposit/balance/full)
+  7. Calculate due_date = created_at + default_payment_terms_days
+
 ---
 
 ## Database Schema (Supabase)
 
 ### Existing tables
-- `customers`: id, first_name, last_name, address (pipe-separated: `street|city|state|zip`), phone (legacy), email, lead_status, heat_score, lead_source, last_activity_at, preferred_contact, next_action, company_id, created_at
-- `measure_jobs`: id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, install_scheduled_at, **quote_id, customer_signature, signed_off_at, signed_off_name, installed_by, install_started_at, install_completed_at, install_status, materials_confirmed, materials_confirmed_at, materials_confirmed_by**, company_id
+- `customers`: id, first_name, last_name, address (pipe-separated: `street|city|state|zip`), phone (legacy), email, lead_status, heat_score, lead_source, last_activity_at, preferred_contact, next_action, email_opted_out, company_id, created_at
+- `measure_jobs`: id, title, customer_id, scheduled_at, measured_by, overall_notes, tallest_window, install_mode, install_scheduled_at, quote_id, customer_signature, signed_off_at, signed_off_name, installed_by, install_started_at, install_completed_at, install_status, materials_confirmed, materials_confirmed_at, materials_confirmed_by, company_id
 - `rooms`: id, measure_job_id, name, room_notes, sort_order, company_id
 - `windows`: id, room_id, sort_order, product, lift_system, width, height, mount_type, casing_depth, control_side, hold_downs, metal_or_concrete, over_10_ft, takedown, notes, install_status, company_id
 - `window_photos`: id, window_id, file_path, caption, company_id
@@ -259,29 +315,35 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 - `activity_log`: id, customer_id, type, notes, created_by, created_at, company_id
 - `tasks`: id, customer_id, title, due_date, completed, completed_at, created_by, created_at, company_id
 - `customer_phones`: id, customer_id, phone, label, is_primary, created_at, company_id
-- `product_catalog`: id, name, category, default_cost, default_multiplier, notes, active, **manufacturer, sku, min_width, max_width, min_height, max_height, lead_time_days, color_options, imported_from**, company_id
-- `quote_materials`: id, quote_id, description, status, vendor, order_number, tracking_number, ordered_at, shipped_at, received_at, notes, auto_updated, last_email_at, last_email_subject, **expected_packages, received_packages, order_pdf_path, order_pdf_text, eta**, company_id
-- `material_packages` (NEW): id, material_id, tracking_number, status (pending/shipped/received), description, received_at, received_by, notes, company_id
+- `product_catalog`: id, name, category, default_cost, default_multiplier, notes, active, manufacturer, sku, min_width, max_width, min_height, max_height, lead_time_days, color_options, imported_from, company_id
+- `quote_materials`: id, quote_id, description, status, vendor, order_number, tracking_number, ordered_at, shipped_at, received_at, notes, auto_updated, last_email_at, last_email_subject, expected_packages, received_packages, order_pdf_path, order_pdf_text, eta, company_id
+- `material_packages`: id, material_id, tracking_number, status (pending/shipped/received), description, received_at, received_by, notes, company_id
 - `email_order_inbox`: id, company_id, from_email, subject, order_number, tracking_number, detected_status, email_body, reviewed, matched_material
-- `install_checklist_items` (NEW): id, company_id, label, sort_order, required, locked, active, created_at
-- `install_checklist_completions` (NEW): id, job_id, checklist_item_id, label, required, completed, completed_at, completed_by, sort_order, company_id
+- `install_checklist_items`: id, company_id, label, sort_order, required, locked, active, created_at
+- `install_checklist_completions`: id, job_id, checklist_item_id, label, required, completed, completed_at, completed_by, sort_order, company_id
+- `email_log`: id, company_id, customer_id, appointment_id, quote_id, type, to_email, subject, status, resend_message_id, error, created_at
+- `invoices`: id, company_id, quote_id, customer_id, invoice_number, type (deposit|balance|full|custom), subtotal, tax_pct, tax_amount, total, amount_paid, amount_due (generated), status (draft|sent|partial|paid|overdue|void), due_date, sent_at, paid_at, voided_at, notes, memo, public_token, created_at, updated_at
+- `invoice_line_items`: id, invoice_id, company_id, description, quantity, unit_price, total, sort_order, created_at
+- `payments`: id, company_id, invoice_id, customer_id, amount, method (cash|check|zelle|venmo|credit_card|debit_card|ach|wire|other), reference, received_at, notes, logged_by, created_at
 
 ### Storage
 - Bucket: `window-photos` (also stores order PDFs at `orders/{quoteId}/{materialId}/`)
 - Future: dedicated `order-documents` bucket
 
-### Auth tables (NEW)
-- `companies`: id, name, **plan** (trial/basic/pro/enterprise), **features** (JSONB), **trial_ends_at**, created_at
-- `profiles`: id (= auth.users.id), company_id, full_name, role, **permissions** (JSONB), **email**, **invited_by**, created_at
-- `company_settings`: id, name, phone, email, address, city, state, zip, website, license_number, tagline, google_review_link, default_deposit_pct, default_markup, default_quote_days, notify_on_shipped, notify_on_delivered, notify_channel, **company_id** (FK to companies)
+### Auth tables
+- `companies`: id, name, plan, features (JSONB), trial_ends_at, brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark, created_at
+- `profiles`: id (= auth.users.id), company_id, full_name, role, permissions (JSONB), email, invited_by, created_at
+- `company_settings`: id, name, phone, email, address, city, state, zip, website, license_number, tagline, google_review_link, default_deposit_pct, default_markup, default_quote_days, notify_on_shipped, notify_on_delivered, notify_channel, invoice_prefix, next_invoice_number, default_payment_terms_days, invoice_footer, accepted_payment_methods, company_id
 
-### SQL migrations run
-- `supabase/phase2_crm.sql` — activity_log, tasks, CRM columns on customers, company_id stubs
-- `supabase/phase2_crm_v2.sql` — customer_phones table, preferred_contact + next_action on customers
-- `supabase/phase14_product_orders.sql` — manufacturer fields on product_catalog, package tracking fields on quote_materials, material_packages table (PENDING — needs to be run)
-- `supabase/phase5_auth_multitenancy.sql` — companies enhancements (plan, features, trial_ends_at), profiles enhancements (email, invited_by), company_settings company_id FK, RLS on all 19 tables, auto_set_company_id trigger, get_my_company_id() helper, anonymous access policies, performance indexes ✓
-- `supabase/phase6_install_management.sql` — install_checklist_items + install_checklist_completions tables, measure_jobs enhancements (quote_id, signature, install status, materials confirmation), quotes install_job_id back-link, RLS + triggers + indexes **(PENDING — needs to be run)**
-- `supabase/phase7_whitelabel.sql` — branding columns on companies table (brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark) **(PENDING — needs to be run)**
+### SQL migrations — Status
+- `supabase/phase2_crm.sql` ✓
+- `supabase/phase2_crm_v2.sql` ✓
+- `supabase/phase5_auth_multitenancy.sql` ✓
+- `supabase/phase6_install_management.sql` ✓
+- `supabase/phase7_whitelabel.sql` ✓
+- `supabase/phase8_email_outreach.sql` ✓
+- `supabase/phase9_invoicing.sql` — PENDING (invoices, invoice_line_items, payments tables + company_settings columns)
+- `supabase/phase14_product_orders.sql` — PENDING (needs to be run)
 
 ---
 
@@ -292,12 +354,13 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 - After running phase5 SQL, must backfill existing data with correct company_id (see SQL file comments)
 - RLS uses `get_my_company_id()` SECURITY DEFINER function — looks up company_id from profiles via auth.uid()
 - Feature flags resolved from plan defaults + per-company overrides in `features` JSONB
-- Smart Invert CSS fix in `globals.css` (inverted-colors media query)
+- Light mode enforced via `html:root` selector + `color-scheme: light` + `!important` safety net in globals.css
 - Measure jobs start measure-only; "Start Install" unlocks install mode
 - Voice-to-text uses browser Speech API — works on mobile Chrome/Safari, uses `any` cast to avoid TS issues
 - PDF parsing requires `pdf-parse` npm package — route gracefully fails without it
 - Email webhook now extracts MULTIPLE tracking numbers per email and handles package-level tracking
 - Package check-in: when all packages for a material are received, material auto-updates to "received" status
+- Vercel Hobby plan: cron limited to once per day (currently 8am UTC)
 
 ---
 
@@ -318,25 +381,18 @@ First thing next session: Have user check Vercel dashboard → Deployments to se
 
 ## Deployment
 - Stack: Next.js 16 App Router + TypeScript + Supabase + Vercel + Tailwind CSS 4
-- Push to GitHub → Vercel auto-deploys
-- Git auth: token stored in remote URL (already configured)
-- To push: `cd ~/zeroremake && git push`
+- **Vercel CLI deploy**: `cd ~/shadelogic && npx vercel --prod`
+- **GitHub auto-deploy**: NEEDS RECONNECTION — go to Vercel dashboard → Settings → Git
+- Git remote: `https://github.com/wiezski/shadelogic.git`
+- Local project path: `~/shadelogic` (NOT ~/zeroremake)
+- Build script: `rm -rf .next/cache && next build` (prevents stale CSS cache)
+- Cron: daily at 8am UTC (Hobby plan limit)
 - **AGENTS.md warning**: read `node_modules/next/dist/docs/` before writing any new Next.js code
-
----
-
-## Setup Steps for This Session's Changes
-1. Run `supabase/phase6_install_management.sql` in Supabase SQL editor
-2. Run `supabase/phase7_whitelabel.sql` in Supabase SQL editor
-3. Go to Settings → Install Checklist → click "Load Default Checklist" to seed checklist items
-4. `npm install pdf-parse` on your local machine (if not already done)
-5. Push to GitHub: `cd ~/shadelogic && git add -A && git commit -m "Phase 7: ZeroRemake rebrand + white-label" && git push`
 
 ---
 
 ## Backlog (not yet scheduled)
 - Automated SMS (Twilio ~$0.01/msg)
-- Automated email (Resend, free tier) — appointment confirmations, reminders
 - Pricing intelligence: scrape Blinds.com, SelectBlinds for retail price anchors
 - Product/spec scraping from manufacturer sites → populate product dropdowns
 - Lead assignment (assigned_to field, filter work queue by user)

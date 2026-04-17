@@ -25,8 +25,8 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     quoting: true,
     inventory: true,
     analytics: true,
-    builder_portal: false,
-    automation: false,
+    builder_portal: true,
+    automation: true,
   },
   basic: {
     crm: false,

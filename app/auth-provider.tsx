@@ -8,7 +8,7 @@ import { resolveFeatures, type Features } from "../lib/features";
 import type { User } from "@supabase/supabase-js";
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/signup", "/q/", "/intake", "/forgot-password", "/reset-password", "/i/"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/q/", "/intake", "/forgot-password", "/reset-password", "/i/", "/b/"];
 
 export type TenantBranding = {
   slug: string | null;

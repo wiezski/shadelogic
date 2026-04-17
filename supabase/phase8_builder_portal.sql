@@ -1,0 +1,5 @@
+-- Builder Portal — Phase 8 (applied via Supabase MCP)
+-- Tables: builder_contacts, builder_projects, builder_project_quotes, builder_messages
+-- RLS: company-scoped + public portal read access
+-- Auto-set company_id triggers on all tables
+-- See apply_migration for full SQL

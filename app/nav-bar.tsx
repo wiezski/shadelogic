@@ -2,17 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-provider";
 import { ZRLogo } from "./zr-logo";
 import { supabase } from "../lib/supabase";
 
 export function NavBar() {
-  const pathname = usePathname();
   const { user, signOut, permissions, features } = useAuth();
-
-  // Hide NavBar on thrift routes (ThriftFlow has its own nav)
-  if (pathname.startsWith("/thrift")) return null;
   const [reminderCount, setReminderCount] = useState(0);
 
   useEffect(() => {
@@ -48,6 +43,7 @@ export function NavBar() {
           { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
           { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
           { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
+          { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
           { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },
           { href: "/setup-guide", label: "Setup Guide", show: permissions.access_settings || permissions.manage_team },

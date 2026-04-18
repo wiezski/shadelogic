@@ -24,9 +24,9 @@ function getSupabaseAdmin() {
 
 function getPlanFromPriceId(priceId: string): string {
   const priceMap: Record<string, string> = {
-    [process.env.STRIPE_PRICE_BASIC || ""]: "basic",
-    [process.env.STRIPE_PRICE_PRO || ""]: "pro",
-    [process.env.STRIPE_PRICE_ENTERPRISE || ""]: "enterprise",
+    [process.env.STRIPE_PRICE_STARTER || ""]: "starter",
+    [process.env.STRIPE_PRICE_PROFESSIONAL || ""]: "professional",
+    [process.env.STRIPE_PRICE_BUSINESS || ""]: "business",
   };
   return priceMap[priceId] || "trial";
 }
@@ -86,13 +86,54 @@ export async function POST(req: NextRequest) {
 
         const companyId = companies[0].id;
 
+        // Trial abuse prevention: record card fingerprint
+        // If this is a trial subscription, check if the card has been used before
+        if (subscription.status === "trialing") {
+          try {
+            // Get the default payment method to extract card fingerprint
+            const paymentMethodId = subscription.default_payment_method as string
+              || (session as any).payment_method as string;
+
+            if (paymentMethodId) {
+              const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+              const fingerprint = pm.card?.fingerprint;
+
+              if (fingerprint) {
+                // Check if this card fingerprint has been used for a trial before
+                const { data: existingTrial } = await supabaseAdmin
+                  .from("trial_cards")
+                  .select("id, company_id")
+                  .eq("card_fingerprint", fingerprint)
+                  .single();
+
+                if (existingTrial && existingTrial.company_id !== companyId) {
+                  // Card already used for a trial by a different company — cancel the trial
+                  console.log(`[stripe/webhook] Trial abuse detected: card ${fingerprint} already used by company ${existingTrial.company_id}`);
+                  await stripe.subscriptions.update(subscriptionId, {
+                    trial_end: "now",  // End trial immediately, start billing
+                  });
+                } else if (!existingTrial) {
+                  // Record the card fingerprint for future checks
+                  await supabaseAdmin.from("trial_cards").insert({
+                    card_fingerprint: fingerprint,
+                    company_id: companyId,
+                  });
+                }
+              }
+            }
+          } catch (cardErr) {
+            console.error("[stripe/webhook] Card fingerprint check error:", cardErr);
+            // Don't block the checkout over fingerprint check failures
+          }
+        }
+
         // Update company with subscription details
         await supabaseAdmin
           .from("companies")
           .update({
             stripe_subscription_id: subscriptionId,
             plan,
-            subscription_status: "active",
+            subscription_status: subscription.status as string,
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           })
           .eq("id", companyId);

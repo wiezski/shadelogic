@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
 import { PermissionGate } from "../permission-gate";
-import { PLAN_LABELS, PLAN_FEATURES, FEATURE_LABELS, type Plan, type FeatureKey } from "../../lib/features";
+import { PLAN_LABELS, PLAN_FEATURES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan, type FeatureKey } from "../../lib/features";
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 
 type Settings = {
@@ -54,13 +54,13 @@ function PlanSection() {
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Plan & Features</h2>
         <span className="text-xs rounded px-2 py-0.5 font-medium" style={{
-          background: plan === "enterprise" ? "rgba(168, 85, 247, 0.2)" :
-          plan === "pro" ? "rgba(59, 130, 246, 0.2)" :
-          plan === "basic" ? "rgba(34, 197, 94, 0.2)" :
+          background: plan === "business" ? "rgba(168, 85, 247, 0.2)" :
+          plan === "professional" ? "rgba(59, 130, 246, 0.2)" :
+          plan === "starter" ? "rgba(34, 197, 94, 0.2)" :
           "rgba(245, 158, 11, 0.2)",
-          color: plan === "enterprise" ? "#a855f7" :
-          plan === "pro" ? "var(--zr-info)" :
-          plan === "basic" ? "var(--zr-success)" :
+          color: plan === "business" ? "#a855f7" :
+          plan === "professional" ? "var(--zr-info)" :
+          plan === "starter" ? "var(--zr-success)" :
           "var(--zr-warning)"
         }}>
           {PLAN_LABELS[plan as Plan] ?? plan}
@@ -216,11 +216,16 @@ type TeamMember = {
 };
 
 function TeamSection() {
-  const { user, companyId, permissions: myPerms } = useAuth();
+  const { user, companyId, permissions: myPerms, plan } = useAuth();
   const [members,    setMembers]    = useState<TeamMember[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [inviteLink, setInviteLink] = useState("");
   const [editingId,  setEditingId]  = useState<string | null>(null);
+
+  const userLimits = PLAN_USER_LIMITS[plan as Plan] ?? PLAN_USER_LIMITS.trial;
+  const includedUsers = userLimits.included;
+  const extraUsers = Math.max(0, members.length - includedUsers);
+  const extraCost = extraUsers * userLimits.perUserPrice;
 
   useEffect(() => {
     if (!companyId) return;
@@ -256,6 +261,23 @@ function TeamSection() {
   return (
     <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
       <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Team Members</h2>
+
+      {/* User count & plan limits */}
+      <div className="rounded p-3 space-y-1" style={{ background: "var(--zr-surface-2)" }}>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>
+            {members.length} user{members.length !== 1 ? "s" : ""} on your team
+          </span>
+          <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+            {includedUsers} included in {PLAN_LABELS[plan as Plan] ?? plan}
+          </span>
+        </div>
+        {extraUsers > 0 && (
+          <div className="text-xs" style={{ color: "var(--zr-warning)" }}>
+            {extraUsers} extra user{extraUsers !== 1 ? "s" : ""} × ${userLimits.perUserPrice}/mo = +${extraCost}/mo added to your bill
+          </div>
+        )}
+      </div>
 
       {/* Invite link */}
       <div className="rounded p-3 space-y-1.5" style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--zr-info)" }}>
@@ -443,8 +465,8 @@ const OWNER_COMPANY_ID = "92811199-4342-40d2-9332-dfe92e8210db";
 
 function BrandingSection() {
   const { companyId, role, plan, branding } = useAuth();
-  // Only show for enterprise plan OR the platform owner's company
-  const canWhiteLabel = plan === "enterprise" || companyId === OWNER_COMPANY_ID;
+  // Only show for business plan OR the platform owner's company
+  const canWhiteLabel = plan === "business" || companyId === OWNER_COMPANY_ID;
   if (!canWhiteLabel) return null;
   const [slug,         setSlug]         = useState(branding?.slug ?? "");
   const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor ?? "");

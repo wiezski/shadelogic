@@ -2,7 +2,7 @@
 // POST /api/stripe/checkout
 //
 // Creates a Stripe Checkout session for subscriptions with a 14-day trial.
-// - Reads planId from request body (basic, pro, enterprise)
+// - Reads planId from request body (starter, professional, business)
 // - Maps plan to Stripe price IDs from environment
 // - Gets current user from Supabase auth via Authorization header
 // - Looks up company_id from profiles table
@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
     const supabaseAnon = getSupabaseAnon();
 
     const PLAN_PRICE_MAP: Record<string, string> = {
-      basic: process.env.STRIPE_PRICE_BASIC || "",
-      pro: process.env.STRIPE_PRICE_PRO || "",
-      enterprise: process.env.STRIPE_PRICE_ENTERPRISE || "",
+      starter: process.env.STRIPE_PRICE_STARTER || "",
+      professional: process.env.STRIPE_PRICE_PROFESSIONAL || "",
+      business: process.env.STRIPE_PRICE_BUSINESS || "",
     };
 
     const body = await req.json();
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     // Validate plan
     if (!planId || !PLAN_PRICE_MAP[planId]) {
       return NextResponse.json(
-        { error: "Invalid planId. Must be one of: basic, pro, enterprise" },
+        { error: "Invalid planId. Must be one of: starter, professional, business" },
         { status: 400 }
       );
     }
@@ -131,9 +131,12 @@ export async function POST(req: NextRequest) {
     const trialDays = hasHadSubscription ? undefined : 14;
 
     // Create Checkout session
+    // Always collect payment method — required for trial abuse prevention
+    // Card fingerprint is checked in the webhook after checkout completes
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
+      payment_method_collection: "always",
       line_items: [
         {
           price: priceId,

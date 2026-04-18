@@ -9,14 +9,32 @@ export type FeatureKey =
 
 export type Features = Record<FeatureKey, boolean>;
 
-export type Plan = "trial" | "basic" | "pro" | "enterprise";
+export type Plan = "trial" | "starter" | "professional" | "business";
 
 export const PLAN_LABELS: Record<Plan, string> = {
   trial: "Free Trial",
-  basic: "Basic",
-  pro: "Professional",
-  enterprise: "Enterprise",
+  starter: "Starter",
+  professional: "Professional",
+  business: "Business",
 };
+
+export const PLAN_PRICES: Record<Plan, { monthly: number; label: string }> = {
+  trial: { monthly: 0, label: "Free for 14 days" },
+  starter: { monthly: 49, label: "$49/mo" },
+  professional: { monthly: 99, label: "$99/mo" },
+  business: { monthly: 199, label: "$199/mo" },
+};
+
+// Users included per plan and per-user add-on cost
+export const PLAN_USER_LIMITS: Record<Plan, { included: number; perUserPrice: number }> = {
+  trial: { included: 3, perUserPrice: 0 },
+  starter: { included: 1, perUserPrice: 25 },
+  professional: { included: 3, perUserPrice: 25 },
+  business: { included: 5, perUserPrice: 25 },
+};
+
+// Max concurrent devices per user account
+export const MAX_DEVICES_PER_USER = 3;
 
 export const PLAN_FEATURES: Record<Plan, Features> = {
   trial: {
@@ -28,25 +46,25 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     builder_portal: true,
     automation: true,
   },
-  basic: {
-    crm: false,
+  starter: {
+    crm: true,
     scheduling: true,
-    quoting: false,
+    quoting: true,
     inventory: false,
     analytics: false,
     builder_portal: false,
     automation: false,
   },
-  pro: {
+  professional: {
     crm: true,
     scheduling: true,
     quoting: true,
     inventory: true,
     analytics: true,
     builder_portal: false,
-    automation: false,
+    automation: true,
   },
-  enterprise: {
+  business: {
     crm: true,
     scheduling: true,
     quoting: true,

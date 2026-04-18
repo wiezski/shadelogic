@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../auth-provider";
 import { PermissionGate } from "../../permission-gate";
-import { PLAN_LABELS, PLAN_FEATURES, FEATURE_LABELS, type Plan, type FeatureKey } from "../../../lib/features";
+import { PLAN_LABELS, PLAN_FEATURES, PLAN_PRICES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan, type FeatureKey } from "../../../lib/features";
 
 type CompanyBilling = {
   id: string;
@@ -14,13 +14,6 @@ type CompanyBilling = {
   trial_ends_at: string | null;
   current_period_end: string | null;
   stripe_customer_id: string | null;
-};
-
-const PLAN_PRICES: Record<Plan, string> = {
-  trial: "Free",
-  basic: "$49/mo",
-  pro: "$99/mo",
-  enterprise: "$199/mo",
 };
 
 function formatDate(dateStr: string | null): string {
@@ -39,7 +32,7 @@ function daysUntil(dateStr: string | null): number | null {
 
 // ── Current Plan Card ──────────────────────────────────────────
 
-function CurrentPlanCard({ billing, loading }: { billing: CompanyBilling | null; loading: boolean }) {
+function CurrentPlanCard({ billing, loading, teamSize }: { billing: CompanyBilling | null; loading: boolean; teamSize: number }) {
   if (loading) {
     return (
       <div className="rounded p-6 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -54,6 +47,9 @@ function CurrentPlanCard({ billing, loading }: { billing: CompanyBilling | null;
   const planLabel = PLAN_LABELS[billing.plan] ?? billing.plan;
   const isTrialing = billing.subscription_status === "trialing";
   const daysLeft = isTrialing ? daysUntil(billing.trial_ends_at) : null;
+  const userLimit = PLAN_USER_LIMITS[billing.plan];
+  const extraUsers = Math.max(0, teamSize - userLimit.included);
+  const extraUserCost = extraUsers * userLimit.perUserPrice;
 
   return (
     <div className="rounded p-6 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -62,23 +58,35 @@ function CurrentPlanCard({ billing, loading }: { billing: CompanyBilling | null;
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-2xl font-bold" style={{ color: "var(--zr-text-primary)" }}>{planLabel}</h2>
             <span className="text-xs rounded px-2.5 py-1 font-medium" style={{
-              background: billing.plan === "enterprise" ? "rgba(168, 85, 247, 0.2)" :
-              billing.plan === "pro" ? "rgba(59, 130, 246, 0.2)" :
-              billing.plan === "basic" ? "rgba(34, 197, 94, 0.2)" :
+              background: billing.plan === "business" ? "rgba(168, 85, 247, 0.2)" :
+              billing.plan === "professional" ? "rgba(59, 130, 246, 0.2)" :
+              billing.plan === "starter" ? "rgba(34, 197, 94, 0.2)" :
               "rgba(245, 158, 11, 0.2)",
-              color: billing.plan === "enterprise" ? "#a855f7" :
-              billing.plan === "pro" ? "var(--zr-info)" :
-              billing.plan === "basic" ? "var(--zr-success)" :
+              color: billing.plan === "business" ? "#a855f7" :
+              billing.plan === "professional" ? "var(--zr-info)" :
+              billing.plan === "starter" ? "var(--zr-success)" :
               "var(--zr-warning)"
             }}>
               {isTrialing ? "Free Trial" : billing.subscription_status === "active" ? "Active" : billing.subscription_status || "Inactive"}
             </span>
           </div>
           <div className="text-xl font-semibold" style={{ color: "var(--zr-text-secondary)" }}>
-            {PLAN_PRICES[billing.plan]}
+            {PLAN_PRICES[billing.plan].label}
           </div>
         </div>
       </div>
+
+      {/* User count info */}
+      {!isTrialing && billing.plan !== "trial" && (
+        <div className="rounded-lg p-4 space-y-1" style={{ background: "var(--zr-surface-2)" }}>
+          <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>
+            {teamSize} user{teamSize !== 1 ? "s" : ""} on your team
+          </div>
+          <div className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
+            {userLimit.included} included in plan{extraUsers > 0 ? ` · ${extraUsers} additional @ $${userLimit.perUserPrice}/mo each = +$${extraUserCost}/mo` : ""}
+          </div>
+        </div>
+      )}
 
       {/* Trial countdown */}
       {isTrialing && daysLeft !== null && (
@@ -127,7 +135,7 @@ function PlanComparisonGrid({ currentPlan, billing, onUpgrade, upgrading }: {
   onUpgrade: (plan: Plan) => Promise<void>;
   upgrading: boolean;
 }) {
-  const comparePlans: Plan[] = ["basic", "pro", "enterprise"];
+  const comparePlans: Plan[] = ["starter", "professional", "business"];
   const allFeatures: FeatureKey[] = Object.keys(FEATURE_LABELS) as FeatureKey[];
 
   return (
@@ -139,8 +147,10 @@ function PlanComparisonGrid({ currentPlan, billing, onUpgrade, upgrading }: {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {comparePlans.map(plan => {
           const isCurrentPlan = currentPlan === plan;
-          const isRecommended = plan === "pro";
+          const isRecommended = plan === "professional";
           const features = PLAN_FEATURES[plan];
+          const pricing = PLAN_PRICES[plan];
+          const userLimits = PLAN_USER_LIMITS[plan];
 
           return (
             <div
@@ -158,7 +168,10 @@ function PlanComparisonGrid({ currentPlan, billing, onUpgrade, upgrading }: {
                     {PLAN_LABELS[plan]}
                   </h3>
                   <div className="text-2xl font-bold" style={{ color: "var(--zr-text-secondary)" }}>
-                    {PLAN_PRICES[plan]}
+                    {pricing.label}
+                  </div>
+                  <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                    {userLimits.included} user{userLimits.included > 1 ? "s" : ""} included · +${userLimits.perUserPrice}/mo per extra user
                   </div>
                 </div>
 
@@ -167,7 +180,7 @@ function PlanComparisonGrid({ currentPlan, billing, onUpgrade, upgrading }: {
                     background: "rgba(59, 130, 246, 0.3)",
                     color: "var(--zr-info)"
                   }}>
-                    Recommended
+                    Most Popular
                   </div>
                 )}
 
@@ -221,13 +234,20 @@ function PlanComparisonGrid({ currentPlan, billing, onUpgrade, upgrading }: {
                       color: "white"
                     }}
                   >
-                    {upgrading ? "Processing…" : plan === "enterprise" ? "Contact Sales" : currentPlan === "trial" ? "Upgrade" : "Change Plan"}
+                    {upgrading ? "Processing…" : currentPlan === "trial" ? "Start Plan" : "Change Plan"}
                   </button>
                 )}
               </div>
             </div>
           );
         })}
+      </div>
+
+      {/* Per-user pricing note */}
+      <div className="text-xs text-center" style={{ color: "var(--zr-text-muted)" }}>
+        All plans include a 14-day free trial. Additional users can be added at $25/mo each.
+        <br />
+        Max 3 devices per user account.
       </div>
     </div>
   );
@@ -262,7 +282,7 @@ function ManagementSection({ billing, onPortal, loading }: {
           color: "var(--zr-text-primary)"
         }}
       >
-        {loading ? "Opening portal…" : "Open Stripe Portal"}
+        {loading ? "Opening portal…" : "Open Billing Portal"}
       </button>
     </div>
   );
@@ -273,12 +293,14 @@ function ManagementSection({ billing, onPortal, loading }: {
 export default function BillingPage() {
   const { user, companyId } = useAuth();
   const [billing, setBilling] = useState<CompanyBilling | null>(null);
+  const [teamSize, setTeamSize] = useState(1);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
     loadBilling();
+    loadTeamSize();
   }, [companyId]);
 
   async function loadBilling() {
@@ -294,6 +316,15 @@ export default function BillingPage() {
       setBilling(data as CompanyBilling);
     }
     setLoading(false);
+  }
+
+  async function loadTeamSize() {
+    if (!companyId) return;
+    const { count } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId);
+    setTeamSize(count || 1);
   }
 
   async function handleUpgrade(plan: Plan) {
@@ -390,7 +421,7 @@ export default function BillingPage() {
           </div>
 
           {/* Current Plan Card */}
-          <CurrentPlanCard billing={billing} loading={loading} />
+          <CurrentPlanCard billing={billing} loading={loading} teamSize={teamSize} />
 
           {/* Plan Comparison */}
           <PlanComparisonGrid
@@ -422,7 +453,13 @@ export default function BillingPage() {
               <div>
                 <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>What happens when my trial ends?</div>
                 <p style={{ color: "var(--zr-text-secondary)", marginTop: "4px" }}>
-                  Your trial lasts 14 days. After it expires, you'll need to choose a paid plan to continue using ZeroRemake. We'll send you reminder emails as your trial end date approaches.
+                  Your trial lasts 14 days with full access to all features. After it expires, you'll need to choose a paid plan to continue using ZeroRemake.
+                </p>
+              </div>
+              <div>
+                <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>How does per-user pricing work?</div>
+                <p style={{ color: "var(--zr-text-secondary)", marginTop: "4px" }}>
+                  Each plan includes a set number of users. If you need more, additional users are $25/month each. Each user can be logged in on up to 3 devices at the same time.
                 </p>
               </div>
               <div>
@@ -432,13 +469,13 @@ export default function BillingPage() {
                 </p>
               </div>
               <div>
-                <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>Need help with Enterprise?</div>
+                <div className="font-semibold" style={{ color: "var(--zr-text-primary)" }}>Need help?</div>
                 <p style={{ color: "var(--zr-text-secondary)", marginTop: "4px" }}>
-                  Contact our sales team at{" "}
-                  <a href="mailto:sales@zeroremake.com" className="underline" style={{ color: "var(--zr-info)" }}>
-                    sales@zeroremake.com
+                  Contact us at{" "}
+                  <a href="mailto:support@zeroremake.com" className="underline" style={{ color: "var(--zr-info)" }}>
+                    support@zeroremake.com
                   </a>
-                  {" "}for custom pricing and features.
+                  {" "}for any billing questions.
                 </p>
               </div>
             </div>

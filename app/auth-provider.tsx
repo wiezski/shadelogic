@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { resolvePermissions, type Permissions } from "../lib/permissions";
 import { resolveFeatures, type Features } from "../lib/features";
+import { registerDeviceSession, heartbeatSession, removeDeviceSession } from "../lib/device-session";
 import type { User } from "@supabase/supabase-js";
 
 // Routes that don't require authentication
@@ -130,6 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setBranding(b);
       applyBranding(b);
+
+      // Register device session (max 3 per user, kicks oldest if over)
+      registerDeviceSession(uid, data.company_id).catch(console.error);
     } else {
       // Default to trial if no company
       setPlan("trial");
@@ -161,6 +165,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []); // eslint-disable-line
 
+  // Heartbeat: keep device session alive every 5 minutes
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      heartbeatSession(user.id).catch(console.error);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Redirect to login when not authenticated
   useEffect(() => {
     if (!loading && !user && !isPublic) {
@@ -169,6 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, user, isPublic]); // eslint-disable-line
 
   async function signOut() {
+    // Remove device session before signing out
+    if (user) {
+      await removeDeviceSession(user.id).catch(console.error);
+    }
     await supabase.auth.signOut();
     applyBranding(DEFAULT_BRANDING);
     router.replace("/login");

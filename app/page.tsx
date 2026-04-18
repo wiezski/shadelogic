@@ -622,25 +622,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Quick-actions */}
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          <button onClick={() => { setTab("customers"); setShowForm(true); }}
-            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-            className="rounded py-2.5 text-xs font-medium flex flex-col items-center gap-1">
-            <span className="text-lg">👤</span>New Customer
-          </button>
-          <Link href="/schedule"
-            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-            className="rounded py-2.5 text-xs font-medium flex flex-col items-center gap-1 text-center">
-            <span className="text-lg">📅</span>Schedule
-          </Link>
-          <Link href="/reminders"
-            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-            className="rounded py-2.5 text-xs font-medium flex flex-col items-center gap-1 text-center">
-            <span className="text-lg">🔔</span>Reminders
-          </Link>
-        </div>
-
         <div className="mb-4 flex rounded border overflow-hidden" style={{ borderColor: "var(--zr-border)" }}>
           <button style={{ background: tab === "dashboard" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: tab === "dashboard" ? "#fff" : "var(--zr-text-primary)" }} className="flex-1 py-2 text-sm font-medium" onClick={() => setTab("dashboard")}>Dashboard</button>
           <button style={{ background: tab === "customers" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: tab === "customers" ? "#fff" : "var(--zr-text-primary)" }} className="flex-1 py-2 text-sm font-medium" onClick={() => setTab("customers")}>Customers</button>

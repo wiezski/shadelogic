@@ -205,6 +205,136 @@ function EmailTrackingSection() {
   );
 }
 
+// ── Pending Approvals ────────────────────────────────────────
+
+type PendingMember = {
+  id: string;
+  profile_id: string;
+  requested_at: string;
+  profile: { full_name: string | null } | null;
+};
+
+function PendingApprovalsSection() {
+  const { user, companyId, role, plan } = useAuth();
+  const [pending, setPending] = useState<PendingMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
+
+  const userLimits = PLAN_USER_LIMITS[plan as Plan] ?? PLAN_USER_LIMITS.trial;
+
+  useEffect(() => {
+    if (!companyId || role !== "owner") { setLoading(false); return; }
+    loadPending();
+  }, [companyId, role]); // eslint-disable-line
+
+  async function loadPending() {
+    const { data } = await supabase
+      .from("pending_approvals")
+      .select("id, profile_id, requested_at")
+      .eq("company_id", companyId)
+      .is("resolution", null)
+      .order("requested_at", { ascending: true });
+
+    if (!data || data.length === 0) { setPending([]); setLoading(false); return; }
+
+    // Load names for pending profiles
+    const profileIds = data.map(d => d.profile_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", profileIds);
+
+    const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
+    setPending(data.map(d => ({
+      ...d,
+      profile: profileMap.get(d.profile_id) ?? null,
+    })));
+    setLoading(false);
+  }
+
+  async function handleAction(profileId: string, action: "approve" | "deny") {
+    setProcessing(profileId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch("/api/team/approve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ profileId, action }),
+      });
+
+      if (res.ok) {
+        setPending(prev => prev.filter(p => p.profile_id !== profileId));
+      }
+    } catch (err) {
+      console.error("Approval action failed:", err);
+    }
+    setProcessing(null);
+  }
+
+  if (role !== "owner" || loading || pending.length === 0) return null;
+
+  return (
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-warning)" }}>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-warning)" }}>
+          Pending Team Requests ({pending.length})
+        </h2>
+      </div>
+      <p className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
+        These people signed up via your invite link but your team is at its user limit. Approving each adds <strong>${userLimits.perUserPrice}/mo</strong> to your subscription.
+      </p>
+      <div className="space-y-2">
+        {pending.map(p => {
+          const name = p.profile?.full_name || "Unnamed User";
+          const ago = getTimeAgo(p.requested_at);
+          const isProcessing = processing === p.profile_id;
+          return (
+            <div key={p.id} className="rounded p-3 flex items-center justify-between gap-3"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+              <div>
+                <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{name}</div>
+                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Requested {ago}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleAction(p.profile_id, "approve")}
+                  disabled={isProcessing}
+                  className="rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  style={{ background: "var(--zr-success)" }}>
+                  {isProcessing ? "..." : "Approve (+$" + userLimits.perUserPrice + "/mo)"}
+                </button>
+                <button
+                  onClick={() => handleAction(p.profile_id, "deny")}
+                  disabled={isProcessing}
+                  className="rounded px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  style={{ color: "var(--zr-error)", border: "1px solid var(--zr-error)", background: "transparent" }}>
+                  Deny
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 // ── Team management ───────────────────────────────────────────
 
 type TeamMember = {
@@ -212,6 +342,7 @@ type TeamMember = {
   full_name: string | null;
   role: string;
   permissions: Record<string, boolean>;
+  status?: string;
   email?: string;
 };
 
@@ -222,9 +353,10 @@ function TeamSection() {
   const [inviteLink, setInviteLink] = useState("");
   const [editingId,  setEditingId]  = useState<string | null>(null);
 
+  const activeMembers = members.filter(m => m.status !== "pending");
   const userLimits = PLAN_USER_LIMITS[plan as Plan] ?? PLAN_USER_LIMITS.trial;
   const includedUsers = userLimits.included;
-  const extraUsers = Math.max(0, members.length - includedUsers);
+  const extraUsers = Math.max(0, activeMembers.length - includedUsers);
   const extraCost = extraUsers * userLimits.perUserPrice;
 
   useEffect(() => {
@@ -235,8 +367,9 @@ function TeamSection() {
 
   async function loadTeam() {
     const { data } = await supabase.from("profiles")
-      .select("id, full_name, role, permissions")
-      .eq("company_id", companyId);
+      .select("id, full_name, role, permissions, status")
+      .eq("company_id", companyId)
+      .eq("status", "active");
     setMembers((data || []) as TeamMember[]);
     setLoading(false);
   }
@@ -256,6 +389,33 @@ function TeamSection() {
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, permissions: updated } : m));
   }
 
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  async function removeMember(memberId: string, name: string) {
+    if (!confirm(`Remove ${name} from your team? This will delete their account and adjust your billing.`)) return;
+    setRemoving(memberId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch("/api/team/remove", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ profileId: memberId }),
+      });
+
+      if (res.ok) {
+        setMembers(prev => prev.filter(m => m.id !== memberId));
+      }
+    } catch (err) {
+      console.error("Remove member failed:", err);
+    }
+    setRemoving(null);
+  }
+
   if (!myPerms.manage_team) return null;
 
   return (
@@ -266,7 +426,7 @@ function TeamSection() {
       <div className="rounded p-3 space-y-1" style={{ background: "var(--zr-surface-2)" }}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>
-            {members.length} user{members.length !== 1 ? "s" : ""} on your team
+            {activeMembers.length} active user{activeMembers.length !== 1 ? "s" : ""} on your team
           </span>
           <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
             {includedUsers} included in {PLAN_LABELS[plan as Plan] ?? plan}
@@ -288,7 +448,7 @@ function TeamSection() {
           style={{ background: "var(--zr-info)" }}>
           Copy Invite Link
         </button>
-        <p className="text-xs" style={{ color: "var(--zr-info)" }}>They sign up with this link → automatically joins your company. Set their role below.</p>
+        <p className="text-xs" style={{ color: "var(--zr-info)" }}>They sign up with this link → joins your company. If you're at your plan's user limit, you'll need to approve them first (+${userLimits.perUserPrice}/mo each).</p>
       </div>
 
       {loading ? <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Loading…</p> : members.length === 0 ? (
@@ -310,11 +470,22 @@ function TeamSection() {
                       {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                     </select>
                   </div>
-                  <button onClick={() => setEditingId(editingId === m.id ? null : m.id)}
-                    className="text-xs hover:underline shrink-0"
-                    style={{ color: "var(--zr-orange)" }}>
-                    {editingId === m.id ? "Close" : "Edit permissions"}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setEditingId(editingId === m.id ? null : m.id)}
+                      className="text-xs hover:underline"
+                      style={{ color: "var(--zr-orange)" }}>
+                      {editingId === m.id ? "Close" : "Edit permissions"}
+                    </button>
+                    {!isMe && (
+                      <button
+                        onClick={() => removeMember(m.id, m.full_name ?? "this user")}
+                        disabled={removing === m.id}
+                        className="text-xs hover:underline disabled:opacity-50"
+                        style={{ color: "var(--zr-error)" }}>
+                        {removing === m.id ? "..." : "Remove"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {editingId === m.id && (
@@ -843,6 +1014,7 @@ export default function SettingsPage() {
         <PlanSection />
         <BrandingSection />
         <EmailTrackingSection />
+        <PendingApprovalsSection />
         <TeamSection />
         <ChecklistSection />
         <DataExportSection />

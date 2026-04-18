@@ -117,19 +117,31 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - Layout persisted via `zr_layout` cookie
 - Reset to role default button
 
-### Stripe SaaS Billing — Complete ✓ (needs user setup)
+### Stripe SaaS Billing — Complete ✓
 - **API routes**: `/api/stripe/checkout`, `/api/stripe/portal`, `/api/stripe/webhook`
 - **Billing page**: `/settings/billing` — plan comparison grid, trial countdown, upgrade/manage buttons, FAQ
-- **3 tiers**: Basic ($49/mo), Pro ($99/mo), Enterprise ($199/mo)
-- **14-day free trial** on all subscriptions
-- **Webhook handlers**: checkout.session.completed, subscription.updated, subscription.deleted, invoice.payment_failed
-- **DB migration applied**: stripe_customer_id, stripe_subscription_id, subscription_status, trial_ends_at, current_period_end on companies table
-- **Setup guide**: `STRIPE-SETUP.md` — 8-step copy-paste instructions
-- **User action needed**: Follow STRIPE-SETUP.md to create Stripe account, products, set Vercel env vars
+- **3 tiers**: Starter ($49/mo, 1 user), Professional ($99/mo, 3 users), Business ($199/mo, 5 users)
+- **Per-user pricing**: +$25/mo per extra user above plan limit
+- **14-day free trial** on first subscription (no trial on re-subscribe)
+- **Trial abuse prevention**: card required at checkout, card fingerprint tracked in `trial_cards` table, duplicate cards end trial immediately
+- **Device session limiting**: max 3 concurrent devices per user, oldest kicked on overflow, 5-min heartbeat keepalive
+- **Webhook handlers**: checkout.session.completed (with card fingerprint check), subscription.updated, subscription.deleted, invoice.payment_failed
+- **DB migrations applied**: stripe fields on companies, `user_sessions` table, `trial_cards` table, `pending_approvals` table, `status` column on profiles
+- **Vercel env vars set**: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_STARTER, STRIPE_PRICE_PROFESSIONAL, STRIPE_PRICE_BUSINESS
+
+### Phase 16 — User Approval Flow — Complete ✓
+- **Signup flow**: when someone joins via invite and team is at/over plan user limit, profile gets `status: 'pending'`
+- **Pending screen**: pending users see a blocking "Waiting for Approval" screen when they log in, with Check Again and Sign Out buttons
+- **Owner approvals**: Settings page shows yellow "Pending Team Requests" section with Approve (+$25/mo) and Deny buttons
+- **API route**: `POST /api/team/approve` — owner-only, approves (sets active) or denies (deletes profile + auth user)
+- **Under-limit joins**: users joining when team is under the plan limit join freely with no approval needed
+- **Team count**: settings team section now only counts active users for billing calculations
+- **DB**: `pending_approvals` table with RLS, `profiles.status` column (active/pending)
 
 ### Next Up
-- **User needs to run `npm install stripe`** locally and `git push` latest commits
-- **User needs to follow STRIPE-SETUP.md** to set up Stripe account + env vars
+- **User needs to `git push`** to deploy latest changes
+- Wire up Stripe subscription quantity updates when owner approves extra users (auto-bill the $25/mo)
+- Create "Additional User" product in Stripe at $25/mo for extra user billing
 - SMS cost strategy (built-in vs. add-on, Twilio)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
@@ -232,16 +244,19 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - `pay_rates`, `pay_entries`, `payroll_runs`
 - `app_feedback`
 
-### Auth tables
-- `companies`: plan, features, brand_*, trial_ends_at
-- `profiles`: id (= auth.users.id), company_id, full_name, role, permissions JSONB
+### Auth & billing tables
+- `companies`: plan, features, brand_*, trial_ends_at, stripe_customer_id, stripe_subscription_id, subscription_status, current_period_end
+- `profiles`: id (= auth.users.id), company_id, full_name, role, permissions JSONB, status (active/pending)
 - `company_settings`: invoice_prefix, next_invoice_number, default_payment_terms_days, etc.
+- `user_sessions`: device session tracking (user_id, device_id, device_label, last_active)
+- `trial_cards`: card fingerprint tracking for trial abuse prevention
+- `pending_approvals`: tracks over-limit signup approval requests (profile_id, company_id, resolution)
 
 ### SQL migrations applied
 - phase2_crm.sql ✓, phase2_crm_v2.sql ✓, phase5_auth_multitenancy.sql ✓
 - phase6_install_management.sql ✓, phase7_whitelabel.sql ✓, phase8_email_outreach.sql ✓
 - phase8_builder_portal.sql ✓, phase9_invoicing.sql ✓, phase9_payroll.sql ✓
-- lead_assignment.sql ✓
+- lead_assignment.sql ✓, phase15_session_tracking.sql ✓, phase16_user_approval_flow.sql ✓
 
 ---
 
@@ -279,12 +294,14 @@ PDF parsing, manufacturer library, product change detection. See details below.
 ---
 
 ### Stripe SaaS Billing (`/settings/billing`)
-- Plan comparison grid: Basic ($49), Pro ($99), Enterprise ($199)
-- Current plan card with status badge and trial countdown
+- Plan comparison grid: Starter ($49/1 user), Professional ($99/3 users), Business ($199/5 users)
+- Per-user add-on: +$25/mo per extra user above plan limit
+- Current plan card with status badge, trial countdown, team size info
 - Feature checklists per plan
-- Upgrade → Stripe Checkout, Manage → Stripe Customer Portal
-- Webhook-driven plan updates
-- Setup guide: `STRIPE-SETUP.md`
+- Upgrade → Stripe Checkout (card required, 14-day trial on first sub), Manage → Stripe Customer Portal
+- Webhook-driven plan updates with trial abuse prevention (card fingerprinting)
+- Device session limiting: max 3 concurrent devices per user
+- User approval flow: over-limit signups go to pending, owner approves/denies from Settings
 
 ### Calculator (`/calculator`)
 - Blind cost calculator with product selection, measurements, quantity

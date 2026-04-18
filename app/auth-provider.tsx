@@ -98,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [plan,        setPlan]        = useState<string>("trial");
   const [branding,    setBranding]    = useState<TenantBranding>(DEFAULT_BRANDING);
   const [loading,     setLoading]     = useState(true);
+  const [profileStatus, setProfileStatus] = useState<string>("active");
   const router   = useRouter();
   const pathname = usePathname();
 
@@ -105,8 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function loadProfile(uid: string) {
     const { data } = await supabase
-      .from("profiles").select("company_id, role, permissions").eq("id", uid).single();
+      .from("profiles").select("company_id, role, permissions, status").eq("id", uid).single();
     setCompanyId(data?.company_id ?? null);
+    setProfileStatus(data?.status ?? "active");
     const r = data?.role ?? "owner";
     setRole(r);
     setPermissions(resolvePermissions(r, data?.permissions ?? {}));
@@ -205,6 +207,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--zr-black)" }}>
         <div style={{ color: "var(--zr-text-muted)", fontSize: "14px" }}>Redirecting...</div>
+      </div>
+    );
+  }
+
+  // Block pending users from accessing the app
+  if (user && profileStatus === "pending" && !isPublic) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--zr-black)" }}>
+        <div className="w-full max-w-md text-center space-y-4">
+          <div className="text-4xl">⏳</div>
+          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Account Pending Approval</h1>
+          <p className="text-sm" style={{ color: "var(--zr-text-secondary)" }}>
+            Your account is waiting for the team owner to approve your access. This is because the team has reached its plan's user limit.
+          </p>
+          <p className="text-sm" style={{ color: "var(--zr-text-muted)" }}>
+            Once approved, this page will refresh automatically and you'll have full access.
+          </p>
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <button
+              onClick={() => loadProfile(user.id)}
+              className="rounded px-4 py-2 text-sm font-medium"
+              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
+              Check Again
+            </button>
+            <button
+              onClick={signOut}
+              className="rounded px-4 py-2 text-sm font-medium"
+              style={{ color: "var(--zr-error)" }}>
+              Sign Out
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

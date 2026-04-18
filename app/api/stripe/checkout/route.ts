@@ -90,11 +90,12 @@ export async function POST(req: NextRequest) {
     // Get or create Stripe customer
     const { data: company, error: companyError } = await supabaseAdmin
       .from("companies")
-      .select("stripe_customer_id, name, email")
+      .select("stripe_customer_id, name")
       .eq("id", companyId)
       .single();
 
     if (companyError || !company) {
+      console.error("[stripe/checkout] Company lookup error:", companyError);
       return NextResponse.json(
         { error: "Company not found" },
         { status: 404 }
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
     // Create Stripe customer if not already created
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
-        email: company.email,
+        email: userData.user.email || "",
         metadata: { company_id: companyId },
       });
       stripeCustomerId = customer.id;

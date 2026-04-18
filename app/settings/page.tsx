@@ -824,6 +824,21 @@ export default function SettingsPage() {
           <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
         </Link>
 
+        {/* Billing & Subscription */}
+        <Link
+          href="/settings/billing"
+          className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
+          style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+        >
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Billing & Subscription</h2>
+            <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
+              Manage your plan, view invoices, and update payment method.
+            </p>
+          </div>
+          <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
+        </Link>
+
         {/* Automations link */}
         <Link
           href="/settings/automation"

@@ -34,41 +34,20 @@ type Settings = {
 function PlanSection() {
   const { companyId, plan, features, role } = useAuth();
   const [trialEnds, setTrialEnds] = useState<string | null>(null);
-  const [localFeatures, setLocalFeatures] = useState(features);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    setLocalFeatures(features);
-  }, [features]);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
-    supabase.from("companies").select("trial_ends_at").eq("id", companyId).single()
-      .then(({ data }) => setTrialEnds(data?.trial_ends_at ?? null));
+    supabase.from("companies").select("trial_ends_at, subscription_status").eq("id", companyId).single()
+      .then(({ data }) => {
+        setTrialEnds(data?.trial_ends_at ?? null);
+        setSubscriptionStatus(data?.subscription_status ?? null);
+      });
   }, [companyId]);
-
-  async function toggleFeature(key: FeatureKey) {
-    if (role !== "owner") return;
-    const updated = { ...localFeatures, [key]: !localFeatures[key] };
-    setLocalFeatures(updated);
-    await supabase.from("companies").update({ features: updated }).eq("id", companyId);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
-
-  async function changePlan(newPlan: Plan) {
-    if (role !== "owner") return;
-    const planFeatures = PLAN_FEATURES[newPlan];
-    await supabase.from("companies").update({ plan: newPlan, features: planFeatures }).eq("id", companyId);
-    setLocalFeatures(planFeatures);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    // Reload to update context
-    window.location.reload();
-  }
 
   const isOwner = role === "owner";
   const daysLeft = trialEnds ? Math.max(0, Math.ceil((new Date(trialEnds).getTime() - Date.now()) / 86400000)) : null;
+  const planFeatures = PLAN_FEATURES[plan as Plan] ?? PLAN_FEATURES.trial;
 
   return (
     <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -86,7 +65,6 @@ function PlanSection() {
         }}>
           {PLAN_LABELS[plan as Plan] ?? plan}
         </span>
-        {saved && <span className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>✓ Saved</span>}
       </div>
 
       {plan === "trial" && daysLeft !== null && (
@@ -101,48 +79,34 @@ function PlanSection() {
         </div>
       )}
 
-      {/* Plan selector (owner only) */}
+      {/* Manage / Upgrade link */}
       {isOwner && (
-        <div className="space-y-2">
-          <div className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Choose Plan</div>
-          <div className="grid grid-cols-2 gap-2">
-            {(["basic", "pro", "enterprise"] as Plan[]).map(p => (
-              <button key={p} onClick={() => p !== "enterprise" ? changePlan(p) : undefined}
-                className={`rounded p-3 text-left transition-colors ${p === "enterprise" ? "col-span-2" : ""}`}
-                style={{
-                  border: plan === p ? "1px solid var(--zr-info)" : "1px solid var(--zr-border)",
-                  background: plan === p ? "rgba(59, 130, 246, 0.1)" : "transparent"
-                }}>
-                <div className="font-medium text-sm" style={{ color: "var(--zr-text-primary)" }}>{PLAN_LABELS[p]}</div>
-                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-secondary)" }}>
-                  {p === "basic" && "Measure + Scheduling — $29/user/mo"}
-                  {p === "pro" && "Full platform — $49/user/mo"}
-                  {p === "enterprise" && "Everything + Builder Portal + Automation — Contact sales"}
-                </div>
-                {plan === p && <div className="text-xs font-medium mt-1" style={{ color: "var(--zr-info)" }}>Current plan</div>}
-              </button>
-            ))}
-          </div>
+        <div>
+          <Link href="/settings/billing" className="inline-block rounded px-4 py-2 text-sm font-medium transition-colors"
+            style={{ background: "var(--zr-primary, #e63000)", color: "#fff" }}>
+            {subscriptionStatus === "active" ? "Manage Subscription" : "Upgrade Plan"}
+          </Link>
         </div>
       )}
 
-      {/* Feature toggles */}
+      {/* Feature list (read-only, reflects current plan) */}
       <div className="space-y-2">
         <div className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>
-          {isOwner ? "Feature Toggles (override plan defaults)" : "Enabled Features"}
+          {plan === "trial" ? "All Features (trial)" : "Included Features"}
         </div>
         <div className="space-y-1.5">
-          {(Object.entries(FEATURE_LABELS) as [FeatureKey, { label: string; desc: string }][]).map(([key, { label, desc }]) => (
-            <label key={key} className={`flex items-start gap-2.5 p-2 rounded ${isOwner ? "cursor-pointer" : ""}`} style={{ background: isOwner ? "transparent" : "transparent" }}>
-              <input type="checkbox" checked={localFeatures[key]} disabled={!isOwner}
-                onChange={() => toggleFeature(key)}
-                className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                <div className="text-sm" style={{ color: localFeatures[key] ? "var(--zr-text-primary)" : "var(--zr-text-muted)", fontWeight: localFeatures[key] ? "500" : "normal" }}>{label}</div>
-                <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{desc}</div>
+          {(Object.entries(FEATURE_LABELS) as [FeatureKey, { label: string; desc: string }][]).map(([key, { label, desc }]) => {
+            const included = planFeatures[key];
+            return (
+              <div key={key} className="flex items-start gap-2.5 p-2 rounded">
+                <span className="mt-0.5 shrink-0 text-sm">{included ? "✓" : "—"}</span>
+                <div>
+                  <div className="text-sm" style={{ color: included ? "var(--zr-text-primary)" : "var(--zr-text-muted)", fontWeight: included ? "500" : "normal" }}>{label}</div>
+                  <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{desc}</div>
+                </div>
               </div>
-            </label>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

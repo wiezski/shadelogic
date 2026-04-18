@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../auth-provider";
 import { PermissionGate } from "../../permission-gate";
 
 // ── Types ────────────────────────────────────────────────────
@@ -284,6 +285,7 @@ function getEmailPreset(stage: string, firstName: string): { subject: string; bo
 export default function CustomerPage() {
   const params = useParams();
   const customerId = params.id as string;
+  const { permissions } = useAuth();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [phones, setPhones] = useState<CustomerPhone[]>([]);
@@ -858,20 +860,28 @@ export default function CustomerPage() {
         {teamMembers.length > 0 && (
           <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Assigned To</h2>
-            <select
-              value={customer.assigned_to ?? ""}
-              onChange={async e => {
-                const val = e.target.value || null;
-                updateLocal("assigned_to", val);
-                await supabase.from("customers").update({ assigned_to: val }).eq("id", customerId);
-              }}
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
-              className="w-full rounded px-2 py-1.5 text-sm">
-              <option value="">— Unassigned —</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>{m.full_name || "Unnamed"} ({m.role})</option>
-              ))}
-            </select>
+            {permissions.assign_to_others ? (
+              <select
+                value={customer.assigned_to ?? ""}
+                onChange={async e => {
+                  const val = e.target.value || null;
+                  updateLocal("assigned_to", val);
+                  await supabase.from("customers").update({ assigned_to: val }).eq("id", customerId);
+                }}
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                className="w-full rounded px-2 py-1.5 text-sm">
+                <option value="">— Unassigned —</option>
+                {teamMembers.map(m => (
+                  <option key={m.id} value={m.id}>{m.full_name || "Unnamed"} ({m.role})</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm" style={{ color: "var(--zr-text-muted)" }}>
+                {customer.assigned_to
+                  ? teamMembers.find(m => m.id === customer.assigned_to)?.full_name || "Assigned"
+                  : "Unassigned"}
+              </p>
+            )}
           </div>
         )}
 

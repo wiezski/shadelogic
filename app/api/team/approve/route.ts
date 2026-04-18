@@ -122,8 +122,8 @@ export async function POST(req: NextRequest) {
       .eq("id", callerId)
       .single();
 
-    if (!callerProfile || callerProfile.role !== "owner") {
-      return NextResponse.json({ error: "Only owners can approve team members" }, { status: 403 });
+    if (!callerProfile || (callerProfile.role !== "owner" && callerProfile.role !== "admin")) {
+      return NextResponse.json({ error: "Only owners and admins can approve team members" }, { status: 403 });
     }
 
     const companyId = callerProfile.company_id;

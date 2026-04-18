@@ -418,9 +418,10 @@ export function OperationsWidget({ measuresToSchedule, measuresDone, installsToS
 }
 
 // ── 7. Work Queue ─────────────────────────────────────────────
-export function WorkQueueWidget({ workQueue, workQueueLoading, currentUserId, queueFilter, setQueueFilter }: {
+export function WorkQueueWidget({ workQueue, workQueueLoading, currentUserId, queueFilter, setQueueFilter, canAssign = false }: {
   workQueue: WorkItem[]; workQueueLoading: boolean;
   currentUserId: string | null; queueFilter: "mine" | "all"; setQueueFilter: (f: "mine" | "all") => void;
+  canAssign?: boolean;
 }) {
   if (workQueueLoading) {
     return (
@@ -444,12 +445,14 @@ export function WorkQueueWidget({ workQueue, workQueueLoading, currentUserId, qu
             {filteredQueue.length}
           </span>
         </h2>
-        <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
-          <button onClick={() => setQueueFilter("mine")} className="px-2.5 py-1 text-xs font-medium"
-            style={{ background: queueFilter === "mine" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: queueFilter === "mine" ? "#fff" : "var(--zr-text-secondary)" }}>Mine</button>
-          <button onClick={() => setQueueFilter("all")} className="px-2.5 py-1 text-xs font-medium"
-            style={{ background: queueFilter === "all" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: queueFilter === "all" ? "#fff" : "var(--zr-text-secondary)", borderLeft: "1px solid var(--zr-border)" }}>All</button>
-        </div>
+        {canAssign ? (
+          <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+            <button onClick={() => setQueueFilter("mine")} className="px-2.5 py-1 text-xs font-medium"
+              style={{ background: queueFilter === "mine" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: queueFilter === "mine" ? "#fff" : "var(--zr-text-secondary)" }}>Mine</button>
+            <button onClick={() => setQueueFilter("all")} className="px-2.5 py-1 text-xs font-medium"
+              style={{ background: queueFilter === "all" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: queueFilter === "all" ? "#fff" : "var(--zr-text-secondary)", borderLeft: "1px solid var(--zr-border)" }}>All</button>
+          </div>
+        ) : null}
       </div>
       {filteredQueue.length === 0 ? (
         <p style={{ color: "var(--zr-text-muted)" }} className="text-xs py-2 text-center">No items in your queue right now.</p>

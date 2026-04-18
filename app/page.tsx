@@ -80,7 +80,7 @@ const stageStyle: Record<string, string> = {
 };
 
 export default function HomePage() {
-  const { role } = useAuth();
+  const { role, permissions } = useAuth();
   const [tab, setTab] = useState<"dashboard" | "customers">("dashboard");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -585,7 +585,7 @@ export default function HomePage() {
       case "operations":
         return <OperationsWidget measuresToSchedule={measuresToSchedule} measuresDone={measuresDone} installsToSchedule={installsToSchedule} installsScheduled={installsScheduled} issueJobs={issueJobs} statsLoading={statsLoading} />;
       case "work_queue":
-        return <WorkQueueWidget workQueue={workQueue} workQueueLoading={workQueueLoading} currentUserId={currentUserId} queueFilter={queueFilter} setQueueFilter={setQueueFilter} />;
+        return <WorkQueueWidget workQueue={workQueue} workQueueLoading={workQueueLoading} currentUserId={currentUserId} queueFilter={queueFilter} setQueueFilter={setQueueFilter} canAssign={permissions.assign_to_others} />;
       case "ready_to_install":
         return <ReadyToInstallWidget readyToInstall={readyToInstall} />;
       case "todays_appointments":

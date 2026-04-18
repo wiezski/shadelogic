@@ -51,10 +51,8 @@ export function NavBar() {
           { href: "/calculator", label: "Calculator", show: features.quoting && permissions.view_pricing },
           { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },
-          { href: "/team",      label: "Team",      show: permissions.manage_team },
           { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
           { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
-          { href: "/setup-guide", label: "Setup",   show: permissions.access_settings || permissions.manage_team },
         ].filter(i => i.show).map(({ href, label, badge }) => (
           <Link key={href} href={href}
             className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"

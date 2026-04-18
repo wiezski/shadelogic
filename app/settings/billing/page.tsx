@@ -407,7 +407,7 @@ export default function BillingPage() {
   const currentPlan = (billing?.plan ?? "trial") as Plan;
 
   return (
-    <PermissionGate require="access_settings">
+    <PermissionGate require="manage_billing">
       <main className="min-h-screen p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Header */}

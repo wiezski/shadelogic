@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
 import { PermissionGate } from "../permission-gate";
@@ -32,7 +33,7 @@ type Settings = {
 // ── Plan & Features ───────────────────────────────────────────
 
 function PlanSection() {
-  const { companyId, plan, features, role } = useAuth();
+  const { companyId, plan, features, role, permissions: myPerms } = useAuth();
   const [trialEnds, setTrialEnds] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
 
@@ -45,7 +46,7 @@ function PlanSection() {
       });
   }, [companyId]);
 
-  const isOwner = role === "owner";
+  const canManageBilling = myPerms.manage_billing;
   const daysLeft = trialEnds ? Math.max(0, Math.ceil((new Date(trialEnds).getTime() - Date.now()) / 86400000)) : null;
   const planFeatures = PLAN_FEATURES[plan as Plan] ?? PLAN_FEATURES.trial;
 
@@ -80,7 +81,7 @@ function PlanSection() {
       )}
 
       {/* Manage / Upgrade link */}
-      {isOwner && (
+      {canManageBilling && (
         <div>
           <Link href="/settings/billing" className="inline-block rounded px-4 py-2 text-sm font-medium transition-colors"
             style={{ background: "var(--zr-primary, #e63000)", color: "#fff" }}>
@@ -223,7 +224,7 @@ function PendingApprovalsSection() {
   const userLimits = PLAN_USER_LIMITS[plan as Plan] ?? PLAN_USER_LIMITS.trial;
 
   useEffect(() => {
-    if (!companyId || role !== "owner") { setLoading(false); return; }
+    if (!companyId || role !== "owner" && role !== "admin") { setLoading(false); return; }
     loadPending();
   }, [companyId, role]); // eslint-disable-line
 
@@ -276,7 +277,7 @@ function PendingApprovalsSection() {
     setProcessing(null);
   }
 
-  if (role !== "owner" || loading || pending.length === 0) return null;
+  if (role !== "owner" && role !== "admin" || loading || pending.length === 0) return null;
 
   return (
     <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-warning)" }}>
@@ -634,7 +635,7 @@ function ChecklistSection() {
     if (data) setItems(prev => [...prev, ...(data as ChecklistItem[])]);
   }
 
-  if (role !== "owner") return null;
+  if (role !== "owner" && role !== "admin") return null;
 
   return (
     <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -717,7 +718,7 @@ function BrandingSection() {
   }, [branding]);
 
   async function saveBranding() {
-    if (!companyId || role !== "owner") return;
+    if (!companyId || role !== "owner" && role !== "admin") return;
     await supabase.from("companies").update({
       brand_slug:          slug.trim() || null,
       brand_primary_color: primaryColor.trim() || null,
@@ -733,7 +734,7 @@ function BrandingSection() {
     window.location.reload();
   }
 
-  if (role !== "owner") return null;
+  if (role !== "owner" && role !== "admin") return null;
 
   return (
     <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -883,10 +884,392 @@ function DataExportSection() {
   );
 }
 
+// ── Setup Guide Section ────────────────────────────────────────
+
+type SetupStep = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  content: React.ReactNode;
+  time: string;
+};
+
+function SetupSection() {
+  const { companyId } = useAuth();
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<string | null>("products");
+
+  const emailToken = companyId ? companyId.replace(/-/g, "").slice(0, 12) : "your-token";
+
+  function toggle(id: string) {
+    setExpanded(expanded === id ? null : id);
+  }
+
+  function markDone(id: string) {
+    setCompleted(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const steps: SetupStep[] = [
+    {
+      id: "products",
+      title: "Add Your Products",
+      subtitle: "Import your product catalog so you can build quotes fast",
+      icon: "📦",
+      time: "5 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Your product catalog is the foundation of ZeroRemake. Add the products you sell
+            so they auto-fill on every quote with your cost and markup.
+          </p>
+          <div className="rounded bg-gray-50 p-3 space-y-2">
+            <div className="font-medium text-xs text-gray-800">Option 1: CSV Import (fastest)</div>
+            <ol className="text-xs text-gray-600 space-y-1 list-decimal ml-4">
+              <li>Export your price list from your manufacturer or create a spreadsheet with columns: name, cost, category, manufacturer, sku</li>
+              <li>Save as .csv file</li>
+              <li>Go to <Link href="/products" style={{ color: "var(--zr-orange)" }} className="hover:underline">Products</Link> → Import → upload your CSV</li>
+              <li>Preview and confirm the import</li>
+            </ol>
+          </div>
+          <div className="rounded bg-gray-50 p-3 space-y-2">
+            <div className="font-medium text-xs text-gray-800">Option 2: Add manually</div>
+            <p className="text-xs text-gray-600">
+              Go to <Link href="/products" style={{ color: "var(--zr-orange)" }} className="hover:underline">Products</Link> → + Add Product. Enter the name, your cost, and your markup multiplier.
+            </p>
+          </div>
+          <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+            💡 Don't worry about getting everything perfect — you can always edit products later. Start with your top 10-20 products.
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "customer",
+      title: "Add Your First Customer",
+      subtitle: "Create a customer record and start tracking the lead",
+      icon: "👤",
+      time: "2 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Every job starts with a customer. Add them from the dashboard and they'll flow through your pipeline.
+          </p>
+          <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+            <li>Go to <Link href="/" style={{ color: "var(--zr-orange)" }} className="hover:underline">Home</Link> → Customers tab → + Add Customer</li>
+            <li>Enter their name, phone, email, and address</li>
+            <li>Set their lead status (New, Contacted, Scheduled, etc.)</li>
+            <li>Set heat score (Hot / Warm / Cold)</li>
+          </ol>
+          <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+            💡 Tap the phone number to call, or the text icon to send a message — it auto-logs the activity.
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "measure",
+      title: "Create a Measure Job",
+      subtitle: "Measure a customer's windows and track every detail",
+      icon: "📐",
+      time: "Varies",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Measure jobs are the core of ZeroRemake. Every window gets measured with fraction validation
+            so bad numbers can't be entered.
+          </p>
+          <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+            <li>Open a customer → Measure Jobs → + New Measure Job</li>
+            <li>Add rooms, then add windows to each room</li>
+            <li>Enter width, height, mount type, casing depth for each window</li>
+            <li>Take photos of each window</li>
+            <li>Add notes (voice-to-text works great in the field)</li>
+          </ol>
+          <div className="rounded bg-amber-50 border border-amber-200 p-2 text-xs text-amber-700">
+            ⚡ Fractions are validated to 1/16" increments — if you enter an invalid fraction, the field clears and refocuses so you can fix it immediately.
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "quote",
+      title: "Build & Send a Quote",
+      subtitle: "Pull from measurements, set pricing, and get customer approval",
+      icon: "💰",
+      time: "5 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Quotes pull directly from your measurements — no retyping. Set your products and pricing,
+            then send for customer approval with e-signature.
+          </p>
+          <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+            <li>Open a customer → their measure job → Create Quote</li>
+            <li>Click "Pull Windows from Measure" to auto-populate line items</li>
+            <li>Assign products from your catalog (or use Quick Add)</li>
+            <li>Adjust pricing if needed — margin shows in real time</li>
+            <li>Send via text or email — customer gets an approval link</li>
+            <li>Customer signs digitally — legally binding with timestamp</li>
+          </ol>
+        </div>
+      ),
+    },
+    {
+      id: "schedule",
+      title: "Schedule Appointments",
+      subtitle: "Use the calendar to manage your day",
+      icon: "📅",
+      time: "2 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Every appointment type has a default duration. After each appointment, you must select an outcome
+            — this keeps your pipeline moving automatically.
+          </p>
+          <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+            <li>Go to <Link href="/schedule" style={{ color: "var(--zr-orange)" }} className="hover:underline">Schedule</Link> → + New Appointment</li>
+            <li>Pick type: Measure, Install, Sales Consult, Service, etc.</li>
+            <li>Link to a customer (auto-fills address)</li>
+            <li>Send confirmation text to customer</li>
+            <li>Day-of: tap "On My Way" to notify customer</li>
+            <li>After: select outcome (Measured, Sold, Needs Quote, etc.)</li>
+          </ol>
+        </div>
+      ),
+    },
+    {
+      id: "email",
+      title: "Set Up Order Tracking",
+      subtitle: "Auto-track shipments by forwarding manufacturer emails",
+      icon: "📧",
+      time: "5 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            When you place orders with manufacturers, their shipping emails can be automatically
+            parsed to update your material status. No manual tracking needed.
+          </p>
+          <div className="rounded bg-gray-50 p-3 space-y-2">
+            <div className="font-medium text-xs text-gray-800">Your unique email address:</div>
+            <div className="flex items-center gap-2">
+              <code className="text-xs bg-white border rounded px-2 py-1 font-mono text-blue-700 flex-1 break-all">
+                orders-{emailToken}@inbound.postmarkapp.com
+              </code>
+              <button onClick={() => navigator.clipboard?.writeText(`orders-${emailToken}@inbound.postmarkapp.com`)}
+                className="text-xs border rounded px-2 py-1 hover:bg-gray-50 shrink-0">
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded bg-gray-50 p-3 space-y-2">
+            <div className="font-medium text-xs text-gray-800">Gmail Setup (2 minutes)</div>
+            <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+              <li>Open Gmail → Settings (gear icon) → See all settings</li>
+              <li>Go to "Forwarding and POP/IMAP" tab</li>
+              <li>Click "Add a forwarding address"</li>
+              <li>Paste: <code className="bg-white border rounded px-1 font-mono">orders-{emailToken}@inbound.postmarkapp.com</code></li>
+              <li>Gmail will send a confirmation — once verified, go to Filters</li>
+              <li>Create a filter: From contains your manufacturer's email (e.g. "hunterdouglas.com")</li>
+              <li>Action: Forward to the address above</li>
+              <li>Done! Shipping emails will auto-update your orders.</li>
+            </ol>
+          </div>
+
+          <div className="rounded bg-gray-50 p-3 space-y-2">
+            <div className="font-medium text-xs text-gray-800">Outlook Setup (2 minutes)</div>
+            <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+              <li>Open Outlook → Settings → Mail → Rules</li>
+              <li>Click "+ Add new rule"</li>
+              <li>Name it "ZeroRemake Order Tracking"</li>
+              <li>Condition: "From" contains your manufacturer's email</li>
+              <li>Action: "Forward to" → paste: <code className="bg-white border rounded px-1 font-mono">orders-{emailToken}@inbound.postmarkapp.com</code></li>
+              <li>Save the rule. Done!</li>
+            </ol>
+          </div>
+
+          <div className="rounded bg-gray-50 p-3 space-y-2">
+            <div className="font-medium text-xs text-gray-800">How it works after setup:</div>
+            <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+              <li>You place an order with the manufacturer (by phone, web, etc.)</li>
+              <li>Upload the order confirmation PDF in your quote's Materials tab</li>
+              <li>ZeroRemake extracts the order number and expected packages</li>
+              <li>When shipping/delivery emails come in, they auto-match to your order</li>
+              <li>Package status updates automatically: Ordered → Shipped → Received</li>
+              <li>When all packages arrive, you get a "Ready to schedule install" alert</li>
+            </ol>
+          </div>
+
+          <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+            💡 You can add forwarding rules for multiple manufacturers. Each one's emails will be matched to the right order automatically.
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "team",
+      title: "Invite Your Team",
+      subtitle: "Add installers, sales reps, and office staff",
+      icon: "👥",
+      time: "2 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Each team member gets their own login with role-based permissions. Installers can't see pricing,
+            sales reps can't change settings, etc.
+          </p>
+          <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+            <li>Go to <Link href="/settings" style={{ color: "var(--zr-orange)" }} className="hover:underline">Settings</Link> → Team section</li>
+            <li>Copy the invite link and send it to your team member</li>
+            <li>They sign up using that link — automatically joins your company</li>
+            <li>Set their role (Installer, Sales, Office, etc.)</li>
+            <li>Customize individual permissions if the preset doesn't fit</li>
+          </ol>
+          <div className="rounded bg-gray-50 p-3 text-xs">
+            <div className="font-medium text-gray-800 mb-1">Role Quick Reference:</div>
+            <div className="grid grid-cols-2 gap-1 text-gray-600">
+              <div><strong>Owner</strong> — Full access to everything</div>
+              <div><strong>Admin</strong> — Full access to everything</div>
+              <div><strong>Lead Sales</strong> — Customers, quotes, pricing, reports</div>
+              <div><strong>Sales Rep</strong> — Customers, quotes, pricing, schedule</div>
+              <div><strong>Office Staff</strong> — Customers, schedule, materials</div>
+              <div><strong>Installer</strong> — Install view only, no pricing</div>
+              <div><strong>Warehouse</strong> — Materials tracking only</div>
+              <div><strong>Scheduler</strong> — Calendar and customer names only</div>
+              <div><strong>Accounting</strong> — Pricing, financials, reports</div>
+            </div>
+          </div>
+          <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+            💡 You can override any permission on a per-person basis. The role just sets the starting point.
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "settings",
+      title: "Set Up Your Company Info",
+      subtitle: "Add your business details, defaults, and branding",
+      icon: "⚙️",
+      time: "3 min",
+      content: (
+        <div className="space-y-3 text-sm">
+          <p style={{ color: "var(--zr-text-secondary)" }} >
+            Your company info shows on quotes and customer communications. Set your defaults once
+            and they apply everywhere.
+          </p>
+          <ol className="text-xs text-gray-600 space-y-1.5 list-decimal ml-4">
+            <li>Go to <Link href="/settings" style={{ color: "var(--zr-orange)" }} className="hover:underline">Settings</Link></li>
+            <li>Fill in your company name, phone, email, address</li>
+            <li>Set your default deposit percentage (e.g. 50%)</li>
+            <li>Set your default markup multiplier (e.g. 2.5x)</li>
+            <li>Set quote validity days (e.g. 30 days)</li>
+            <li>Add your Google Review link for post-install follow-ups</li>
+          </ol>
+        </div>
+      ),
+    },
+  ];
+
+  const completedCount = completed.size;
+  const totalSteps = steps.length;
+  const progressPct = Math.round((completedCount / totalSteps) * 100);
+
+  return (
+    <div className="space-y-4">
+      {/* Progress bar */}
+      <div className="rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>{completedCount} of {totalSteps} steps complete</span>
+          <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{progressPct}%</span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--zr-surface-2)" }}>
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%`, background: "var(--zr-success)" }} />
+        </div>
+      </div>
+
+      {/* Steps */}
+      <div className="space-y-2">
+        {steps.map(step => {
+          const isDone = completed.has(step.id);
+          const isOpen = expanded === step.id;
+          return (
+            <div key={step.id} className="rounded transition-colors" style={{
+              background: isDone ? "rgba(34, 197, 94, 0.1)" : "var(--zr-surface-1)",
+              border: isDone ? "1px solid var(--zr-success)" : "1px solid var(--zr-border)"
+            }}>
+              <button onClick={() => toggle(step.id)}
+                className="w-full flex items-center gap-3 px-3 py-3 text-left">
+                <button onClick={(e) => { e.stopPropagation(); markDone(step.id); }}
+                  className="shrink-0 transition-colors rounded-full border-2 w-6 h-6 flex items-center justify-center"
+                  style={{
+                    borderColor: isDone ? "var(--zr-success)" : "var(--zr-border)",
+                    background: isDone ? "var(--zr-success)" : "transparent",
+                    color: isDone ? "white" : "inherit"
+                  }}>
+                  {isDone && <span className="text-xs">✓</span>}
+                </button>
+                <div className="text-xl shrink-0">{step.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm" style={{
+                    color: isDone ? "var(--zr-text-muted)" : "var(--zr-text-primary)",
+                    textDecoration: isDone ? "line-through" : "none"
+                  }}>{step.title}</div>
+                  <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{step.subtitle}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{step.time}</span>
+                  <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{isOpen ? "▾" : "▸"}</span>
+                </div>
+              </button>
+              {isOpen && (
+                <div className="px-3 pb-3 pl-14">
+                  {step.content}
+                  {!isDone && (
+                    <button onClick={() => markDone(step.id)}
+                      className="mt-3 text-xs text-white rounded px-3 py-1.5"
+                      style={{ background: "var(--zr-success)" }}>
+                      Mark as Done
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* All done */}
+      {completedCount === totalSteps && (
+        <div className="rounded p-4 text-center space-y-2" style={{
+          background: "rgba(34, 197, 94, 0.1)",
+          border: "1px solid var(--zr-success)"
+        }}>
+          <div className="text-2xl">🎉</div>
+          <div className="font-bold" style={{ color: "var(--zr-success)" }}>You're all set!</div>
+          <p className="text-xs" style={{ color: "var(--zr-success)" }}>
+            Your ZeroRemake account is fully configured. You can always come back here if you need a refresher.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
+  const { permissions: myPerms } = useAuth();
+  const searchParams = useSearchParams();
+  const initialTab = (["company", "team", "setup"] as const).includes(searchParams.get("tab") as any)
+    ? (searchParams.get("tab") as "company" | "team" | "setup")
+    : "company";
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saved,    setSaved]    = useState(false);
   const [loading,  setLoading]  = useState(true);
+  const [activeTab, setActiveTab] = useState<"company" | "team" | "setup">(initialTab);
 
   useEffect(() => { load(); }, []);
 
@@ -951,129 +1334,184 @@ export default function SettingsPage() {
   );
   if (!settings) return <div className="p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-muted)" }}>Unable to load settings. Check that your company_settings table exists and RLS is configured.</div>;
 
+  const showTeamTab = myPerms.manage_team;
+  const showSetupTab = myPerms.access_settings || myPerms.manage_team;
+
   return (
-    <PermissionGate require="access_settings">
+    <PermissionGate require={["access_settings", "manage_team"]}>
       <main className="min-h-screen p-4 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
         <div className="mx-auto max-w-2xl space-y-5">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Company Settings</h1>
+          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Settings</h1>
           {saved && <span className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>✓ Saved</span>}
         </div>
-        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>This information appears on your PDF quotes and customer-facing documents.</p>
 
-        {/* Company info */}
-        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Company</h2>
-          <Field label="Company Name *" field="name" placeholder="Aspen Blinds" />
-          <Field label="Tagline" field="tagline" placeholder="Window Treatments for Every Home" />
-          <Field label="License # (optional)" field="license_number" placeholder="Utah Contractor #12345" />
-          <Field label="Google Review Link" field="google_review_link" placeholder="https://g.page/r/YOUR_ID/review" />
-          <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Paste your Google Business review link — it goes into every review request text after installs.</p>
+        {/* Tab bar */}
+        <div className="flex gap-6 border-b" style={{ borderBottomColor: "var(--zr-border)" }}>
+          <button
+            onClick={() => setActiveTab("company")}
+            className="px-0 py-2 text-sm font-medium transition-colors"
+            style={{
+              color: activeTab === "company" ? "var(--zr-orange)" : "var(--zr-text-muted)",
+              borderBottom: activeTab === "company" ? "2px solid var(--zr-orange)" : "2px solid transparent"
+            }}>
+            Company
+          </button>
+          {showTeamTab && (
+            <button
+              onClick={() => setActiveTab("team")}
+              className="px-0 py-2 text-sm font-medium transition-colors"
+              style={{
+                color: activeTab === "team" ? "var(--zr-orange)" : "var(--zr-text-muted)",
+                borderBottom: activeTab === "team" ? "2px solid var(--zr-orange)" : "2px solid transparent"
+              }}>
+              Team
+            </button>
+          )}
+          {showSetupTab && (
+            <button
+              onClick={() => setActiveTab("setup")}
+              className="px-0 py-2 text-sm font-medium transition-colors"
+              style={{
+                color: activeTab === "setup" ? "var(--zr-orange)" : "var(--zr-text-muted)",
+                borderBottom: activeTab === "setup" ? "2px solid var(--zr-orange)" : "2px solid transparent"
+              }}>
+              Setup
+            </button>
+          )}
         </div>
 
-        {/* Contact */}
-        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Contact</h2>
-          <Field label="Phone" field="phone" type="tel" placeholder="801-555-1234" />
-          <Field label="Email" field="email" type="email" placeholder="info@aspenblinds.com" />
-          <Field label="Website" field="website" placeholder="www.aspenblinds.com" />
-        </div>
+        {/* Company Tab */}
+        {activeTab === "company" && (
+          <div className="space-y-5">
+            <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>This information appears on your PDF quotes and customer-facing documents.</p>
 
-        {/* Address */}
-        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Address</h2>
-          <Field label="Street" field="address" placeholder="123 Main St" />
-          <div className="grid grid-cols-[1fr_56px_88px] gap-2">
-            <Field label="City" field="city" placeholder="Orem" />
-            <Field label="State" field="state" placeholder="UT" />
-            <Field label="Zip" field="zip" placeholder="84057" />
-          </div>
-        </div>
-
-        {/* Defaults */}
-        <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Quote Defaults</h2>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Deposit %</label>
-              <input type="number" min="0" max="100"
-                defaultValue={settings.default_deposit_pct}
-                onBlur={e => save("default_deposit_pct", parseFloat(e.target.value) || 50)}
-                className="w-full rounded px-2 py-1.5 text-sm"
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+            {/* Company info */}
+            <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Company</h2>
+              <Field label="Company Name *" field="name" placeholder="Aspen Blinds" />
+              <Field label="Tagline" field="tagline" placeholder="Window Treatments for Every Home" />
+              <Field label="License # (optional)" field="license_number" placeholder="Utah Contractor #12345" />
+              <Field label="Google Review Link" field="google_review_link" placeholder="https://g.page/r/YOUR_ID/review" />
+              <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Paste your Google Business review link — it goes into every review request text after installs.</p>
             </div>
-            <div>
-              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Default Markup</label>
-              <input type="number" min="1" step="0.01"
-                defaultValue={settings.default_markup}
-                onBlur={e => save("default_markup", parseFloat(e.target.value) || 2.5)}
-                className="w-full rounded px-2 py-1.5 text-sm"
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+
+            {/* Contact */}
+            <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Contact</h2>
+              <Field label="Phone" field="phone" type="tel" placeholder="801-555-1234" />
+              <Field label="Email" field="email" type="email" placeholder="info@aspenblinds.com" />
+              <Field label="Website" field="website" placeholder="www.aspenblinds.com" />
             </div>
-            <div>
-              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Quote Valid (days)</label>
-              <input type="number" min="1"
-                defaultValue={settings.default_quote_days}
-                onBlur={e => save("default_quote_days", parseInt(e.target.value) || 30)}
-                className="w-full rounded px-2 py-1.5 text-sm"
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+
+            {/* Address */}
+            <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Address</h2>
+              <Field label="Street" field="address" placeholder="123 Main St" />
+              <div className="grid grid-cols-[1fr_56px_88px] gap-2">
+                <Field label="City" field="city" placeholder="Orem" />
+                <Field label="State" field="state" placeholder="UT" />
+                <Field label="Zip" field="zip" placeholder="84057" />
+              </div>
             </div>
-          </div>
-          <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>These pre-fill on every new quote but can be changed per job.</p>
-        </div>
 
-        {/* Payment Connections link */}
-        <Link
-          href="/settings/integrations"
-          className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
-          style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
-        >
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Payment Connections</h2>
-            <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
-              Connect Stripe, Square, PayPal, QuickBooks, and more. Manage how your customers pay.
-            </p>
-          </div>
-          <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
-        </Link>
+            {/* Defaults */}
+            <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Quote Defaults</h2>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Deposit %</label>
+                  <input type="number" min="0" max="100"
+                    defaultValue={settings.default_deposit_pct}
+                    onBlur={e => save("default_deposit_pct", parseFloat(e.target.value) || 50)}
+                    className="w-full rounded px-2 py-1.5 text-sm"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Default Markup</label>
+                  <input type="number" min="1" step="0.01"
+                    defaultValue={settings.default_markup}
+                    onBlur={e => save("default_markup", parseFloat(e.target.value) || 2.5)}
+                    className="w-full rounded px-2 py-1.5 text-sm"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Quote Valid (days)</label>
+                  <input type="number" min="1"
+                    defaultValue={settings.default_quote_days}
+                    onBlur={e => save("default_quote_days", parseInt(e.target.value) || 30)}
+                    className="w-full rounded px-2 py-1.5 text-sm"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>These pre-fill on every new quote but can be changed per job.</p>
+            </div>
 
-        {/* Billing & Subscription */}
-        <Link
-          href="/settings/billing"
-          className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
-          style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
-        >
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Billing & Subscription</h2>
-            <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
-              Manage your plan, view invoices, and update payment method.
-            </p>
-          </div>
-          <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
-        </Link>
+            {/* Payment Connections link */}
+            <Link
+              href="/settings/integrations"
+              className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
+              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+            >
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Payment Connections</h2>
+                <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
+                  Connect Stripe, Square, PayPal, QuickBooks, and more. Manage how your customers pay.
+                </p>
+              </div>
+              <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
+            </Link>
 
-        {/* Automations link */}
-        <Link
-          href="/settings/automation"
-          className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
-          style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
-        >
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Automations</h2>
-            <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
-              Set up rules for automatic follow-ups, stuck lead alerts, email sequences, and more.
-            </p>
-          </div>
-          <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
-        </Link>
+            {/* Billing & Subscription */}
+            <Link
+              href="/settings/billing"
+              className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
+              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+            >
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Billing & Subscription</h2>
+                <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
+                  Manage your plan, view invoices, and update payment method.
+                </p>
+              </div>
+              <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
+            </Link>
 
-        <PlanSection />
-        <BrandingSection />
-        <EmailTrackingSection />
-        <PendingApprovalsSection />
-        <TeamSection />
-        <ChecklistSection />
-        <DataExportSection />
+            {/* Automations link */}
+            <Link
+              href="/settings/automation"
+              className="rounded p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
+              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
+            >
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Automations</h2>
+                <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
+                  Set up rules for automatic follow-ups, stuck lead alerts, email sequences, and more.
+                </p>
+              </div>
+              <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
+            </Link>
+
+            <PlanSection />
+            <BrandingSection />
+            <EmailTrackingSection />
+            <ChecklistSection />
+            <DataExportSection />
+          </div>
+        )}
+
+        {/* Team Tab */}
+        {activeTab === "team" && (
+          <div className="space-y-5">
+            <PendingApprovalsSection />
+            <TeamSection />
+          </div>
+        )}
+
+        {/* Setup Tab */}
+        {activeTab === "setup" && (
+          <SetupSection />
+        )}
 
         </div>
       </main>

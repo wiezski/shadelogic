@@ -121,13 +121,21 @@ function PayrollPageInner() {
 
   async function loadAll() {
     setLoading(true);
-    const [teamRes, ratesRes, entriesRes, runsRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, role").eq("company_id", companyId),
-      supabase.from("pay_rates").select("*").eq("active", true).order("created_at", { ascending: false }),
-      supabase.from("pay_entries").select("*").order("work_date", { ascending: false }).limit(200),
+    // Load team first so we can filter pay data to company members only
+    const teamRes = await supabase.from("profiles").select("id, full_name, role").eq("company_id", companyId);
+    const teamList = teamRes.data ?? [];
+    const memberIds = teamList.map(t => t.id);
+    setTeam(teamList);
+
+    const [ratesRes, entriesRes, runsRes] = await Promise.all([
+      memberIds.length > 0
+        ? supabase.from("pay_rates").select("*").in("profile_id", memberIds).eq("active", true).order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] }),
+      memberIds.length > 0
+        ? supabase.from("pay_entries").select("*").in("profile_id", memberIds).order("work_date", { ascending: false }).limit(200)
+        : Promise.resolve({ data: [] }),
       supabase.from("payroll_runs").select("*").order("period_start", { ascending: false }).limit(50),
     ]);
-    setTeam(teamRes.data ?? []);
     setRates(ratesRes.data ?? []);
     setEntries(entriesRes.data ?? []);
     setRuns(runsRes.data ?? []);
@@ -362,10 +370,26 @@ function EntriesTab({ entries, team, personSummary, onUpdated }: {
                         </button>
                       )}
                       {e.status === "approved" && (
-                        <button onClick={() => updateStatus(e.id, "paid")}
+                        <>
+                          <button onClick={() => updateStatus(e.id, "paid")}
+                            className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
+                            style={{ color: "var(--zr-success, #22c55e)" }}>
+                            Mark Paid
+                          </button>
+                          <button onClick={() => updateStatus(e.id, "pending")}
+                            className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
+                            style={{ color: "var(--zr-text-muted)" }}
+                            title="Undo approval">
+                            Undo
+                          </button>
+                        </>
+                      )}
+                      {e.status === "paid" && (
+                        <button onClick={() => updateStatus(e.id, "approved")}
                           className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
-                          style={{ color: "var(--zr-success, #22c55e)" }}>
-                          Mark Paid
+                          style={{ color: "var(--zr-text-muted)" }}
+                          title="Reverse back to approved">
+                          Undo
                         </button>
                       )}
                     </div>
@@ -387,6 +411,7 @@ function RatesTab({ rates, team, onUpdated }: {
   onUpdated: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formPerson, setFormPerson] = useState("");
   const [formType, setFormType] = useState<string>("hourly");
   const [formRate, setFormRate] = useState("");
@@ -394,24 +419,58 @@ function RatesTab({ rates, team, onUpdated }: {
   const [formNotes, setFormNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  function openNew() {
+    setEditingId(null);
+    setFormPerson(""); setFormType("hourly"); setFormRate("");
+    setFormCommission(""); setFormNotes("");
+    setShowForm(true);
+  }
+
+  function openEdit(r: PayRate) {
+    setEditingId(r.id);
+    setFormPerson(r.profile_id);
+    setFormType(r.pay_type);
+    setFormRate(r.rate ? String(r.rate) : "");
+    setFormCommission(r.commission_pct != null ? String(r.commission_pct) : "");
+    setFormNotes(r.notes || "");
+    setShowForm(true);
+  }
+
   async function saveRate() {
     if (!formPerson || !formType) return;
     setSaving(true);
-    // Deactivate any existing rate for this person
-    await supabase.from("pay_rates").update({ active: false }).eq("profile_id", formPerson).eq("active", true);
-    // Insert new rate
-    await supabase.from("pay_rates").insert([{
-      profile_id: formPerson,
-      pay_type: formType,
-      rate: formRate ? parseFloat(formRate) : 0,
-      commission_pct: formCommission ? parseFloat(formCommission) : null,
-      notes: formNotes || null,
-      active: true,
-    }]);
+    if (editingId) {
+      // Update existing rate in place
+      await supabase.from("pay_rates").update({
+        pay_type: formType,
+        rate: formRate ? parseFloat(formRate) : 0,
+        commission_pct: formCommission ? parseFloat(formCommission) : null,
+        notes: formNotes || null,
+      }).eq("id", editingId);
+    } else {
+      // Deactivate any existing rate for this person
+      await supabase.from("pay_rates").update({ active: false }).eq("profile_id", formPerson).eq("active", true);
+      // Insert new rate
+      await supabase.from("pay_rates").insert([{
+        profile_id: formPerson,
+        pay_type: formType,
+        rate: formRate ? parseFloat(formRate) : 0,
+        commission_pct: formCommission ? parseFloat(formCommission) : null,
+        notes: formNotes || null,
+        active: true,
+      }]);
+    }
     setShowForm(false);
+    setEditingId(null);
     setFormPerson(""); setFormType("hourly"); setFormRate("");
     setFormCommission(""); setFormNotes("");
     setSaving(false);
+    onUpdated();
+  }
+
+  async function deleteRate(id: string) {
+    if (!confirm("Remove this pay rate?")) return;
+    await supabase.from("pay_rates").update({ active: false }).eq("id", id);
     onUpdated();
   }
 
@@ -436,7 +495,7 @@ function RatesTab({ rates, team, onUpdated }: {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>PAY RATE CONFIGURATION</div>
-        <button onClick={() => setShowForm(!showForm)}
+        <button onClick={openNew}
           className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
           style={{ background: "var(--zr-primary)", color: "#fff" }}>
           + Set Pay Rate
@@ -445,12 +504,16 @@ function RatesTab({ rates, team, onUpdated }: {
 
       {showForm && (
         <div className="mb-4 rounded-lg p-4" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+          <div className="text-xs font-semibold mb-2" style={{ color: "var(--zr-text-primary)" }}>
+            {editingId ? "Edit Pay Rate" : "New Pay Rate"}
+          </div>
           <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div>
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Team Member</label>
               <select value={formPerson} onChange={e => setFormPerson(e.target.value)}
+                disabled={!!editingId}
                 className="w-full text-sm rounded px-2.5 py-1.5"
-                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }}>
+                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)", opacity: editingId ? 0.6 : 1 }}>
                 <option value="">Select...</option>
                 {team.map(t => <option key={t.id} value={t.id}>{t.full_name || t.role}</option>)}
               </select>
@@ -500,9 +563,9 @@ function RatesTab({ rates, team, onUpdated }: {
             <button onClick={saveRate} disabled={saving || !formPerson}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
               style={{ background: "var(--zr-primary)", color: "#fff", opacity: saving || !formPerson ? 0.5 : 1 }}>
-              {saving ? "Saving..." : "Save Rate"}
+              {saving ? "Saving..." : editingId ? "Update Rate" : "Save Rate"}
             </button>
-            <button onClick={() => setShowForm(false)}
+            <button onClick={() => { setShowForm(false); setEditingId(null); }}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
               style={{ color: "var(--zr-text-muted)" }}>
               Cancel
@@ -524,12 +587,24 @@ function RatesTab({ rates, team, onUpdated }: {
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <span className="font-semibold text-sm" style={{ color: "var(--zr-text-primary)" }}>
-                      {member?.full_name || "Unknown"}
+                      {member?.full_name || member?.role || "Unknown"}
                     </span>
                     <span className="ml-2 text-xs px-2 py-0.5 rounded-full"
                       style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-muted)" }}>
                       {member?.role || "—"}
                     </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(r)}
+                      className="text-xs px-2 py-1 rounded font-medium transition-colors"
+                      style={{ color: "var(--zr-primary)" }}>
+                      Edit
+                    </button>
+                    <button onClick={() => deleteRate(r.id)}
+                      className="text-xs px-2 py-1 rounded font-medium transition-colors"
+                      style={{ color: "var(--zr-error)" }}>
+                      Remove
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm">

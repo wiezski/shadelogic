@@ -335,6 +335,71 @@ function getTimeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+// ── Invite sharing ───────────────────────────────────────────
+
+function InviteSection({ inviteLink, perUserPrice }: { inviteLink: string; perUserPrice: number }) {
+  const [copied, setCopied] = useState(false);
+  const inviteMessage = `You've been invited to join our team on ZeroRemake! Sign up here: ${inviteLink}`;
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: select the text so they can manually copy
+      const el = document.getElementById("invite-link-text");
+      if (el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    }
+  }
+
+  function sendText() {
+    window.open(`sms:?&body=${encodeURIComponent(inviteMessage)}`, "_blank");
+  }
+
+  function sendEmail() {
+    window.open(
+      `mailto:?subject=${encodeURIComponent("Join our team on ZeroRemake")}&body=${encodeURIComponent(inviteMessage)}`,
+      "_blank"
+    );
+  }
+
+  return (
+    <div className="rounded p-3 space-y-2" style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--zr-info)" }}>
+      <div className="text-xs font-medium" style={{ color: "var(--zr-info)" }}>Invite someone to your team</div>
+      <div id="invite-link-text" className="text-xs font-mono break-all select-all rounded p-2" style={{ color: "var(--zr-info)", background: "rgba(59, 130, 246, 0.08)" }}>
+        {inviteLink}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={copyLink}
+          className="text-xs text-white rounded px-2.5 py-1.5 font-medium"
+          style={{ background: copied ? "var(--zr-success)" : "var(--zr-info)" }}>
+          {copied ? "✓ Copied!" : "Copy Link"}
+        </button>
+        <button onClick={sendText}
+          className="text-xs rounded px-2.5 py-1.5 font-medium"
+          style={{ background: "transparent", border: "1px solid var(--zr-info)", color: "var(--zr-info)" }}>
+          Send via Text
+        </button>
+        <button onClick={sendEmail}
+          className="text-xs rounded px-2.5 py-1.5 font-medium"
+          style={{ background: "transparent", border: "1px solid var(--zr-info)", color: "var(--zr-info)" }}>
+          Send via Email
+        </button>
+      </div>
+      <p className="text-xs" style={{ color: "var(--zr-info)" }}>
+        They sign up with this link and join your company. If you're at your plan's user limit, you'll need to approve them first (+${perUserPrice}/mo each).
+      </p>
+    </div>
+  );
+}
+
 // ── Team management ───────────────────────────────────────────
 
 type TeamMember = {
@@ -440,16 +505,7 @@ function TeamSection() {
       </div>
 
       {/* Invite link */}
-      <div className="rounded p-3 space-y-1.5" style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--zr-info)" }}>
-        <div className="text-xs font-medium" style={{ color: "var(--zr-info)" }}>Invite someone to your team</div>
-        <div className="text-xs font-mono break-all" style={{ color: "var(--zr-info)" }}>{inviteLink}</div>
-        <button onClick={() => navigator.clipboard?.writeText(inviteLink)}
-          className="text-xs text-white rounded px-2.5 py-1"
-          style={{ background: "var(--zr-info)" }}>
-          Copy Invite Link
-        </button>
-        <p className="text-xs" style={{ color: "var(--zr-info)" }}>They sign up with this link → joins your company. If you're at your plan's user limit, you'll need to approve them first (+${userLimits.perUserPrice}/mo each).</p>
-      </div>
+      <InviteSection inviteLink={inviteLink} perUserPrice={userLimits.perUserPrice} />
 
       {loading ? <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Loading…</p> : members.length === 0 ? (
         <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No team members yet.</p>

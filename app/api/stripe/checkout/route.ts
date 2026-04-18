@@ -135,8 +135,8 @@ export async function POST(req: NextRequest) {
           company_id: companyId,
         },
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
     });
 
     return NextResponse.json({ url: session.url });

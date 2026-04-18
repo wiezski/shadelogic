@@ -219,7 +219,7 @@ function PayrollPageInner() {
             <button key={r} onClick={() => setFilterRange(r)}
               className="px-3 py-1.5 text-xs font-medium transition-colors"
               style={{
-                background: filterRange === r ? "var(--zr-primary)" : "var(--zr-surface-2)",
+                background: filterRange === r ? "var(--zr-orange)" : "var(--zr-surface-2)",
                 color: filterRange === r ? "#fff" : "var(--zr-text-secondary)",
                 borderLeft: i > 0 ? "1px solid var(--zr-border)" : "none",
               }}>
@@ -366,7 +366,7 @@ function EntriesTab({ entries, team, personSummary, onUpdated }: {
                       {e.status === "pending" && (
                         <button onClick={() => updateStatus(e.id, "approved")}
                           className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
-                          style={{ color: "var(--zr-primary)" }}>
+                          style={{ color: "var(--zr-orange)" }}>
                           Approve
                         </button>
                       )}
@@ -498,7 +498,7 @@ function RatesTab({ rates, team, onUpdated }: {
         <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>PAY RATE CONFIGURATION</div>
         <button onClick={openNew}
           className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-          style={{ background: "var(--zr-primary)", color: "#fff" }}>
+          style={{ background: "var(--zr-orange)", color: "#fff" }}>
           + Set Pay Rate
         </button>
       </div>
@@ -563,7 +563,7 @@ function RatesTab({ rates, team, onUpdated }: {
           <div className="flex gap-2 mt-3">
             <button onClick={saveRate} disabled={saving || !formPerson}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
-              style={{ background: "var(--zr-primary)", color: "#fff", opacity: saving || !formPerson ? 0.5 : 1 }}>
+              style={{ background: "var(--zr-orange)", color: "#fff", opacity: saving || !formPerson ? 0.5 : 1 }}>
               {saving ? "Saving..." : editingId ? "Update Rate" : "Save Rate"}
             </button>
             <button onClick={() => { setShowForm(false); setEditingId(null); }}
@@ -583,7 +583,7 @@ function RatesTab({ rates, team, onUpdated }: {
           <p className="text-sm mb-4" style={{ color: "var(--zr-text-muted)" }}>Set up pay rates for your team members to start tracking compensation.</p>
           <button onClick={openNew}
             className="text-sm px-5 py-2 rounded-lg font-semibold transition-colors"
-            style={{ background: "var(--zr-primary)", color: "#fff" }}>
+            style={{ background: "var(--zr-orange)", color: "#fff" }}>
             + Set Pay Rate
           </button>
         </div>
@@ -607,7 +607,7 @@ function RatesTab({ rates, team, onUpdated }: {
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(r)}
                       className="text-xs px-2 py-1 rounded font-medium transition-colors"
-                      style={{ color: "var(--zr-primary)" }}>
+                      style={{ color: "var(--zr-orange)" }}>
                       Edit
                     </button>
                     <button onClick={() => deleteRate(r.id)}
@@ -690,7 +690,7 @@ function RunsTab({ runs, onUpdated }: { runs: PayrollRun[]; onUpdated: () => voi
         <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>PAYROLL PERIODS</div>
         <button onClick={() => setCreating(!creating)}
           className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-          style={{ background: "var(--zr-primary)", color: "#fff" }}>
+          style={{ background: "var(--zr-orange)", color: "#fff" }}>
           + New Period
         </button>
       </div>
@@ -712,7 +712,7 @@ function RunsTab({ runs, onUpdated }: { runs: PayrollRun[]; onUpdated: () => voi
           </div>
           <button onClick={createRun} disabled={saving || !periodStart || !periodEnd}
             className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
-            style={{ background: "var(--zr-primary)", color: "#fff", opacity: saving ? 0.5 : 1 }}>
+            style={{ background: "var(--zr-orange)", color: "#fff", opacity: saving ? 0.5 : 1 }}>
             {saving ? "Creating..." : "Create"}
           </button>
           <button onClick={() => setCreating(false)}
@@ -826,7 +826,7 @@ function AddEntryButton({ team, rates, onAdded }: {
     <>
       <button onClick={() => setOpen(true)}
         className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-        style={{ background: "var(--zr-primary)", color: "#fff" }}>
+        style={{ background: "var(--zr-orange)", color: "#fff" }}>
         + Add Entry
       </button>
 
@@ -914,7 +914,7 @@ function AddEntryButton({ team, rates, onAdded }: {
             <div className="flex gap-2 mt-4">
               <button onClick={save} disabled={saving || !person || !amount}
                 className="text-xs px-4 py-2 rounded font-medium transition-colors"
-                style={{ background: "var(--zr-primary)", color: "#fff", opacity: saving || !person || !amount ? 0.5 : 1 }}>
+                style={{ background: "var(--zr-orange)", color: "#fff", opacity: saving || !person || !amount ? 0.5 : 1 }}>
                 {saving ? "Saving..." : "Add Entry"}
               </button>
               <button onClick={() => setOpen(false)}

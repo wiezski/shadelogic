@@ -197,7 +197,7 @@ function PayrollPageInner() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <SummaryCard label="Total Earnings" value={fmtMoney(totalEarnings)} />
         <SummaryCard label="Hours Logged" value={totalHours.toFixed(1)} />
         <SummaryCard label="Jobs Completed" value={String(totalJobs)} />
@@ -215,12 +215,13 @@ function PayrollPageInner() {
           ))}
         </select>
         <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
-          {(["7d", "30d", "90d", "all"] as const).map(r => (
+          {(["7d", "30d", "90d", "all"] as const).map((r, i) => (
             <button key={r} onClick={() => setFilterRange(r)}
               className="px-3 py-1.5 text-xs font-medium transition-colors"
               style={{
                 background: filterRange === r ? "var(--zr-primary)" : "var(--zr-surface-2)",
                 color: filterRange === r ? "#fff" : "var(--zr-text-secondary)",
+                borderLeft: i > 0 ? "1px solid var(--zr-border)" : "none",
               }}>
               {r === "all" ? "All" : r}
             </button>
@@ -576,7 +577,16 @@ function RatesTab({ rates, team, onUpdated }: {
 
       {/* Rates by person */}
       {byPerson.size === 0 ? (
-        <EmptyState title="No pay rates configured" subtitle="Set up pay rates for your team members to start tracking compensation." />
+        <div className="text-center py-10">
+          <div className="text-4xl mb-3">💰</div>
+          <h3 className="text-base font-semibold mb-1" style={{ color: "var(--zr-text-primary)" }}>No pay rates configured</h3>
+          <p className="text-sm mb-4" style={{ color: "var(--zr-text-muted)" }}>Set up pay rates for your team members to start tracking compensation.</p>
+          <button onClick={openNew}
+            className="text-sm px-5 py-2 rounded-lg font-semibold transition-colors"
+            style={{ background: "var(--zr-primary)", color: "#fff" }}>
+            + Set Pay Rate
+          </button>
+        </div>
       ) : (
         <div className="flex flex-col gap-3">
           {[...byPerson.entries()].map(([pid, r]) => {

@@ -97,14 +97,43 @@ PDF parsing, manufacturer library, product change detection. See details below.
   - Portal link: `/b/bbbbbbbb-0001-4000-8000-000000000001`
 - Test user passwords: `TestPass123!` (mike.test@example.com, jessica.test@example.com, carlos.test@example.com)
 
+### Calculator Enhancements — Complete ✓
+- Fixed totals display (changed from fixed-position bar to inline orange card with fallback color)
+- Added "Create Measure Job" button that opens customer picker modal
+- Customer picker has search filtering and inline add-new-customer form
+- Creating a measure job now links the selected customer and sets title from window count
+
+### Quote → Measure Job Auto-Creation — Complete ✓
+- When a quote is marked "sent", auto-creates a measure job from quote lines if no linked measure exists
+- Creates room "From Quote" with windows pre-filled from quote line items
+- Links measure job to quote via linked_measure_id
+- Shows schedule prompt with links to open measure job or go to calendar
+- Auto-creates follow-up task for next day
+
+### Rearrangeable Homepage — Complete ✓
+- 10 extracted widget components in `app/dashboard-widgets.tsx`
+- Role-based default layouts (owner, lead_sales, sales, office, scheduler, installer, accounting, warehouse)
+- Drag up/down reordering with "⚙ Customize" button in header
+- Layout persisted via `zr_layout` cookie
+- Reset to role default button
+
+### Stripe SaaS Billing — Complete ✓ (needs user setup)
+- **API routes**: `/api/stripe/checkout`, `/api/stripe/portal`, `/api/stripe/webhook`
+- **Billing page**: `/settings/billing` — plan comparison grid, trial countdown, upgrade/manage buttons, FAQ
+- **3 tiers**: Basic ($49/mo), Pro ($99/mo), Enterprise ($199/mo)
+- **14-day free trial** on all subscriptions
+- **Webhook handlers**: checkout.session.completed, subscription.updated, subscription.deleted, invoice.payment_failed
+- **DB migration applied**: stripe_customer_id, stripe_subscription_id, subscription_status, trial_ends_at, current_period_end on companies table
+- **Setup guide**: `STRIPE-SETUP.md` — 8-step copy-paste instructions
+- **User action needed**: Follow STRIPE-SETUP.md to create Stripe account, products, set Vercel env vars
+
 ### Next Up
-- **User needs to `git push`** — 4 commits ahead of origin (builder portal, payroll, schema fix)
-- Blind cost calculator feature
-- Rearrangeable homepage with role-based defaults
-- Stripe SaaS billing for plan subscriptions (per-user pricing)
-- SMS cost strategy (built-in vs. add-on)
+- **User needs to run `npm install stripe`** locally and `git push` latest commits
+- **User needs to follow STRIPE-SETUP.md** to set up Stripe account + env vars
+- SMS cost strategy (built-in vs. add-on, Twilio)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
+- Password reset flow (pages exist, need email wiring)
 - Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
 
 ---
@@ -112,14 +141,9 @@ PDF parsing, manufacturer library, product change detection. See details below.
 ## What's Built
 
 ### Dashboard (`/`)
-- 5 stat cards (Measures to Schedule, Measures Done, Installs to Schedule, Installs Scheduled, Open Issues) — each clickable, opens filtered job list with overdue/idle flags
-- **Work Queue** — auto-prioritized list of customers needing action:
-  - Priority 1 "Now": overdue tasks, Hot leads stuck 5+ days
-  - Priority 2 "Today": new leads never contacted, quoted leads 3+ days no follow-up
-  - Priority 3 "Soon": warm/cold leads past stuck threshold (14/30 days)
-  - Each item shows reason, heat badge, stage badge, next action if set
-  - **Mine/All toggle** — filters work queue by assigned_to
-- **Tasks Due** widget — overdue + due-today tasks across all customers
+- **Rearrangeable widgets** — 10 widget components, role-based defaults, drag reorder, cookie persistence
+- Widgets: Quick Actions, KPI Strip, Revenue Chart, Today's Focus, Sales Pipeline, Operations, Work Queue, Ready to Install, Today's Appointments, Tasks Due
+- "⚙ Customize" button in header, reset to role default
 - Customers tab — list with heat score + lead status badges, add customer form, assignee badges
 
 ### Customer Detail (`/customers/[id]`)
@@ -254,11 +278,20 @@ PDF parsing, manufacturer library, product change detection. See details below.
 
 ---
 
+### Stripe SaaS Billing (`/settings/billing`)
+- Plan comparison grid: Basic ($49), Pro ($99), Enterprise ($199)
+- Current plan card with status badge and trial countdown
+- Feature checklists per plan
+- Upgrade → Stripe Checkout, Manage → Stripe Customer Portal
+- Webhook-driven plan updates
+- Setup guide: `STRIPE-SETUP.md`
+
+### Calculator (`/calculator`)
+- Blind cost calculator with product selection, measurements, quantity
+- Inline orange totals card
+- "Create Measure Job" with customer picker modal (search + add new customer)
+
 ## Backlog (not yet scheduled)
-- Blind cost calculator
-- Rearrangeable homepage with role-based defaults
-- Stripe SaaS billing (tiered plans, per-user pricing)
 - SMS strategy (built-in vs. add-on, Twilio ~$0.01/msg)
-- Pricing intelligence: scrape Blinds.com, SelectBlinds
 - Manufacturer API integrations
 - Password reset flow (pages exist, need email delivery)

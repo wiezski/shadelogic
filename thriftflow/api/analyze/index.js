@@ -53,7 +53,7 @@ Respond in this exact JSON format (no markdown, just raw JSON):
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1024, messages: [{ role: "user", content }] }),
+      body: JSON.stringify({ model: "claude-3-5-sonnet-latest", max_tokens: 1024, messages: [{ role: "user", content }] }),
     });
 
     if (!resp.ok) {

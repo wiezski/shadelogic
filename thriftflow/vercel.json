@@ -2,9 +2,15 @@
   "framework": null,
   "buildCommand": "",
   "outputDirectory": "public",
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/api/analyze", "destination": "/api/analyze/index.js" },
     { "source": "/api/generate-listing", "destination": "/api/generate-listing/index.js" },
-    { "source": "/api/research-price", "destination": "/api/research-price/index.js" }
+    { "source": "/api/research-price", "destination": "/api/research-price/index.js" },
+    { "source": "/api/scan", "destination": "/api/scan/index.js" }
   ]
 }

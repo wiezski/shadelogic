@@ -167,6 +167,29 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 .comp-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .comp-item:last-child { border-bottom: none; }
 .links-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.listing-suggestion { background: linear-gradient(135deg, rgba(111,207,151,0.05) 0%, rgba(201,168,76,0.05) 100%); border: 1px solid var(--gold3); border-radius: var(--radius); padding: 16px; margin-top: 12px; }
+.listing-suggestion h4 { font-family: var(--font-display); font-size: 14px; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.listing-field { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; color: var(--text); line-height: 1.5; }
+.listing-field-label { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+.tag-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag-pill { background: rgba(127,181,230,0.1); color: var(--blue); border: 1px solid rgba(127,181,230,0.2); padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.platform-tip { background: var(--surface); border-left: 3px solid var(--gold); padding: 8px 12px; margin-bottom: 6px; border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text2); }
+.platform-tip strong { color: var(--text); }
+.best-platform-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(111,207,151,0.15); color: var(--green); padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.btn-apply { background: linear-gradient(135deg, var(--green) 0%, #4CAF50 100%); color: #fff; border: none; padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; }
+.btn-apply:active { transform: scale(0.97); }
+.btn-copy-listing { background: var(--surface2); color: var(--gold); border: 1px solid var(--gold3); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-copy-listing:active { transform: scale(0.97); }
+@keyframes scanPulse { 0%{transform:translateX(-100%)} 50%{transform:translateX(60%)} 100%{transform:translateX(-100%)} }
+.scan-result-card { background: linear-gradient(135deg, rgba(111,207,151,0.06) 0%, rgba(201,168,76,0.06) 100%); border: 1px solid var(--gold3); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.scan-result-card h4 { font-family: var(--font-display); font-size: 15px; color: var(--gold); margin-bottom: 10px; }
+.scan-field { margin-bottom: 8px; }
+.scan-field-label { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+.scan-field-value { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text); line-height: 1.4; }
+.scan-comp { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.scan-comp:last-child { border-bottom: none; }
+.scan-price-big { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--green); }
+.scan-price-range { font-size: 13px; color: var(--text2); }
 
 /* Analytics styles */
 .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
@@ -245,6 +268,21 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
       <p style="color:var(--text2);margin-bottom:12px;font-size:13px">Snap photos, add details, set your price. Everything is optional — save at any stage.</p>
       <div class="photo-grid" id="photo-grid"></div>
       <input type="file" id="photo-input" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(event)">
+
+      <div id="scan-section" class="hidden" style="margin:12px 0">
+        <button class="btn btn-gold btn-block" id="scan-btn" onclick="scanPhotos()" style="padding:14px;font-size:15px;font-weight:700">
+          Scan & Research Photos
+        </button>
+        <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:6px">Identifies item, finds comps, writes your listing</p>
+      </div>
+      <div id="scan-loading" class="hidden" style="text-align:center;padding:20px">
+        <div style="font-size:14px;color:var(--gold);font-weight:600;margin-bottom:8px">Scanning photos...</div>
+        <div style="font-size:12px;color:var(--text2)">Identifying item, researching comps, writing listing</div>
+        <div style="margin-top:12px;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden">
+          <div style="height:100%;background:var(--gold);border-radius:2px;animation:scanPulse 1.5s ease-in-out infinite;width:60%"></div>
+        </div>
+      </div>
+      <div id="scan-results" class="hidden"></div>
 
       <div class="form-group"><label class="form-label">Title</label><input class="form-input" type="text" id="f-title" placeholder="e.g. Art Deco Brass Table Lamp"></div>
       <div class="form-group"><label class="form-label">Category</label><div class="cat-grid" id="cat-grid"></div></div>
@@ -520,6 +558,10 @@ function resetForm(){
   document.getElementById('f-profit').value='';
   document.getElementById('f-cond').value='';
   Object.keys(P).forEach(k=>plats[k]=P[k].on);
+  document.getElementById('scan-section')?.classList.add('hidden');
+  document.getElementById('scan-loading')?.classList.add('hidden');
+  document.getElementById('scan-results')?.classList.add('hidden');
+  if(document.getElementById('scan-results')) document.getElementById('scan-results').innerHTML='';
   renderPhotos();renderCats();renderPlats();updatePreview();
 }
 
@@ -531,6 +573,12 @@ function renderPhotos(){
     else h+=`<div class="photo-slot" style="opacity:0.3"><span style="color:var(--text3);font-size:28px">+</span></div>`;
   }
   g.innerHTML=h;
+  // Show/hide scan button based on photos
+  const scanSec=document.getElementById('scan-section');
+  if(scanSec){
+    if(photos.length>0) scanSec.classList.remove('hidden');
+    else scanSec.classList.add('hidden');
+  }
 }
 
 function handlePhotos(e){
@@ -540,6 +588,168 @@ function handlePhotos(e){
     r.onload=ev=>{photos.push({file:f,preview:ev.target.result});renderPhotos();};
     r.readAsDataURL(f);
   });e.target.value='';
+}
+
+async function scanPhotos(){
+  if(photos.length===0){toast('Add photos first');return}
+
+  // Show loading, hide button and results
+  document.getElementById('scan-section').classList.add('hidden');
+  document.getElementById('scan-loading').classList.remove('hidden');
+  document.getElementById('scan-results').classList.add('hidden');
+
+  try{
+    // Resize photos before sending (phone photos are too large as raw base64)
+    const photoData=[];
+    for(const p of photos){
+      const resized=await resize(p.file,800);
+      const b64=await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r(rd.result);rd.readAsDataURL(resized)});
+      photoData.push(b64);
+    }
+    const notes=document.getElementById('f-notes')?.value?.trim()||'';
+
+    const body=JSON.stringify({photos:photoData,notes});
+    console.log('Scan request size:',Math.round(body.length/1024)+'KB, photos:',photoData.length);
+
+    const resp=await fetch('/api/scan',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body
+    });
+
+    document.getElementById('scan-loading').classList.add('hidden');
+
+    if(!resp.ok){
+      console.error('Scan HTTP error:',resp.status,resp.statusText);
+      document.getElementById('scan-section').classList.remove('hidden');
+      toast('Scan error ('+resp.status+') — try with fewer/smaller photos');
+      return;
+    }
+
+    const json=await resp.json();
+    console.log('Scan response:',JSON.stringify(json).substring(0,500));
+    const result=json.result;
+
+    if(!result){
+      document.getElementById('scan-section').classList.remove('hidden');
+      const errMsg=json.errorDetail||json.error||'Unknown error';
+      toast('Scan failed: '+errMsg);
+      console.error('Scan error detail:',errMsg);
+      // Show error in the scan results area too
+      const sr=document.getElementById('scan-results');
+      sr.innerHTML=`<div class="card" style="padding:14px;border-left:3px solid var(--red)">
+        <div style="font-weight:700;color:var(--red);margin-bottom:6px">Scan Error</div>
+        <p style="font-size:13px;color:var(--text2)">${errMsg}</p>
+      </div>`;
+      sr.classList.remove('hidden');
+      return;
+    }
+
+    // AUTO-FILL all the form fields
+    if(result.title) document.getElementById('f-title').value=result.title;
+    if(result.eraStyle) document.getElementById('f-era').value=result.eraStyle;
+    if(result.materials) document.getElementById('f-mat').value=result.materials;
+    if(result.condition){
+      // Try to match dropdown, fall back to closest
+      const condEl=document.getElementById('f-cond');
+      const condMap={'mint':'Mint / Like New','excellent':'Excellent','good':'Good - minor wear','fair':'Fair - visible wear','poor':'Poor - needs repair'};
+      const condLower=(result.condition||'').toLowerCase();
+      let matched=false;
+      for(const[k,v]of Object.entries(condMap)){
+        if(condLower.includes(k)){condEl.value=v;matched=true;break;}
+      }
+      if(!matched) condEl.value='Good - minor wear';
+    }
+    if(result.category){
+      selCat=result.category;
+      renderCats();
+    }
+    // Build description from listing description + condition notes
+    let desc='';
+    if(result.listingDescription) desc+=result.listingDescription;
+    if(result.conditionNotes) desc+='\n\nCondition: '+result.conditionNotes;
+    if(result.measurements) desc+='\nMeasurements: '+result.measurements;
+    if(desc) document.getElementById('f-notes').value=desc.trim();
+
+    // Set suggested price as cost basis for pricing
+    if(result.suggestedPrice){
+      // Don't set cost — that's what they paid. Set it via the pricing display.
+      // We'll store the suggested price and show it in results
+    }
+
+    renderPlats();updatePreview();
+
+    // Show scan results card
+    const sr=document.getElementById('scan-results');
+    const q=encodeURIComponent(result.searchTerms||result.title||'vintage');
+    const links=result.links||{};
+
+    let compHtml='';
+    if(result.comparables?.length){
+      compHtml=`<div class="scan-field"><div class="scan-field-label">Comparable Sales Found</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+        ${result.comparables.map(c=>`<div class="scan-comp"><span style="color:var(--text2)">${c.title}</span><span><strong style="color:var(--green)">$${c.price}</strong> <span style="color:var(--text3)">${c.platform}</span></span></div>`).join('')}
+        </div></div>`;
+    }
+
+    let bestPlatHtml='';
+    if(result.bestPlatform){
+      const pName={'ebay':'eBay','poshmark':'Poshmark','mercari':'Mercari','etsy':'Etsy','facebook':'FB Marketplace'}[result.bestPlatform]||result.bestPlatform;
+      bestPlatHtml=`<div style="margin-bottom:10px"><span class="best-platform-badge">Best on ${pName}</span>
+        ${result.bestPlatformReason?`<span style="font-size:12px;color:var(--text2);margin-left:8px">${result.bestPlatformReason}</span>`:''}</div>`;
+    }
+
+    let platTipsHtml='';
+    if(result.platformTips){
+      const tips=Object.entries(result.platformTips).filter(([k,v])=>v);
+      if(tips.length){
+        platTipsHtml=`<div class="scan-field"><div class="scan-field-label">Platform Tips</div>
+          ${tips.map(([k,v])=>{
+            const pn={'ebay':'eBay','poshmark':'Poshmark','mercari':'Mercari','etsy':'Etsy','facebook':'FB Marketplace'}[k]||k;
+            return`<div class="platform-tip"><strong>${pn}:</strong> ${v}</div>`;
+          }).join('')}</div>`;
+      }
+    }
+
+    let tagsHtml='';
+    if(result.tags?.length){
+      tagsHtml=`<div class="scan-field"><div class="scan-field-label">Listing Tags</div>
+        <div class="tag-pills">${result.tags.map(t=>`<span class="tag-pill">${t}</span>`).join('')}</div></div>`;
+    }
+
+    sr.innerHTML=`<div class="scan-result-card">
+      <h4>Scan Results</h4>
+      ${bestPlatHtml}
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+        <div>
+          <div class="scan-price-big">$${result.suggestedPrice||'?'}</div>
+          <div class="scan-price-range">Range: $${result.suggestedLow||'?'} – $${result.suggestedHigh||'?'}</div>
+        </div>
+        <span class="research-conf ${result.confidence==='high'?'high':result.confidence==='medium'?'medium':'low'}">${result.confidence||'?'}</span>
+      </div>
+      ${result.reasoning?`<p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">${result.reasoning}</p>`:''}
+      ${compHtml}
+      ${result.sellingTips?`<div class="scan-field"><div class="scan-field-label">Selling Tips</div><div class="scan-field-value">${result.sellingTips}</div></div>`:''}
+      ${result.shippingTip?`<div class="scan-field"><div class="scan-field-label">Shipping</div><div class="scan-field-value">${result.shippingTip}</div></div>`:''}
+      ${tagsHtml}
+      ${platTipsHtml}
+      <div class="links-grid" style="margin-top:12px">
+        <a href="https://www.google.com/search?tbm=isch&q=${q}" target="_blank" class="research-link">Google Images</a>
+        <a href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1" target="_blank" class="research-link">eBay Sold</a>
+        <a href="https://www.ebay.com/sch/i.html?_nkw=${q}" target="_blank" class="research-link">eBay Active</a>
+        <a href="https://www.etsy.com/search?q=${q}" target="_blank" class="research-link">Etsy</a>
+      </div>
+      <button class="btn btn-sm btn-outline" style="margin-top:10px;width:100%" onclick="document.getElementById('scan-results').classList.add('hidden');document.getElementById('scan-section').classList.remove('hidden')">Re-scan</button>
+    </div>`;
+    sr.classList.remove('hidden');
+
+    toast('Scan complete! Form auto-filled — review & save');
+  }catch(e){
+    console.error('Scan error:',e);
+    document.getElementById('scan-loading').classList.add('hidden');
+    document.getElementById('scan-section').classList.remove('hidden');
+    toast('Scan failed: '+(e.message||'Unknown error'));
+  }
 }
 
 function renderCats(){document.getElementById('cat-grid').innerHTML=CATS.map(c=>`<button class="cat-btn ${selCat===c?'on':''}" onclick="selCat='${c}';renderCats()">${c}</button>`).join('');}
@@ -600,7 +810,7 @@ async function saveItem(){
 
     const{data:item,error}=await sb.from('items').insert({
       sku:'LX-'+Date.now().toString(36).toUpperCase(),
-      title:title||null,
+      title:title||'Untitled Item',
       category:selCat||'Other',
       era_style:era||null,
       condition:cond||null,
@@ -625,7 +835,6 @@ async function saveItem(){
       await sb.from('items').update({status:'photographed',updated_at:new Date().toISOString()}).eq('id',item.id);
     }
     toast('Item saved!');
-    researchPrice(curId);
     showView('home');
   }catch(err){
     console.error('Save error:',err);
@@ -762,7 +971,7 @@ async function updateItem(id){
     const existingAnalysis=item?.ai_analysis||{};
 
     await sb.from('items').update({
-      title:title||null,
+      title:title||'Untitled Item',
       category:selCat||'Other',
       era_style:document.getElementById('f-era').value.trim()||null,
       condition:document.getElementById('f-cond').value||null,
@@ -796,15 +1005,76 @@ async function updateItem(id){
 
 function copyListing(itemId,pk){
   const item=items.find(i=>i.id===itemId);if(!item)return;
+  const r=item.ai_analysis?.priceResearch;
   const p=P[pk],c=(item.ai_analysis?.platformPrices||{})[pk]||calcPrice(item.purchase_price||0,50,pk);
-  let t=`${item.title||'Untitled'}\n\n`;
-  if(item.era_style)t+=`Era/Style: ${item.era_style}\n`;
-  if(item.materials)t+=`Materials: ${item.materials}\n`;
-  if(item.condition)t+=`Condition: ${item.condition}\n`;
-  if(item.notes)t+=`\n${item.notes}\n`;
+
+  // Use AI-generated listing if available
+  const title=r?.listingTitle||item.title||'Untitled';
+  const desc=r?.listingDescription||'';
+  const cond=r?.conditionNotes||item.condition||'';
+  const tags=r?.tags||[];
+  const platTip=r?.platformTips?.[pk==='facebook'?'facebook':pk]||'';
+
+  let t=`${title}\n\n`;
+  if(desc) t+=`${desc}\n\n`;
+  if(cond) t+=`Condition: ${cond}\n`;
+  if(item.era_style) t+=`Era/Style: ${item.era_style}\n`;
+  if(item.materials) t+=`Materials: ${item.materials}\n`;
+  if(r?.measurements && r.measurements!=='Measure and add') t+=`Measurements: ${r.measurements}\n`;
+  if(item.notes && !desc.includes(item.notes)) t+=`\n${item.notes}\n`;
   t+=`\nPrice: $${c.list}`;
-  if(p.local)t+='\nLocal pickup only';
-  navigator.clipboard.writeText(t).then(()=>toast(p.name+' listing copied!')).catch(()=>toast('Copy failed'));
+  if(p.local) t+='\nLocal pickup only';
+  if(tags.length) t+=`\n\n${tags.map(t=>'#'+t.replace(/\s+/g,'')).join(' ')}`;
+
+  navigator.clipboard.writeText(t).then(()=>toast(p.name+' listing copied — paste into '+p.name+'!')).catch(()=>toast('Copy failed'));
+}
+
+async function applyResearch(itemId){
+  const item=items.find(i=>i.id===itemId);if(!item)return;
+  const r=item.ai_analysis?.priceResearch;if(!r)return;
+
+  const updateData={updated_at:new Date().toISOString()};
+  if(r.listingTitle) updateData.title=r.listingTitle;
+  if(r.suggestedPrice && !item.listing_price) updateData.listing_price=r.suggestedPrice;
+  if(r.conditionNotes) updateData.condition=r.conditionNotes;
+  if(r.listingDescription){
+    const existing=item.notes||'';
+    if(!existing.includes(r.listingDescription)){
+      updateData.notes=r.listingDescription+(existing?'\n\n---\nOriginal notes: '+existing:'');
+    }
+  }
+  if(r.tags?.length){
+    const existing=item.ai_analysis||{};
+    updateData.ai_analysis={...existing, tags:r.tags, priceResearch:r};
+  }
+
+  await sb.from('items').update(updateData).eq('id',itemId);
+  await loadItems();
+  toast('Listing details applied!');
+  showDetail(itemId);
+}
+
+function copyFullListing(itemId){
+  const item=items.find(i=>i.id===itemId);if(!item)return;
+  const r=item.ai_analysis?.priceResearch;if(!r){toast('Run research first');return}
+
+  const title=r.listingTitle||item.title||'Untitled';
+  const desc=r.listingDescription||'';
+  const cond=r.conditionNotes||item.condition||'';
+  const tags=r.tags||[];
+  const price=item.listing_price||r.suggestedPrice||'';
+
+  let t=`${title}\n\n`;
+  if(desc) t+=`${desc}\n\n`;
+  if(cond) t+=`Condition: ${cond}\n`;
+  if(item.era_style) t+=`Era/Style: ${item.era_style}\n`;
+  if(item.materials) t+=`Materials: ${item.materials}\n`;
+  if(r.measurements && r.measurements!=='Measure and add') t+=`Measurements: ${r.measurements}\n`;
+  if(price) t+=`\nPrice: $${price}\n`;
+  if(r.shippingTip) t+=`\nShipping: ${r.shippingTip}\n`;
+  if(tags.length) t+=`\n${tags.map(t=>'#'+t.replace(/\s+/g,'')).join(' ')}`;
+
+  navigator.clipboard.writeText(t).then(()=>toast('Full listing copied to clipboard!')).catch(()=>toast('Copy failed'));
 }
 
 async function updateStatus(id,s){
@@ -827,11 +1097,17 @@ async function deleteItem(id){
 // ===== PRICE RESEARCH =====
 async function researchPrice(itemId){
   try{
+    toast('Researching — analyzing photos & finding comps...');
     const resp=await fetch('/api/research-price',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})});
     const{research,links}=await resp.json();
-    if(research){toast('Price research done: $'+research.suggestedLow+'-$'+research.suggestedHigh);}
+    if(research){
+      toast('Research complete! $'+research.suggestedLow+'-$'+research.suggestedHigh+' — listing details ready');
+    } else {
+      toast('Research returned no results — try adding more details');
+    }
     await loadItems();
-  }catch(e){console.log('Research failed:',e)}
+    if(curId===itemId) showDetail(itemId);
+  }catch(e){console.log('Research failed:',e);toast('Research failed — check your connection')}
 }
 
 function renderResearch(item, searchQ){
@@ -840,11 +1116,75 @@ function renderResearch(item, searchQ){
 
   if(r){
     const confClass=r.confidence==='high'?'high':r.confidence==='medium'?'medium':'low';
+
+    // Comparable sales
     let compHtml='';
     if(r.comparables?.length){
       compHtml=`<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Comparable Sales</div>
         ${r.comparables.map(c=>`<div class="comp-item"><span style="color:var(--text2)">${c.title}</span><span><strong>$${c.price}</strong> <span style="color:var(--text3);font-size:11px">${c.platform}</span></span></div>`).join('')}</div>`;
     }
+
+    // Suggested listing section
+    let listingHtml='';
+    if(r.listingTitle||r.listingDescription||r.tags){
+      const escapedTitle=(r.listingTitle||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const escapedDesc=(r.listingDescription||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const escapedCond=(r.conditionNotes||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+
+      let tagsHtml='';
+      if(r.tags?.length){
+        tagsHtml=`<div class="listing-field-label">Tags / Keywords</div>
+          <div class="tag-pills" style="margin-bottom:8px">${r.tags.map(t=>`<span class="tag-pill">${t}</span>`).join('')}</div>`;
+      }
+
+      let bestPlatHtml='';
+      if(r.bestPlatform){
+        const pName={'ebay':'eBay','poshmark':'Poshmark','mercari':'Mercari','etsy':'Etsy','facebook':'FB Marketplace'}[r.bestPlatform]||r.bestPlatform;
+        bestPlatHtml=`<div style="margin-bottom:10px"><span class="best-platform-badge">Best on ${pName}</span>
+          ${r.bestPlatformReason?`<p style="font-size:12px;color:var(--text2);margin-top:4px">${r.bestPlatformReason}</p>`:''}</div>`;
+      }
+
+      let platTipsHtml='';
+      if(r.platformTips){
+        const tipEntries=Object.entries(r.platformTips).filter(([k,v])=>v);
+        if(tipEntries.length){
+          platTipsHtml=`<div style="margin-top:10px"><div class="listing-field-label">Platform Tips</div>
+            ${tipEntries.map(([k,v])=>{
+              const pn={'ebay':'eBay','poshmark':'Poshmark','mercari':'Mercari','etsy':'Etsy','facebook':'FB Marketplace'}[k]||k;
+              return`<div class="platform-tip"><strong>${pn}:</strong> ${v}</div>`;
+            }).join('')}</div>`;
+        }
+      }
+
+      let measureHtml='';
+      if(r.measurements){
+        measureHtml=`<div class="listing-field-label">Measurements</div><div class="listing-field">${r.measurements}</div>`;
+      }
+
+      let shipHtml='';
+      if(r.shippingTip){
+        shipHtml=`<div class="listing-field-label">Shipping</div><div class="listing-field">${r.shippingTip}</div>`;
+      }
+
+      listingHtml=`<div class="listing-suggestion">
+        <h4>Suggested Listing</h4>
+        ${bestPlatHtml}
+        <div class="listing-field-label">Listing Title</div>
+        <div class="listing-field" style="font-weight:600">${r.listingTitle||item.title||''}</div>
+        <div class="listing-field-label">Description</div>
+        <div class="listing-field">${r.listingDescription||''}</div>
+        ${r.conditionNotes?`<div class="listing-field-label">Condition Details</div><div class="listing-field">${r.conditionNotes}</div>`:''}
+        ${measureHtml}
+        ${shipHtml}
+        ${tagsHtml}
+        ${platTipsHtml}
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn-apply" onclick="applyResearch('${item.id}')">Use These Details</button>
+          <button class="btn-copy-listing" onclick="copyFullListing('${item.id}')">Copy Full Listing</button>
+        </div>
+      </div>`;
+    }
+
     return`<div class="research-card">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
         <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Suggested Price</div>
@@ -855,27 +1195,29 @@ function renderResearch(item, searchQ){
       ${r.reasoning?`<p style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:8px">${r.reasoning}</p>`:''}
       ${r.tips?`<p style="font-size:12px;color:var(--gold);margin-top:8px">${r.tips}</p>`:''}
       ${compHtml}
-      <div class="links-grid">
-        <a href="https://www.google.com/search?tbm=isch&q=${q}+vintage+value" target="_blank" class="research-link">Google</a>
+      ${listingHtml}
+      <div class="links-grid" style="margin-top:14px">
+        <a href="https://www.google.com/search?tbm=isch&q=${q}+vintage+value" target="_blank" class="research-link">Google Images</a>
         <a href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1" target="_blank" class="research-link">eBay Sold</a>
         <a href="https://www.ebay.com/sch/i.html?_nkw=${q}" target="_blank" class="research-link">eBay Active</a>
         <a href="https://poshmark.com/search?query=${q}" target="_blank" class="research-link">Poshmark</a>
         <a href="https://www.mercari.com/search/?keyword=${q}" target="_blank" class="research-link">Mercari</a>
         <a href="https://www.etsy.com/search?q=${q}" target="_blank" class="research-link">Etsy</a>
       </div>
-      <button class="btn btn-sm btn-outline" style="margin-top:10px;width:100%" onclick="researchPrice('${item.id}');toast('Re-researching...')">Re-research Price</button>
+      <button class="btn btn-sm btn-outline" style="margin-top:10px;width:100%" onclick="researchPrice('${item.id}')">Re-research</button>
     </div>`;
   }
 
-  // No research yet — show links + research button
+  // No research yet — show research button prominently
   return`<div class="card" style="padding:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <span style="font-size:13px;font-weight:600">Price Research</span>
-      <button class="btn btn-sm btn-gold" onclick="researchPrice('${item.id}');toast('Researching...')">Auto-Research</button>
+      <span style="font-size:13px;font-weight:600">Research & Listing Helper</span>
     </div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Or look it up yourself:</p>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">AI will analyze your photos, find comparable sales, suggest pricing, and write a ready-to-paste listing description.</p>
+    <button class="btn btn-gold" style="width:100%;padding:12px;font-size:14px" onclick="researchPrice('${item.id}')">Research & Build Listing</button>
+    <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Or look up comps manually:</p>
     <div class="links-grid">
-      <a href="https://www.google.com/search?tbm=isch&q=${q}+vintage+value" target="_blank" class="research-link">Google</a>
+      <a href="https://www.google.com/search?tbm=isch&q=${q}+vintage+value" target="_blank" class="research-link">Google Images</a>
       <a href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1" target="_blank" class="research-link">eBay Sold</a>
       <a href="https://www.ebay.com/sch/i.html?_nkw=${q}" target="_blank" class="research-link">eBay Active</a>
       <a href="https://poshmark.com/search?query=${q}" target="_blank" class="research-link">Poshmark</a>

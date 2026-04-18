@@ -15,27 +15,27 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}
+function getSupabaseAdmin() {
+  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
 
-// Create admin Supabase client with service role key
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// Map price IDs to plan names
 function getPlanFromPriceId(priceId: string): string {
   const priceMap: Record<string, string> = {
-    [process.env.STRIPE_PRICE_BASIC!]: "basic",
-    [process.env.STRIPE_PRICE_PRO!]: "pro",
-    [process.env.STRIPE_PRICE_ENTERPRISE!]: "enterprise",
+    [process.env.STRIPE_PRICE_BASIC || ""]: "basic",
+    [process.env.STRIPE_PRICE_PRO || ""]: "pro",
+    [process.env.STRIPE_PRICE_ENTERPRISE || ""]: "enterprise",
   };
   return priceMap[priceId] || "trial";
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripe();
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+    const supabaseAdmin = getSupabaseAdmin();
     // Get raw body for signature verification
     const rawBody = await req.text();
 

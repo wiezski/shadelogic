@@ -13,28 +13,29 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-// Create admin Supabase client with service role key
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// Create anon client for user verification
-const supabaseAnon = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const PLAN_PRICE_MAP: Record<string, string> = {
-  basic: process.env.STRIPE_PRICE_BASIC!,
-  pro: process.env.STRIPE_PRICE_PRO!,
-  enterprise: process.env.STRIPE_PRICE_ENTERPRISE!,
-};
+// Lazy-initialize to avoid build-time errors when env vars aren't set
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}
+function getSupabaseAdmin() {
+  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
+function getSupabaseAnon() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripe();
+    const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAnon = getSupabaseAnon();
+
+    const PLAN_PRICE_MAP: Record<string, string> = {
+      basic: process.env.STRIPE_PRICE_BASIC || "",
+      pro: process.env.STRIPE_PRICE_PRO || "",
+      enterprise: process.env.STRIPE_PRICE_ENTERPRISE || "",
+    };
+
     const body = await req.json();
     const { planId } = body;
 

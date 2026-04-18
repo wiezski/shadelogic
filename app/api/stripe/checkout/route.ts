@@ -119,7 +119,18 @@ export async function POST(req: NextRequest) {
         .eq("id", companyId);
     }
 
-    // Create Checkout session with 14-day trial
+    // Only give 14-day trial if this is their first-ever subscription
+    // (no existing stripe_subscription_id means they've never subscribed)
+    const { data: subCheck } = await supabaseAdmin
+      .from("companies")
+      .select("stripe_subscription_id, subscription_status")
+      .eq("id", companyId)
+      .single();
+
+    const hasHadSubscription = !!(subCheck?.stripe_subscription_id);
+    const trialDays = hasHadSubscription ? undefined : 14;
+
+    // Create Checkout session
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
@@ -130,7 +141,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       subscription_data: {
-        trial_period_days: 14,
+        ...(trialDays ? { trial_period_days: trialDays } : {}),
         metadata: {
           company_id: companyId,
         },

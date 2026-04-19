@@ -16,12 +16,29 @@ type TeamMember = {
 type PayRate = {
   id: string;
   profile_id: string;
-  pay_type: string; // hourly, per_job, per_window, salary, commission_only
+  pay_type: string; // legacy — kept for backwards compat
   rate: number;
   commission_pct: number | null;
+  has_hourly: boolean;
+  hourly_rate: number;
+  has_commission: boolean;
+  has_salary: boolean;
+  salary_amount: number;
+  is_contractor: boolean;
   notes: string | null;
   active: boolean;
   created_at: string;
+};
+
+type ContractorRateItem = {
+  id: string;
+  profile_id: string;
+  service_name: string;
+  rate: number;
+  unit_label: string;
+  sort_order: number;
+  active: boolean;
+  notes: string | null;
 };
 
 type PayEntry = {
@@ -77,6 +94,22 @@ const PAY_TYPE_LABELS: Record<string, string> = {
   commission_only: "Commission Only",
 };
 
+// Default contractor service line items (based on industry standard)
+const DEFAULT_CONTRACTOR_SERVICES = [
+  { service_name: "Blind Install", rate: 0, unit_label: "each" },
+  { service_name: "Shutter Install", rate: 0, unit_label: "each" },
+  { service_name: "Shade Install", rate: 0, unit_label: "each" },
+  { service_name: "Motorized Install", rate: 0, unit_label: "each" },
+  { service_name: "Take Down / Remove Existing", rate: 0, unit_label: "each" },
+  { service_name: "Haul Away", rate: 0, unit_label: "each" },
+  { service_name: "Tall Ladder (10'+)", rate: 0, unit_label: "each" },
+  { service_name: "Arch / Specialty Shape", rate: 0, unit_label: "each" },
+  { service_name: "Masonry / Tile Install", rate: 0, unit_label: "each" },
+  { service_name: "Cornice / Valance", rate: 0, unit_label: "per LF" },
+  { service_name: "Adjustment / Restring", rate: 0, unit_label: "each" },
+  { service_name: "Distance Charge", rate: 0, unit_label: "per mile" },
+];
+
 const ENTRY_TYPE_LABELS: Record<string, string> = {
   hours: "Hours",
   job: "Job",
@@ -106,6 +139,7 @@ function PayrollPageInner() {
   const [tab, setTab] = useState<"entries" | "rates" | "runs">("entries");
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [rates, setRates] = useState<PayRate[]>([]);
+  const [contractorRates, setContractorRates] = useState<ContractorRateItem[]>([]);
   const [entries, setEntries] = useState<PayEntry[]>([]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +161,7 @@ function PayrollPageInner() {
     const memberIds = teamList.map(t => t.id);
     setTeam(teamList);
 
-    const [ratesRes, entriesRes, runsRes] = await Promise.all([
+    const [ratesRes, entriesRes, runsRes, contractorRatesRes] = await Promise.all([
       memberIds.length > 0
         ? supabase.from("pay_rates").select("*").in("profile_id", memberIds).eq("active", true).order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
@@ -135,10 +169,12 @@ function PayrollPageInner() {
         ? supabase.from("pay_entries").select("*").in("profile_id", memberIds).order("work_date", { ascending: false }).limit(200)
         : Promise.resolve({ data: [] }),
       supabase.from("payroll_runs").select("*").order("period_start", { ascending: false }).limit(50),
+      supabase.from("contractor_rate_items").select("*").eq("active", true).order("sort_order"),
     ]);
     setRates(ratesRes.data ?? []);
     setEntries(entriesRes.data ?? []);
     setRuns(runsRes.data ?? []);
+    setContractorRates(contractorRatesRes.data ?? []);
     setLoading(false);
   }
 
@@ -249,7 +285,7 @@ function PayrollPageInner() {
         <EntriesTab entries={filteredEntries} team={team} personSummary={personSummary} onUpdated={loadAll} />
       )}
       {tab === "rates" && (
-        <RatesTab rates={rates} team={team} onUpdated={loadAll} />
+        <RatesTab rates={rates} team={team} contractorRates={contractorRates} onUpdated={loadAll} />
       )}
       {tab === "runs" && (
         <RunsTab runs={runs} onUpdated={loadAll} />
@@ -406,65 +442,83 @@ function EntriesTab({ entries, team, personSummary, onUpdated }: {
 }
 
 // ── Rates Tab ──────────────────────────────────────────────────
-function RatesTab({ rates, team, onUpdated }: {
+function RatesTab({ rates, team, contractorRates, onUpdated }: {
   rates: PayRate[];
   team: TeamMember[];
+  contractorRates: ContractorRateItem[];
   onUpdated: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formPerson, setFormPerson] = useState("");
-  const [formType, setFormType] = useState<string>("hourly");
-  const [formRate, setFormRate] = useState("");
-  const [formCommission, setFormCommission] = useState("");
+  const [formHourly, setFormHourly] = useState(false);
+  const [formHourlyRate, setFormHourlyRate] = useState("");
+  const [formCommission, setFormCommission] = useState(false);
+  const [formCommissionPct, setFormCommissionPct] = useState("");
+  const [formSalary, setFormSalary] = useState(false);
+  const [formSalaryAmt, setFormSalaryAmt] = useState("");
+  const [formContractor, setFormContractor] = useState(false);
   const [formNotes, setFormNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  // Contractor rate card editing
+  const [editingContractor, setEditingContractor] = useState<string | null>(null);
+  const [crItems, setCrItems] = useState<{ service_name: string; rate: string; unit_label: string }[]>([]);
+  const [savingCr, setSavingCr] = useState(false);
 
   function openNew() {
     setEditingId(null);
-    setFormPerson(""); setFormType("hourly"); setFormRate("");
-    setFormCommission(""); setFormNotes("");
+    setFormPerson(""); setFormHourly(false); setFormHourlyRate("");
+    setFormCommission(false); setFormCommissionPct(""); setFormSalary(false);
+    setFormSalaryAmt(""); setFormContractor(false); setFormNotes("");
     setShowForm(true);
   }
 
   function openEdit(r: PayRate) {
     setEditingId(r.id);
     setFormPerson(r.profile_id);
-    setFormType(r.pay_type);
-    setFormRate(r.rate ? String(r.rate) : "");
-    setFormCommission(r.commission_pct != null ? String(r.commission_pct) : "");
+    setFormHourly(r.has_hourly);
+    setFormHourlyRate(r.hourly_rate ? String(r.hourly_rate) : "");
+    setFormCommission(r.has_commission);
+    setFormCommissionPct(r.commission_pct != null ? String(r.commission_pct) : "");
+    setFormSalary(r.has_salary);
+    setFormSalaryAmt(r.salary_amount ? String(r.salary_amount) : "");
+    setFormContractor(r.is_contractor);
     setFormNotes(r.notes || "");
     setShowForm(true);
   }
 
   async function saveRate() {
-    if (!formPerson || !formType) return;
+    if (!formPerson || (!formHourly && !formCommission && !formSalary && !formContractor)) return;
     setSaving(true);
+    const payType = formContractor ? "contractor" : formSalary ? "salary" : formHourly ? "hourly" : "commission_only";
+    const data = {
+      pay_type: payType,
+      has_hourly: formHourly,
+      hourly_rate: formHourly && formHourlyRate ? parseFloat(formHourlyRate) : 0,
+      has_commission: formCommission,
+      commission_pct: formCommission && formCommissionPct ? parseFloat(formCommissionPct) : null,
+      has_salary: formSalary,
+      salary_amount: formSalary && formSalaryAmt ? parseFloat(formSalaryAmt) : 0,
+      is_contractor: formContractor,
+      rate: formHourly ? (formHourlyRate ? parseFloat(formHourlyRate) : 0) : formSalary ? (formSalaryAmt ? parseFloat(formSalaryAmt) : 0) : 0,
+      notes: formNotes || null,
+    };
     if (editingId) {
-      // Update existing rate in place
-      await supabase.from("pay_rates").update({
-        pay_type: formType,
-        rate: formRate ? parseFloat(formRate) : 0,
-        commission_pct: formCommission ? parseFloat(formCommission) : null,
-        notes: formNotes || null,
-      }).eq("id", editingId);
+      await supabase.from("pay_rates").update(data).eq("id", editingId);
     } else {
-      // Deactivate any existing rate for this person
       await supabase.from("pay_rates").update({ active: false }).eq("profile_id", formPerson).eq("active", true);
-      // Insert new rate
-      await supabase.from("pay_rates").insert([{
-        profile_id: formPerson,
-        pay_type: formType,
-        rate: formRate ? parseFloat(formRate) : 0,
-        commission_pct: formCommission ? parseFloat(formCommission) : null,
-        notes: formNotes || null,
-        active: true,
-      }]);
+      await supabase.from("pay_rates").insert([{ profile_id: formPerson, active: true, ...data }]);
+      // If contractor, seed default rate card if none exists
+      if (formContractor) {
+        const existing = contractorRates.filter(cr => cr.profile_id === formPerson);
+        if (existing.length === 0) {
+          await supabase.from("contractor_rate_items").insert(
+            DEFAULT_CONTRACTOR_SERVICES.map((s, i) => ({ profile_id: formPerson, ...s, sort_order: i }))
+          );
+        }
+      }
     }
-    setShowForm(false);
-    setEditingId(null);
-    setFormPerson(""); setFormType("hourly"); setFormRate("");
-    setFormCommission(""); setFormNotes("");
+    setShowForm(false); setEditingId(null);
     setSaving(false);
     onUpdated();
   }
@@ -475,22 +529,51 @@ function RatesTab({ rates, team, onUpdated }: {
     onUpdated();
   }
 
+  // Contractor rate card editing
+  function openContractorCard(profileId: string) {
+    const items = contractorRates.filter(cr => cr.profile_id === profileId);
+    setCrItems(items.map(i => ({ service_name: i.service_name, rate: String(i.rate), unit_label: i.unit_label })));
+    setEditingContractor(profileId);
+  }
+
+  async function saveContractorCard() {
+    if (!editingContractor) return;
+    setSavingCr(true);
+    // Deactivate all existing items for this contractor
+    await supabase.from("contractor_rate_items").update({ active: false }).eq("profile_id", editingContractor);
+    // Insert updated items
+    const toInsert = crItems.filter(i => i.service_name.trim()).map((i, idx) => ({
+      profile_id: editingContractor,
+      service_name: i.service_name.trim(),
+      rate: i.rate ? parseFloat(i.rate) : 0,
+      unit_label: i.unit_label || "each",
+      sort_order: idx,
+      active: true,
+    }));
+    if (toInsert.length > 0) await supabase.from("contractor_rate_items").insert(toInsert);
+    setEditingContractor(null);
+    setSavingCr(false);
+    onUpdated();
+  }
+
   // Group rates by person
   const byPerson = new Map<string, PayRate>();
   for (const r of rates) {
     if (!byPerson.has(r.profile_id)) byPerson.set(r.profile_id, r);
   }
 
-  function getRateLabel(r: PayRate): string {
-    switch (r.pay_type) {
-      case "hourly": return `${fmtMoney(r.rate)}/hr`;
-      case "per_job": return `${fmtMoney(r.rate)}/job`;
-      case "per_window": return `${fmtMoney(r.rate)}/window`;
-      case "salary": return `${fmtMoney(r.rate)}/period`;
-      case "commission_only": return "Commission only";
-      default: return fmtMoney(r.rate);
-    }
+  function getPaySummary(r: PayRate): string[] {
+    const parts: string[] = [];
+    if (r.has_hourly && r.hourly_rate) parts.push(`${fmtMoney(r.hourly_rate)}/hr`);
+    if (r.has_commission && r.commission_pct) parts.push(`${r.commission_pct}% commission`);
+    if (r.has_salary && r.salary_amount) parts.push(`${fmtMoney(r.salary_amount)}/period salary`);
+    if (r.is_contractor) parts.push("Contractor");
+    // Legacy fallback
+    if (parts.length === 0 && r.rate) parts.push(`${fmtMoney(r.rate)} (${PAY_TYPE_LABELS[r.pay_type] || r.pay_type})`);
+    return parts;
   }
+
+  const inputStyle = { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" };
 
   return (
     <div>
@@ -503,68 +586,102 @@ function RatesTab({ rates, team, onUpdated }: {
         </button>
       </div>
 
+      {/* ── New/Edit Pay Rate Form ── */}
       {showForm && (
         <div className="mb-4 rounded-lg p-4" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
-          <div className="text-xs font-semibold mb-2" style={{ color: "var(--zr-text-primary)" }}>
+          <div className="text-sm font-semibold mb-3" style={{ color: "var(--zr-text-primary)" }}>
             {editingId ? "Edit Pay Rate" : "New Pay Rate"}
           </div>
-          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Team Member</label>
-              <select value={formPerson} onChange={e => setFormPerson(e.target.value)}
-                disabled={!!editingId}
-                className="w-full text-sm rounded px-2.5 py-1.5"
-                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)", opacity: editingId ? 0.6 : 1 }}>
-                <option value="">Select...</option>
-                {team.map(t => <option key={t.id} value={t.id}>{t.full_name || t.role}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Pay Type</label>
-              <select value={formType} onChange={e => setFormType(e.target.value)}
-                className="w-full text-sm rounded px-2.5 py-1.5"
-                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }}>
-                {Object.entries(PAY_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
+
+          {/* Person selector */}
+          <div className="mb-3">
+            <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Team Member</label>
+            <select value={formPerson} onChange={e => setFormPerson(e.target.value)}
+              disabled={!!editingId}
+              className="w-full text-sm rounded px-2.5 py-1.5" style={{ ...inputStyle, opacity: editingId ? 0.6 : 1 }}>
+              <option value="">Select...</option>
+              {team.map(t => <option key={t.id} value={t.id}>{t.full_name || t.role}</option>)}
+            </select>
           </div>
 
-          <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>
-                {formType === "hourly" ? "Hourly Rate ($)" :
-                 formType === "per_job" ? "Per Job Rate ($)" :
-                 formType === "per_window" ? "Per Window Rate ($)" :
-                 formType === "salary" ? "Salary Amount ($)" : "Base Rate ($)"}
+          {/* Pay component toggles */}
+          <div className="text-xs font-medium mb-2" style={{ color: "var(--zr-text-muted)" }}>Pay Components (select all that apply)</div>
+          <div className="flex flex-col gap-3">
+            {/* Hourly */}
+            <div className="rounded p-3" style={{ border: `1px solid ${formHourly ? "var(--zr-orange)" : "var(--zr-border)"}`, background: formHourly ? "rgba(230,48,0,0.04)" : "transparent" }}>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formHourly} onChange={e => setFormHourly(e.target.checked)} className="accent-orange-600" />
+                <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>Hourly</span>
               </label>
-              <input type="number" step="0.01" placeholder="0.00" value={formRate}
-                onChange={e => setFormRate(e.target.value)}
-                className="w-full text-sm rounded px-2.5 py-1.5"
-                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+              {formHourly && (
+                <div className="mt-2 ml-6">
+                  <label className="text-xs mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Rate ($/hr)</label>
+                  <input type="number" step="0.50" placeholder="0.00" value={formHourlyRate}
+                    onChange={e => setFormHourlyRate(e.target.value)}
+                    className="text-sm rounded px-2.5 py-1.5 w-40" style={inputStyle} />
+                </div>
+              )}
             </div>
-            {(formType === "commission_only" || formType === "salary") && (
-              <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Commission %</label>
-                <input type="number" step="0.5" placeholder="0" value={formCommission}
-                  onChange={e => setFormCommission(e.target.value)}
-                  className="w-full text-sm rounded px-2.5 py-1.5"
-                  style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
-              </div>
-            )}
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Notes</label>
-              <input type="text" placeholder="Optional" value={formNotes}
-                onChange={e => setFormNotes(e.target.value)}
-                className="w-full text-sm rounded px-2.5 py-1.5"
-                style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }} />
+
+            {/* Commission */}
+            <div className="rounded p-3" style={{ border: `1px solid ${formCommission ? "var(--zr-orange)" : "var(--zr-border)"}`, background: formCommission ? "rgba(230,48,0,0.04)" : "transparent" }}>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formCommission} onChange={e => setFormCommission(e.target.checked)} className="accent-orange-600" />
+                <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>Commission</span>
+              </label>
+              {formCommission && (
+                <div className="mt-2 ml-6">
+                  <label className="text-xs mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Commission %</label>
+                  <input type="number" step="0.5" placeholder="0" value={formCommissionPct}
+                    onChange={e => setFormCommissionPct(e.target.value)}
+                    className="text-sm rounded px-2.5 py-1.5 w-40" style={inputStyle} />
+                </div>
+              )}
+            </div>
+
+            {/* Salary */}
+            <div className="rounded p-3" style={{ border: `1px solid ${formSalary ? "var(--zr-orange)" : "var(--zr-border)"}`, background: formSalary ? "rgba(230,48,0,0.04)" : "transparent" }}>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formSalary} onChange={e => setFormSalary(e.target.checked)} className="accent-orange-600" />
+                <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>Salary</span>
+              </label>
+              {formSalary && (
+                <div className="mt-2 ml-6">
+                  <label className="text-xs mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Amount per period ($)</label>
+                  <input type="number" step="100" placeholder="0.00" value={formSalaryAmt}
+                    onChange={e => setFormSalaryAmt(e.target.value)}
+                    className="text-sm rounded px-2.5 py-1.5 w-40" style={inputStyle} />
+                </div>
+              )}
+            </div>
+
+            {/* Contractor */}
+            <div className="rounded p-3" style={{ border: `1px solid ${formContractor ? "var(--zr-orange)" : "var(--zr-border)"}`, background: formContractor ? "rgba(230,48,0,0.04)" : "transparent" }}>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formContractor} onChange={e => setFormContractor(e.target.checked)} className="accent-orange-600" />
+                <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>Contractor (per-unit rate card)</span>
+              </label>
+              {formContractor && (
+                <p className="mt-1 ml-6 text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                  A rate card with per-service rates will be created after saving. You can customize rates for each service type.
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="flex gap-2 mt-3">
-            <button onClick={saveRate} disabled={saving || !formPerson}
+          {/* Notes */}
+          <div className="mt-3">
+            <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Notes (optional)</label>
+            <input type="text" placeholder="e.g. Senior installer rate" value={formNotes}
+              onChange={e => setFormNotes(e.target.value)}
+              className="w-full text-sm rounded px-2.5 py-1.5" style={inputStyle} />
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <button onClick={saveRate} disabled={saving || !formPerson || (!formHourly && !formCommission && !formSalary && !formContractor)}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
               style={{ background: "var(--zr-orange)", color: "#fff", opacity: saving || !formPerson ? 0.5 : 1 }}>
-              {saving ? "Saving..." : editingId ? "Update Rate" : "Save Rate"}
+              {saving ? "Saving..." : editingId ? "Update" : "Save Pay Rate"}
             </button>
             <button onClick={() => { setShowForm(false); setEditingId(null); }}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
@@ -575,7 +692,61 @@ function RatesTab({ rates, team, onUpdated }: {
         </div>
       )}
 
-      {/* Rates by person */}
+      {/* ── Contractor Rate Card Editor (modal-like) ── */}
+      {editingContractor && (
+        <div className="mb-4 rounded-lg p-4" style={{ background: "var(--zr-surface-2)", border: "2px solid var(--zr-orange)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>
+              Rate Card — {team.find(t => t.id === editingContractor)?.full_name || "Contractor"}
+            </div>
+            <button onClick={() => setCrItems([...crItems, { service_name: "", rate: "", unit_label: "each" }])}
+              className="text-xs px-2 py-1 rounded font-medium"
+              style={{ background: "var(--zr-orange)", color: "#fff" }}>
+              + Add Line
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="grid gap-2 text-xs font-semibold" style={{ gridTemplateColumns: "1fr 100px 90px 30px", color: "var(--zr-text-muted)" }}>
+              <span>Service</span><span>Rate ($)</span><span>Unit</span><span></span>
+            </div>
+            {crItems.map((item, idx) => (
+              <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 100px 90px 30px" }}>
+                <input type="text" value={item.service_name} placeholder="Service name"
+                  onChange={e => { const n = [...crItems]; n[idx].service_name = e.target.value; setCrItems(n); }}
+                  className="text-sm rounded px-2 py-1.5" style={inputStyle} />
+                <input type="number" step="0.01" value={item.rate} placeholder="0.00"
+                  onChange={e => { const n = [...crItems]; n[idx].rate = e.target.value; setCrItems(n); }}
+                  className="text-sm rounded px-2 py-1.5" style={inputStyle} />
+                <select value={item.unit_label}
+                  onChange={e => { const n = [...crItems]; n[idx].unit_label = e.target.value; setCrItems(n); }}
+                  className="text-xs rounded px-1.5 py-1.5" style={inputStyle}>
+                  <option value="each">each</option>
+                  <option value="per LF">per LF</option>
+                  <option value="per hour">per hour</option>
+                  <option value="per mile">per mile</option>
+                  <option value="flat">flat</option>
+                </select>
+                <button onClick={() => setCrItems(crItems.filter((_, i) => i !== idx))}
+                  className="text-xs font-bold" style={{ color: "var(--zr-error)" }}>✕</button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button onClick={saveContractorCard} disabled={savingCr}
+              className="text-xs px-4 py-1.5 rounded font-medium"
+              style={{ background: "var(--zr-orange)", color: "#fff", opacity: savingCr ? 0.5 : 1 }}>
+              {savingCr ? "Saving..." : "Save Rate Card"}
+            </button>
+            <button onClick={() => setEditingContractor(null)}
+              className="text-xs px-4 py-1.5 rounded font-medium"
+              style={{ color: "var(--zr-text-muted)" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rate Cards by Person ── */}
       {byPerson.size === 0 ? (
         <div className="text-center py-10">
           <div className="text-4xl mb-3">💰</div>
@@ -591,6 +762,9 @@ function RatesTab({ rates, team, onUpdated }: {
         <div className="flex flex-col gap-3">
           {[...byPerson.entries()].map(([pid, r]) => {
             const member = team.find(t => t.id === pid);
+            const summary = getPaySummary(r);
+            const personCrItems = contractorRates.filter(cr => cr.profile_id === pid);
+
             return (
               <div key={pid} className="rounded-lg p-4"
                 style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
@@ -601,7 +775,7 @@ function RatesTab({ rates, team, onUpdated }: {
                     </span>
                     <span className="ml-2 text-xs px-2 py-0.5 rounded-full"
                       style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-muted)" }}>
-                      {member?.role || "—"}
+                      {r.is_contractor ? "Contractor" : member?.role || "—"}
                     </span>
                   </div>
                   <div className="flex gap-1">
@@ -610,6 +784,13 @@ function RatesTab({ rates, team, onUpdated }: {
                       style={{ color: "var(--zr-orange)" }}>
                       Edit
                     </button>
+                    {r.is_contractor && (
+                      <button onClick={() => openContractorCard(pid)}
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors"
+                        style={{ color: "var(--zr-info)" }}>
+                        Rate Card
+                      </button>
+                    )}
                     <button onClick={() => deleteRate(r.id)}
                       className="text-xs px-2 py-1 rounded font-medium transition-colors"
                       style={{ color: "var(--zr-error)" }}>
@@ -617,26 +798,40 @@ function RatesTab({ rates, team, onUpdated }: {
                     </button>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <div>
-                    <span style={{ color: "var(--zr-text-muted)" }}>Type: </span>
-                    <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>
-                      {PAY_TYPE_LABELS[r.pay_type] || r.pay_type}
+
+                {/* Pay summary badges */}
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {summary.map((s, i) => (
+                    <span key={i} className="px-2.5 py-1 rounded-full font-medium"
+                      style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                      {s}
                     </span>
-                  </div>
-                  <div>
-                    <span style={{ color: "var(--zr-text-muted)" }}>Rate: </span>
-                    <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{getRateLabel(r)}</span>
-                  </div>
-                  {r.commission_pct != null && (
-                    <div>
-                      <span style={{ color: "var(--zr-text-muted)" }}>Commission: </span>
-                      <span className="font-medium" style={{ color: "var(--zr-text-primary)" }}>{r.commission_pct}%</span>
-                    </div>
-                  )}
+                  ))}
                 </div>
+
+                {/* Contractor rate card preview */}
+                {r.is_contractor && personCrItems.length > 0 && (
+                  <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--zr-border)" }}>
+                    <div className="text-xs font-semibold mb-1.5" style={{ color: "var(--zr-text-muted)" }}>RATE CARD</div>
+                    <div className="grid gap-1" style={{ gridTemplateColumns: "1fr auto auto" }}>
+                      {personCrItems.filter(i => i.rate > 0).map(item => (
+                        <div key={item.id} className="contents text-xs">
+                          <span style={{ color: "var(--zr-text-primary)" }}>{item.service_name}</span>
+                          <span className="font-semibold text-right" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(item.rate)}</span>
+                          <span style={{ color: "var(--zr-text-muted)" }}>/{item.unit_label}</span>
+                        </div>
+                      ))}
+                      {personCrItems.filter(i => i.rate > 0).length === 0 && (
+                        <span className="text-xs col-span-3" style={{ color: "var(--zr-text-muted)" }}>
+                          No rates set yet — click "Rate Card" to configure
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {r.notes && (
-                  <div className="mt-1 text-xs" style={{ color: "var(--zr-text-muted)" }}>{r.notes}</div>
+                  <div className="mt-2 text-xs" style={{ color: "var(--zr-text-muted)" }}>{r.notes}</div>
                 )}
               </div>
             );

@@ -435,7 +435,7 @@ function TeamSection() {
     const { data } = await supabase.from("profiles")
       .select("id, full_name, role, permissions, status")
       .eq("company_id", companyId)
-      .eq("status", "active");
+      .in("status", ["active", "pending"]);
     setMembers((data || []) as TeamMember[]);
     setLoading(false);
   }
@@ -456,6 +456,30 @@ function TeamSection() {
   }
 
   const [removing, setRemoving] = useState<string | null>(null);
+  const [approving, setApproving] = useState<string | null>(null);
+  const pendingMembers = members.filter(m => m.status === "pending");
+
+  async function approveMember(memberId: string) {
+    setApproving(memberId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/team/approve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ profileId: memberId }),
+      });
+      if (res.ok) {
+        setMembers(prev => prev.map(m => m.id === memberId ? { ...m, status: "active" } : m));
+      }
+    } catch (err) {
+      console.error("Approve member failed:", err);
+    }
+    setApproving(null);
+  }
 
   async function removeMember(memberId: string, name: string) {
     if (!confirm(`Remove ${name} from your team? This will delete their account and adjust your billing.`)) return;
@@ -508,11 +532,39 @@ function TeamSection() {
       {/* Invite link */}
       <InviteSection inviteLink={inviteLink} perUserPrice={userLimits.perUserPrice} />
 
-      {loading ? <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Loading…</p> : members.length === 0 ? (
-        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No team members yet.</p>
+      {/* Pending approvals */}
+      {pendingMembers.length > 0 && (
+        <div className="rounded p-3 space-y-2" style={{ background: "rgba(245,158,11,0.08)", border: "1px dashed var(--zr-warning)" }}>
+          <div className="text-xs font-semibold" style={{ color: "var(--zr-warning)" }}>PENDING APPROVAL ({pendingMembers.length})</div>
+          {pendingMembers.map(m => (
+            <div key={m.id} className="flex items-center justify-between gap-2 rounded p-2" style={{ background: "var(--zr-surface-1)" }}>
+              <div>
+                <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{m.full_name ?? "Unnamed"}</span>
+                <span className="ml-2 text-xs" style={{ color: "var(--zr-text-muted)" }}>{m.role}</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => approveMember(m.id)} disabled={approving === m.id}
+                  className="text-xs px-3 py-1 rounded font-medium disabled:opacity-50"
+                  style={{ background: "var(--zr-orange)", color: "#fff" }}>
+                  {approving === m.id ? "..." : "Approve"}
+                </button>
+                <button onClick={() => removeMember(m.id, m.full_name ?? "this user")} disabled={removing === m.id}
+                  className="text-xs px-2 py-1 rounded font-medium disabled:opacity-50"
+                  style={{ color: "var(--zr-error)" }}>
+                  {removing === m.id ? "..." : "Deny"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Active members */}
+      {loading ? <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Loading…</p> : activeMembers.length === 0 ? (
+        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No active team members yet.</p>
       ) : (
         <ul className="space-y-3">
-          {members.map(m => {
+          {activeMembers.map(m => {
             const resolved = resolvePermissions(m.role, m.permissions);
             const isMe = m.id === user?.id;
             return (

@@ -52,6 +52,7 @@ type Appointment = {
   address: string | null;
   notes: string | null;
   confirmation_sent: boolean;
+  assigned_to: string | null;
   created_at: string;
 };
 
@@ -176,9 +177,11 @@ export default function SchedulePage() {
   );
 }
 
+type TeamMember = { id: string; name: string; role: string };
+
 function SchedulePageInner() {
   const searchParams = useSearchParams();
-  const { companyId } = useAuth();
+  const { user, companyId, role, permissions } = useAuth();
   const { send: sendEmailApi, sending: emailSending } = useEmail();
   const [compSettings, setCompSettings] = useState<{ name: string; phone: string | null; google_review_link: string | null }>({ name: "ZeroRemake", phone: null, google_review_link: null });
   const [emailSent, setEmailSent] = useState(false);
@@ -192,6 +195,11 @@ function SchedulePageInner() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading]         = useState(true);
   const [customers, setCustomers]     = useState<CustomerOption[]>([]);
+
+  // Team + person filter
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  // "all" = everyone, a UUID = specific person
+  const [filterPerson, setFilterPerson] = useState<string>("__init__");
 
   // Modal visibility
   const [showCreate,  setShowCreate]  = useState(false);
@@ -209,6 +217,7 @@ function SchedulePageInner() {
   const [createMins,    setCreateMins]    = useState(60);
   const [createAddr,    setCreateAddr]    = useState("");
   const [createNotes,   setCreateNotes]   = useState("");
+  const [createAssignee, setCreateAssignee] = useState("");
   const [saving,        setSaving]        = useState(false);
 
   // Confirmation
@@ -229,8 +238,22 @@ function SchedulePageInner() {
   // stable key to avoid Date object reference churn in useEffect
   const dateKey = isoDate(currentDate);
 
-  useEffect(() => { loadCustomers(); loadCompanySettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { loadAppointments(); }, [dateKey, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Role-based default filter:
+  // owner/admin/office/scheduler → "all"
+  // sales/lead_sales → "all" (can see installers too for scheduling)
+  // installer → own ID only
+  useEffect(() => {
+    if (filterPerson !== "__init__" || !user?.id) return;
+    const r = role || "installer";
+    if (r === "installer") {
+      setFilterPerson(user.id);
+    } else {
+      setFilterPerson("all");
+    }
+  }, [role, user?.id, filterPerson]);
+
+  useEffect(() => { loadTeam(); loadCustomers(); loadCompanySettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (filterPerson !== "__init__") loadAppointments(); }, [dateKey, view, filterPerson]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If arriving from a customer page, pre-fill and open the create modal
   useEffect(() => {
@@ -246,6 +269,32 @@ function SchedulePageInner() {
     setShowCreate(true);
   }, [incomingCustomerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function loadTeam() {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, role")
+      .eq("status", "active")
+      .order("full_name", { ascending: true });
+    setTeam((data || []).map((p: any) => ({ id: p.id, name: p.full_name || "Unnamed", role: p.role || "installer" })));
+  }
+
+  // Which team members can this role see in the filter?
+  function getVisibleTeam(): TeamMember[] {
+    const r = role || "installer";
+    if (r === "installer") {
+      // Installers see only themselves
+      return team.filter(t => t.id === user?.id);
+    }
+    // owner, admin, office, scheduler → everyone
+    // sales, lead_sales → themselves + installers (so they can schedule installs for their customers)
+    if (r === "sales" || r === "lead_sales") {
+      return team.filter(t => t.id === user?.id || t.role === "installer");
+    }
+    return team;
+  }
+
+  const canSeeAll = !["installer"].includes(role || "installer");
+
   async function loadAppointments() {
     setLoading(true);
     let start: Date, end: Date;
@@ -260,12 +309,19 @@ function SchedulePageInner() {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    const { data: raw } = await supabase
+    let query = supabase
       .from("appointments")
       .select("*")
       .gte("scheduled_at", start.toISOString())
       .lte("scheduled_at", end.toISOString())
       .order("scheduled_at", { ascending: true });
+
+    // Apply person filter (if not "all")
+    if (filterPerson && filterPerson !== "all" && filterPerson !== "__init__") {
+      query = query.eq("assigned_to", filterPerson);
+    }
+
+    const { data: raw } = await query;
 
     if (!raw || raw.length === 0) { setAppointments([]); setLoading(false); return; }
 
@@ -314,6 +370,7 @@ function SchedulePageInner() {
     setCustId(""); setCustSearch(""); setCreateType("sales_consultation");
     setCreateMins(APPT_TYPES.sales_consultation.defaultMins);
     setCreateAddr(""); setCreateNotes("");
+    setCreateAssignee(user?.id || "");
     setShowCreate(true);
   }
 
@@ -336,7 +393,8 @@ function SchedulePageInner() {
       .from("appointments")
       .insert([{ customer_id: custId, type: createType, scheduled_at: scheduledAt,
                  duration_minutes: createMins, status: "scheduled",
-                 address: createAddr || null, notes: createNotes || null }])
+                 address: createAddr || null, notes: createNotes || null,
+                 assigned_to: createAssignee || user?.id || null }])
       .select("*").single();
     setSaving(false);
     if (error) { alert("Error: " + error.message); return; }
@@ -488,6 +546,91 @@ function SchedulePageInner() {
     setShowDetail(false); setShowConfirm(true);
   }
 
+  // ── .ics Calendar Export ────────────────────────────────────
+  function exportToICS() {
+    if (appointments.length === 0) { alert("No appointments to export."); return; }
+
+    function pad2(n: number) { return String(n).padStart(2, "0"); }
+    function toICSDate(iso: string) {
+      const d = new Date(iso);
+      return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+    }
+
+    const events = appointments
+      .filter(a => a.status !== "canceled")
+      .map(a => {
+        const endDate = new Date(new Date(a.scheduled_at).getTime() + a.duration_minutes * 60000);
+        const label = APPT_TYPES[a.type]?.label ?? a.type;
+        return [
+          "BEGIN:VEVENT",
+          `DTSTART:${toICSDate(a.scheduled_at)}`,
+          `DTEND:${toICSDate(endDate.toISOString())}`,
+          `SUMMARY:${label} — ${a.customer_name}`,
+          a.address ? `LOCATION:${a.address.replace(/,/g, "\\,")}` : "",
+          a.notes ? `DESCRIPTION:${a.notes.replace(/\n/g, "\\n").replace(/,/g, "\\,")}` : "",
+          `UID:${a.id}@shadelogic`,
+          "END:VEVENT",
+        ].filter(Boolean).join("\r\n");
+      });
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//ShadeLogic//Schedule//EN",
+      "CALSCALE:GREGORIAN",
+      ...events,
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const personName = filterPerson === "all"
+      ? "everyone"
+      : team.find(t => t.id === filterPerson)?.name?.replace(/\s+/g, "-") || "schedule";
+    a.download = `schedule-${personName}-${dateKey}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportSingleICS(appt: Appointment) {
+    function pad2(n: number) { return String(n).padStart(2, "0"); }
+    function toICSDate(iso: string) {
+      const d = new Date(iso);
+      return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+    }
+    const endDate = new Date(new Date(appt.scheduled_at).getTime() + appt.duration_minutes * 60000);
+    const label = APPT_TYPES[appt.type]?.label ?? appt.type;
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//ShadeLogic//Schedule//EN",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      `DTSTART:${toICSDate(appt.scheduled_at)}`,
+      `DTEND:${toICSDate(endDate.toISOString())}`,
+      `SUMMARY:${label} — ${appt.customer_name}`,
+      appt.address ? `LOCATION:${appt.address.replace(/,/g, "\\,")}` : "",
+      appt.notes ? `DESCRIPTION:${appt.notes.replace(/\n/g, "\\n").replace(/,/g, "\\,")}` : "",
+      `UID:${appt.id}@shadelogic`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${label.toLowerCase().replace(/\s+/g, "-")}-${appt.customer_name.replace(/\s+/g, "-")}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   // ── Derived data ──────────────────────────────────────────────
   const weekDays   = getWeekDays(currentDate);
   const timeSlots  = Array.from({ length: GRID_HOURS }, (_, i) => GRID_START + i);
@@ -542,22 +685,46 @@ function SchedulePageInner() {
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="px-4 py-2 flex items-center justify-between bg-white">
-        {/* Legend */}
-        <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {Object.entries(APPT_TYPES).map(([k, v]) => (
-            <span key={k} className="flex items-center gap-1 text-xs text-gray-500">
-              <span className={`inline-block w-2 h-2 rounded-full ${v.dot}`} />
-              {v.label}
-            </span>
-          ))}
+      <div className="px-4 py-2 flex items-center justify-between bg-white gap-2 flex-wrap">
+        {/* Person filter */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <select
+            value={filterPerson}
+            onChange={e => setFilterPerson(e.target.value)}
+            className="border rounded px-2 py-1 text-sm bg-white min-w-0 max-w-[180px]"
+          >
+            {canSeeAll && <option value="all">Everyone</option>}
+            {getVisibleTeam().map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name}{t.id === user?.id ? " (me)" : ""}
+              </option>
+            ))}
+          </select>
+          {/* Legend (hidden on small screens) */}
+          <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1">
+            {Object.entries(APPT_TYPES).map(([k, v]) => (
+              <span key={k} className="flex items-center gap-1 text-xs text-gray-500">
+                <span className={`inline-block w-2 h-2 rounded-full ${v.dot}`} />
+                {v.label}
+              </span>
+            ))}
+          </div>
         </div>
-        <button
-          onClick={() => openCreate(view === "week" ? today : currentDate, 9)}
-          className="ml-4 shrink-0 text-white text-sm px-3 py-1.5 rounded"
-          style={{ background: "var(--zr-orange)" }}>
-          + New
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={exportToICS}
+            className="border rounded px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+            title="Export visible appointments to .ics calendar file"
+          >
+            📅 Add to Calendar
+          </button>
+          <button
+            onClick={() => openCreate(view === "week" ? today : currentDate, 9)}
+            className="text-white text-sm px-3 py-1.5 rounded"
+            style={{ background: "var(--zr-orange)" }}>
+            + New
+          </button>
+        </div>
       </div>
 
       {/* ── Calendar ── */}
@@ -656,6 +823,18 @@ function SchedulePageInner() {
               <input type="text" value={createAddr} onChange={e => setCreateAddr(e.target.value)}
                 placeholder="Auto-filled from customer…"
                 className="w-full border rounded px-2 py-1.5 text-sm" />
+            </div>
+
+            {/* Assign To */}
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Assign To</label>
+              <select value={createAssignee} onChange={e => setCreateAssignee(e.target.value)}
+                className="w-full border rounded px-2 py-1.5 text-sm">
+                <option value="">— Unassigned —</option>
+                {team.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}{t.id === user?.id ? " (me)" : ""}</option>
+                ))}
+              </select>
             </div>
 
             {/* Notes */}
@@ -779,6 +958,13 @@ function SchedulePageInner() {
               </div>
             )}
 
+            {/* Assigned to */}
+            {selectedAppt.assigned_to && (
+              <div className="text-gray-600">
+                👤 {team.find(t => t.id === selectedAppt.assigned_to)?.name ?? "Assigned"}
+              </div>
+            )}
+
             {/* Notes */}
             {selectedAppt.notes && (
               <div className="bg-gray-50 rounded p-2 text-gray-600">{selectedAppt.notes}</div>
@@ -829,6 +1015,10 @@ function SchedulePageInner() {
                 <button onClick={() => openOnMyWay(selectedAppt)}
                   className="w-full border rounded py-2 text-xs text-gray-600 hover:bg-gray-50">
                   🚗 "On My Way" Text
+                </button>
+                <button onClick={() => exportSingleICS(selectedAppt)}
+                  className="w-full border rounded py-2 text-xs text-gray-600 hover:bg-gray-50">
+                  📅 Add to My Phone Calendar
                 </button>
               </div>
             )}

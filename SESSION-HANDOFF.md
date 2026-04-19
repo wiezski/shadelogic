@@ -138,15 +138,49 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - **Team count**: settings team section now only counts active users for billing calculations
 - **DB**: `pending_approvals` table with RLS, `profiles.status` column (active/pending)
 
+### Phase 17 — Pay System Enhancements — Complete ✓
+- **Toggle-based pay components**: Hourly rate, Commission %, Salary amount, Contractor flag — all toggleable per person
+- **Contractor rate cards**: Default 11 service lines (Blind Install, Shutter Install, Shade Install, Motorized Install, etc.) with configurable rates and unit labels
+- **Custom rate card services**: "+ Add Custom Service" button for custom line items
+- **Rate card preview**: Shows all services with rates in compact view
+- **Pay type CHECK constraint**: Fixed to include `contractor` and `mixed` values
+- **Trigger fix**: `auto_set_company_id_pay_rates` changed to lookup from `NEW.profile_id` instead of `auth.uid()`
+
+### Phase 18 — Auto-Pay Generation — Complete ✓
+- **Commission auto-gen** (`lib/auto-pay.ts`): When quote approved (via status change or signature), looks up salesperson from `customer.assigned_to`, gets their `commission_pct` from `pay_rates`, creates pending commission `pay_entry`. Duplicate-safe.
+- **Contractor pay auto-gen** (`lib/auto-pay.ts`): When install marked complete, classifies each window by product type → maps to rate card services → calculates total pay with breakdown. Creates pending job `pay_entry`.
+- **Window classifier**: Maps product names to service categories (Blind, Shade, Shutter, Motorized, Cornice) plus add-on flags (takedown, tall ladder, masonry).
+- Wired into `quotes/[id]/page.tsx` (both approval paths) and `measure-jobs/[id]/page.tsx` (both completion paths).
+
+### Phase 19 — Role-Based Calendar + Phone Export — Complete ✓
+- **DB**: `assigned_to` column added to `appointments` table (phase21 migration)
+- **Person filter**: Dropdown defaults by role — Owner/Admin/Office/Scheduler see everyone; Sales see self + installers; Installers see only their own
+- **Assignee on create**: "Assign To" field when creating appointments (defaults to current user)
+- **Assignee display**: Shows assigned person name in appointment detail modal
+- **.ics export**: "Add to Calendar" toolbar button exports all visible appointments as .ics file (Android/iPhone compatible)
+- **Single event export**: "Add to My Phone Calendar" button per appointment in detail modal
+
+### Phase 20 — QuickBooks Export + PO Generation — Complete ✓
+- **Payroll export** (`/payroll`): Export dropdown with 3 formats:
+  - CSV (Excel/Sheets): full detail + per-person summary
+  - QuickBooks IIF: hourly → timesheets, commissions/job pay → general journal entries with debit/credit
+  - Payroll Summary: per-person breakdown grouped by pay type with subtotals
+- **Invoice export** (`/payments`): Export dropdown with 3 formats:
+  - CSV: all invoices with outstanding/collected totals
+  - QuickBooks IIF: INVOICE entries (AR debit / Sales credit / Tax splits) + PAYMENT entries
+  - A/R Aging Report: outstanding invoices bucketed by Current, 30+, 60+, 90+ days
+- **Purchase Order generation** (`/quotes/[id]`): "Generate PO" button on approved quotes, opens print-ready HTML PO with line-by-line products, dimensions, costs, vendor blank. Auto-prints.
+- **Job Costing dashboard** (`/analytics`): Per-job profitability analysis — sale price vs material cost + labor + commissions = gross profit/margin. Visual cost breakdown bar, summary cards, exportable CSV.
+
 ### Next Up
-- **User needs to `git push`** to deploy latest changes
-- Wire up Stripe subscription quantity updates when owner approves extra users (auto-bill the $25/mo)
-- Create "Additional User" product in Stripe at $25/mo for extra user billing
+- **User needs to `git push`** to deploy latest changes (5 commits pending)
 - SMS cost strategy (built-in vs. add-on, Twilio)
+- Manufacturer spec library (top 5 brands with curated product data)
 - Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
 - Still pending: Set up Postmark inbound email for order tracking
 - Password reset flow (pages exist, need email wiring)
 - Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
+- Future: Direct QuickBooks Online API integration (OAuth + real-time sync)
 
 ---
 
@@ -175,10 +209,12 @@ PDF parsing, manufacturer library, product change detection. See details below.
 
 ### Payroll & Commissions (`/payroll`)
 - **Pay Entries tab**: table of all entries with approve/mark-paid workflow, per-person summaries, date range + person filters
-- **Pay Rates tab**: per-person rate cards, set new rates (deactivates old)
+- **Pay Rates tab**: toggle-based (hourly/commission/salary/contractor), contractor rate cards with custom services, shows all team members
 - **Payroll Runs tab**: create pay periods, finalize → mark paid
 - **Add Entry modal**: auto-calculates from configured rate
-- Supports: hourly, per-job, per-window, salary, commission-only, and hybrid pay
+- **Auto-pay**: commissions auto-create on quote approval, contractor pay auto-creates on install completion
+- **Export dropdown**: CSV (Excel/Sheets), QuickBooks IIF (timesheets + journal entries), Payroll Summary (for accountant)
+- Supports: hourly, per-job, per-window, salary, commission-only, contractor, and hybrid pay
 
 ### Builder Portal
 - **Internal** (`/builders`): manage builder contacts, projects, portal links
@@ -197,6 +233,7 @@ PDF parsing, manufacturer library, product change detection. See details below.
 
 ### Quote Detail (`/quotes/[id]`) — ENHANCED
 - Materials & Orders section with package-level tracking, order PDF upload
+- **Generate PO** button: creates print-ready purchase order with all line items, dimensions, costs, vendor blank
 
 ### Permission Guards
 - `PermissionGate` + `FeatureGate` double layer on all protected pages
@@ -215,6 +252,7 @@ PDF parsing, manufacturer library, product change detection. See details below.
 
 ### Analytics (`/analytics`)
 - Operations, CRM, Revenue Forecast, Close Rate by Lead Source, Installer Performance, Measurement Accuracy
+- **Job Costing**: per-job profitability (sale vs material + labor + commission costs), visual cost breakdown bar, margin %, CSV export
 
 ### Email Order Tracking (`/api/email-inbound`)
 - Postmark inbound webhook, PDF attachment parsing, package-level auto-updates
@@ -224,6 +262,7 @@ PDF parsing, manufacturer library, product change detection. See details below.
 
 ### Payments & Invoicing (`/payments` and `/invoices/[id]`)
 - Invoice generation from quotes, payment recording, public invoice view (`/i/[token]`)
+- **Export dropdown**: CSV, QuickBooks IIF (invoices + payments), A/R Aging Report (by age bucket)
 
 ### Automation Engine
 - IF/THEN rules, daily cron, 5 presets, Settings UI
@@ -257,6 +296,8 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - phase6_install_management.sql ✓, phase7_whitelabel.sql ✓, phase8_email_outreach.sql ✓
 - phase8_builder_portal.sql ✓, phase9_invoicing.sql ✓, phase9_payroll.sql ✓
 - lead_assignment.sql ✓, phase15_session_tracking.sql ✓, phase16_user_approval_flow.sql ✓
+- phase19_fix_pay_rates_trigger.sql ✓, phase20_fix_pay_type_constraint.sql ✓
+- phase21_appointments_assigned_to.sql ✓
 
 ---
 
@@ -310,5 +351,10 @@ PDF parsing, manufacturer library, product change detection. See details below.
 
 ## Backlog (not yet scheduled)
 - SMS strategy (built-in vs. add-on, Twilio ~$0.01/msg)
-- Manufacturer API integrations
+- Manufacturer spec library (top 5 brands with curated product data)
+- Manufacturer API integrations (EDI / direct catalog feeds)
+- Direct QuickBooks Online API integration (OAuth + real-time sync)
 - Password reset flow (pages exist, need email delivery)
+- React Native mobile app + offline mode
+- Google/Apple Calendar two-way sync (currently one-way .ics export)
+- AI features: auto-quote from photos, product suggestions, close probability

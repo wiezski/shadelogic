@@ -228,6 +228,7 @@ function PayrollPageInner() {
           Payroll & Commissions
         </h1>
         <div className="flex gap-2">
+          <ExportDropdown entries={filteredEntries} team={team} filterRange={filterRange} filterPerson={filterPerson} />
           <AddEntryButton team={team} rates={rates} onAdded={loadAll} />
         </div>
       </div>
@@ -1024,6 +1025,255 @@ function RunsTab({ runs, onUpdated }: { runs: PayrollRun[]; onUpdated: () => voi
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Export Dropdown ────────────────────────────────────────────
+function ExportDropdown({ entries, team, filterRange, filterPerson }: {
+  entries: PayEntry[];
+  team: TeamMember[];
+  filterRange: string;
+  filterPerson: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  function getName(profileId: string) {
+    return team.find(t => t.id === profileId)?.full_name || "Unknown";
+  }
+
+  function downloadFile(content: string, filename: string, mime: string) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function dateStamp() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // ── CSV Export (works with QB, Excel, Google Sheets) ──
+  function exportCSV() {
+    if (entries.length === 0) { alert("No entries to export."); return; }
+    const headers = [
+      "Employee","Date","Type","Description","Hours","Rate",
+      "Sale Amount","Commission %","Amount","Status",
+    ];
+    const rows = entries.map(e => [
+      `"${getName(e.profile_id)}"`,
+      e.work_date,
+      ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type,
+      `"${(e.description || "").replace(/"/g, '""')}"`,
+      e.hours?.toFixed(2) ?? "",
+      e.hourly_rate?.toFixed(2) ?? e.job_rate?.toFixed(2) ?? e.per_window_rate?.toFixed(2) ?? "",
+      e.sale_amount?.toFixed(2) ?? "",
+      e.commission_pct?.toFixed(1) ?? "",
+      e.amount.toFixed(2),
+      e.status,
+    ]);
+
+    // Summary section
+    const summaryByPerson = new Map<string, { total: number; hours: number; jobs: number; commission: number }>();
+    for (const e of entries) {
+      if (!summaryByPerson.has(e.profile_id)) {
+        summaryByPerson.set(e.profile_id, { total: 0, hours: 0, jobs: 0, commission: 0 });
+      }
+      const s = summaryByPerson.get(e.profile_id)!;
+      s.total += e.amount || 0;
+      if (e.entry_type === "hours") s.hours += e.hours || 0;
+      if (e.entry_type === "job") s.jobs += 1;
+      if (e.entry_type === "commission") s.commission += e.amount || 0;
+    }
+
+    let csv = headers.join(",") + "\n";
+    csv += rows.map(r => r.join(",")).join("\n");
+    csv += "\n\n";
+    csv += "--- SUMMARY ---\n";
+    csv += "Employee,Total Earnings,Hours,Jobs,Commission\n";
+    for (const [pid, s] of summaryByPerson) {
+      csv += `"${getName(pid)}",${s.total.toFixed(2)},${s.hours.toFixed(1)},${s.jobs},${s.commission.toFixed(2)}\n`;
+    }
+
+    const label = filterPerson === "all" ? "all" : getName(filterPerson).replace(/\s+/g, "-");
+    downloadFile(csv, `payroll-${label}-${filterRange}-${dateStamp()}.csv`, "text/csv");
+    setOpen(false);
+  }
+
+  // ── QuickBooks IIF Export ──
+  // IIF format is tab-delimited, maps to QB Timesheets + General Journal
+  function exportQBIIF() {
+    if (entries.length === 0) { alert("No entries to export."); return; }
+
+    const lines: string[] = [];
+
+    // ── Timesheet entries (for hourly workers) ──
+    const hourEntries = entries.filter(e => e.entry_type === "hours" && e.hours);
+    if (hourEntries.length > 0) {
+      lines.push("!TIMERHDR\tDATE\tEMPLOYEE\tDURATION\tITEM\tNOTE");
+      lines.push("TIMERHDR\t\t\t\t\t");
+      for (const e of hourEntries) {
+        const duration = `${Math.floor(e.hours!)}:${String(Math.round((e.hours! % 1) * 60)).padStart(2, "0")}`;
+        lines.push(`TIMER\t${e.work_date}\t${getName(e.profile_id)}\t${duration}\tPayroll:Hourly\t${(e.description || "").replace(/\t/g, " ")}`);
+      }
+      lines.push("");
+    }
+
+    // ── General Journal entries (commissions, job pay, bonuses, deductions) ──
+    const otherEntries = entries.filter(e => e.entry_type !== "hours");
+    if (otherEntries.length > 0) {
+      // Group by date for cleaner journal entries
+      const byDate = new Map<string, PayEntry[]>();
+      for (const e of otherEntries) {
+        if (!byDate.has(e.work_date)) byDate.set(e.work_date, []);
+        byDate.get(e.work_date)!.push(e);
+      }
+
+      lines.push("!TRNS\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO");
+      lines.push("!SPL\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO");
+      lines.push("!ENDTRNS\t\t\t\t\t\t");
+
+      for (const [date, dateEntries] of byDate) {
+        for (const e of dateEntries) {
+          const acctMap: Record<string, string> = {
+            commission: "Payroll:Commissions",
+            job: "Payroll:Contractor Pay",
+            bonus: "Payroll:Bonus",
+            deduction: "Payroll:Deductions",
+          };
+          const acct = acctMap[e.entry_type] || "Payroll:Other";
+          const amt = e.entry_type === "deduction" ? -Math.abs(e.amount) : e.amount;
+          const memo = (e.description || ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type).replace(/\t/g, " ").replace(/\n/g, " ");
+
+          // Debit the expense account
+          lines.push(`TRNS\tGENERAL JOURNAL\t${date}\t${acct}\t${getName(e.profile_id)}\t${amt.toFixed(2)}\t${memo}`);
+          // Credit the payable account
+          lines.push(`SPL\tGENERAL JOURNAL\t${date}\tAccounts Payable\t${getName(e.profile_id)}\t${(-amt).toFixed(2)}\t${memo}`);
+          lines.push("ENDTRNS\t\t\t\t\t\t");
+        }
+      }
+    }
+
+    if (lines.length === 0) { alert("No exportable entries found."); return; }
+
+    const label = filterPerson === "all" ? "all" : getName(filterPerson).replace(/\s+/g, "-");
+    downloadFile(lines.join("\r\n"), `payroll-${label}-${filterRange}-${dateStamp()}.iif`, "application/x-iif");
+    setOpen(false);
+  }
+
+  // ── Payroll Summary PDF-ready CSV (for accountants) ──
+  function exportSummaryCSV() {
+    if (entries.length === 0) { alert("No entries to export."); return; }
+
+    // Group by person
+    const byPerson = new Map<string, PayEntry[]>();
+    for (const e of entries) {
+      if (!byPerson.has(e.profile_id)) byPerson.set(e.profile_id, []);
+      byPerson.get(e.profile_id)!.push(e);
+    }
+
+    let csv = "PAYROLL SUMMARY REPORT\n";
+    csv += `Generated: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}\n`;
+    csv += `Period: ${filterRange === "all" ? "All time" : `Last ${filterRange}`}\n\n`;
+
+    csv += "Employee,Pay Type,Qty/Hours,Rate,Total\n";
+
+    let grandTotal = 0;
+    for (const [pid, personEntries] of byPerson) {
+      const name = getName(pid);
+
+      // Group by entry type
+      const byType = new Map<string, { qty: number; rate: number; total: number }>();
+      for (const e of personEntries) {
+        const type = ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type;
+        if (!byType.has(type)) byType.set(type, { qty: 0, rate: 0, total: 0 });
+        const t = byType.get(type)!;
+        t.total += e.amount || 0;
+        if (e.entry_type === "hours") {
+          t.qty += e.hours || 0;
+          t.rate = e.hourly_rate || 0;
+        } else if (e.entry_type === "job") {
+          t.qty += 1;
+        } else if (e.entry_type === "commission") {
+          t.qty += 1;
+          t.rate = e.commission_pct || 0;
+        }
+      }
+
+      let personTotal = 0;
+      for (const [type, data] of byType) {
+        const qtyStr = type === "Hours" ? data.qty.toFixed(1)
+          : type === "Commission" ? `${data.qty} sales`
+          : type === "Job" ? `${data.qty} jobs`
+          : "";
+        const rateStr = type === "Hours" ? `$${data.rate.toFixed(2)}/hr`
+          : type === "Commission" ? `${data.rate}%`
+          : "";
+        csv += `"${name}",${type},${qtyStr},${rateStr},${data.total.toFixed(2)}\n`;
+        personTotal += data.total;
+      }
+      csv += `"${name}",SUBTOTAL,,,${personTotal.toFixed(2)}\n`;
+      grandTotal += personTotal;
+    }
+    csv += `\n,GRAND TOTAL,,,${grandTotal.toFixed(2)}\n`;
+
+    const label = filterPerson === "all" ? "all" : getName(filterPerson).replace(/\s+/g, "-");
+    downloadFile(csv, `payroll-summary-${label}-${filterRange}-${dateStamp()}.csv`, "text/csv");
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(!open)}
+        className="text-xs px-3 py-1.5 rounded font-medium flex items-center gap-1.5 transition-colors"
+        style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+        📤 Export
+        <span className="text-[10px]">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border z-40 min-w-[220px]"
+            style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+            <div className="p-1.5">
+              <button onClick={exportCSV}
+                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-50 transition-colors"
+                style={{ color: "var(--zr-text-primary)" }}>
+                <div className="font-medium">CSV (Excel / Sheets)</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                  Full detail + per-person summary
+                </div>
+              </button>
+              <button onClick={exportQBIIF}
+                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-50 transition-colors"
+                style={{ color: "var(--zr-text-primary)" }}>
+                <div className="font-medium">QuickBooks (.iif)</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                  Import directly into QuickBooks Desktop
+                </div>
+              </button>
+              <button onClick={exportSummaryCSV}
+                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-50 transition-colors"
+                style={{ color: "var(--zr-text-primary)" }}>
+                <div className="font-medium">Payroll Summary</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                  Per-person breakdown for your accountant
+                </div>
+              </button>
+            </div>
+            <div className="border-t px-3 py-2">
+              <div className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}>
+                Exporting {entries.length} entries ({filterRange === "all" ? "all time" : `last ${filterRange}`})
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -92,6 +92,25 @@ export default function AnalyticsPage() {
   const [forecast, setForecast] = useState<{ nextMonth: string; projected: number; trend: "up" | "down" | "flat" } | null>(null);
   const [reMeasureRate, setReMeasureRate] = useState<{ total: number; rework: number; rate: number } | null>(null);
 
+  // Job Costing
+  type JobCostRow = {
+    quoteId: string;
+    title: string;
+    customerName: string;
+    saleAmount: number;
+    materialCost: number;
+    laborCost: number;
+    commissionCost: number;
+    totalCost: number;
+    grossProfit: number;
+    margin: number;
+    collected: number;
+    status: string;
+  };
+  const [jobCosts, setJobCosts] = useState<JobCostRow[]>([]);
+  const [jobCostLoading, setJobCostLoading] = useState(false);
+  const [showJobCost, setShowJobCost] = useState(false);
+
   useEffect(() => { loadStats(); loadCrmStats(); }, [range]);
 
   async function loadStats() {
@@ -485,6 +504,151 @@ export default function AnalyticsPage() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url; a.download = `zeroremake-customers-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  async function loadJobCosts() {
+    if (jobCosts.length > 0) { setShowJobCost(!showJobCost); return; }
+    setJobCostLoading(true);
+    setShowJobCost(true);
+
+    // 1. Load all approved quotes with cost data
+    const { data: qData } = await supabase
+      .from("quotes")
+      .select("id, customer_id, title, total, cost_total, status, created_at")
+      .eq("status", "approved")
+      .gt("total", 0)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const quotes2 = (qData || []) as { id: string; customer_id: string; title: string | null; total: number; cost_total: number; status: string; created_at: string }[];
+    if (quotes2.length === 0) { setJobCostLoading(false); return; }
+
+    // 2. Load customer names
+    const custIds = [...new Set(quotes2.map(q => q.customer_id))];
+    const { data: custData } = await supabase.from("customers").select("id, first_name, last_name").in("id", custIds);
+    const custMap: Record<string, string> = {};
+    (custData || []).forEach((c: any) => { custMap[c.id] = [c.first_name, c.last_name].filter(Boolean).join(" "); });
+
+    // 3. Load pay entries linked to these quotes (commissions)
+    const quoteIds = quotes2.map(q => q.id);
+    const { data: commData } = await supabase
+      .from("pay_entries")
+      .select("quote_id, amount, entry_type")
+      .in("quote_id", quoteIds);
+    const commByQuote: Record<string, number> = {};
+    (commData || []).forEach((e: any) => {
+      if (e.entry_type === "commission") {
+        commByQuote[e.quote_id] = (commByQuote[e.quote_id] || 0) + (e.amount || 0);
+      }
+    });
+
+    // 4. Load pay entries linked to install jobs
+    const { data: installLinks } = await supabase
+      .from("quotes")
+      .select("id, install_job_id")
+      .in("id", quoteIds)
+      .not("install_job_id", "is", null);
+    const jobIdToQuoteId: Record<string, string> = {};
+    (installLinks || []).forEach((q: any) => {
+      if (q.install_job_id) jobIdToQuoteId[q.install_job_id] = q.id;
+    });
+    const installJobIds = Object.keys(jobIdToQuoteId);
+    let laborByQuote: Record<string, number> = {};
+    if (installJobIds.length > 0) {
+      const { data: laborData } = await supabase
+        .from("pay_entries")
+        .select("job_id, amount, entry_type")
+        .in("job_id", installJobIds)
+        .eq("entry_type", "job");
+      (laborData || []).forEach((e: any) => {
+        const qid = jobIdToQuoteId[e.job_id];
+        if (qid) laborByQuote[qid] = (laborByQuote[qid] || 0) + (e.amount || 0);
+      });
+    }
+
+    // 5. Load invoices for collection data
+    const { data: invData } = await supabase
+      .from("invoices")
+      .select("quote_id, amount_paid, status")
+      .in("quote_id", quoteIds);
+    const collectedByQuote: Record<string, number> = {};
+    (invData || []).forEach((inv: any) => {
+      if (inv.quote_id) collectedByQuote[inv.quote_id] = (collectedByQuote[inv.quote_id] || 0) + (inv.amount_paid || 0);
+    });
+
+    // 6. Build rows
+    const rows: JobCostRow[] = quotes2.map(q => {
+      const materialCost = q.cost_total || 0;
+      const commissionCost = commByQuote[q.id] || 0;
+      const laborCost = laborByQuote[q.id] || 0;
+      const totalCost = materialCost + commissionCost + laborCost;
+      const grossProfit = q.total - totalCost;
+      const margin = q.total > 0 ? Math.round((grossProfit / q.total) * 100) : 0;
+      const collected = collectedByQuote[q.id] || 0;
+
+      // Determine status
+      let status = "Sold";
+      if (collected >= q.total) status = "Paid";
+      else if (collected > 0) status = "Partial";
+      else if (installJobIds.some(jid => jobIdToQuoteId[jid] === q.id)) status = "Installing";
+
+      return {
+        quoteId: q.id,
+        title: q.title || "Untitled",
+        customerName: custMap[q.customer_id] || "Unknown",
+        saleAmount: q.total,
+        materialCost,
+        laborCost,
+        commissionCost,
+        totalCost,
+        grossProfit,
+        margin,
+        collected,
+        status,
+      };
+    });
+
+    setJobCosts(rows);
+    setJobCostLoading(false);
+  }
+
+  function exportJobCostCSV() {
+    if (jobCosts.length === 0) return;
+    const headers = ["Customer","Job Title","Sale Amount","Material Cost","Labor Cost","Commission","Total Cost","Gross Profit","Margin %","Collected","Status"];
+    const rows = jobCosts.map(r => [
+      `"${r.customerName}"`,
+      `"${r.title}"`,
+      r.saleAmount.toFixed(2),
+      r.materialCost.toFixed(2),
+      r.laborCost.toFixed(2),
+      r.commissionCost.toFixed(2),
+      r.totalCost.toFixed(2),
+      r.grossProfit.toFixed(2),
+      r.margin + "%",
+      r.collected.toFixed(2),
+      r.status,
+    ]);
+
+    const totals = jobCosts.reduce((acc, r) => ({
+      sale: acc.sale + r.saleAmount,
+      mat: acc.mat + r.materialCost,
+      labor: acc.labor + r.laborCost,
+      comm: acc.comm + r.commissionCost,
+      cost: acc.cost + r.totalCost,
+      profit: acc.profit + r.grossProfit,
+      collected: acc.collected + r.collected,
+    }), { sale: 0, mat: 0, labor: 0, comm: 0, cost: 0, profit: 0, collected: 0 });
+
+    let csv = "JOB COSTING REPORT\n";
+    csv += `Generated: ${new Date().toLocaleDateString()}\n\n`;
+    csv += headers.join(",") + "\n";
+    csv += rows.map(r => r.join(",")).join("\n");
+    csv += `\n\n,TOTALS,${totals.sale.toFixed(2)},${totals.mat.toFixed(2)},${totals.labor.toFixed(2)},${totals.comm.toFixed(2)},${totals.cost.toFixed(2)},${totals.profit.toFixed(2)},${totals.sale > 0 ? Math.round((totals.profit / totals.sale) * 100) : 0}%,${totals.collected.toFixed(2)},\n`;
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `job-costing-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
   }
 
@@ -1056,6 +1220,136 @@ export default function AnalyticsPage() {
                 )}
               </>
             )}
+
+            {/* ── JOB COSTING ── */}
+            <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold">Job Costing & Profitability</h2>
+                <div className="flex gap-1.5">
+                  {showJobCost && jobCosts.length > 0 && (
+                    <button onClick={exportJobCostCSV}
+                      className="text-xs rounded px-2 py-1" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>
+                      📤 Export CSV
+                    </button>
+                  )}
+                  <button onClick={loadJobCosts}
+                    className="text-xs rounded px-2.5 py-1 font-medium"
+                    style={{ background: showJobCost ? "var(--zr-surface-2)" : "var(--zr-orange)", color: showJobCost ? "var(--zr-text-secondary)" : "#fff", border: showJobCost ? "1px solid var(--zr-border)" : "none" }}>
+                    {jobCostLoading ? "Loading…" : showJobCost ? "Hide" : "Load Job Costs"}
+                  </button>
+                </div>
+              </div>
+
+              {!showJobCost && (
+                <p className="text-sm" style={{ color: "var(--zr-text-muted)" }}>
+                  See profit on every job — material cost + labor + commissions vs. sale price.
+                </p>
+              )}
+
+              {showJobCost && jobCosts.length > 0 && (() => {
+                const totals = jobCosts.reduce((acc, r) => ({
+                  sale: acc.sale + r.saleAmount,
+                  mat: acc.mat + r.materialCost,
+                  labor: acc.labor + r.laborCost,
+                  comm: acc.comm + r.commissionCost,
+                  cost: acc.cost + r.totalCost,
+                  profit: acc.profit + r.grossProfit,
+                  collected: acc.collected + r.collected,
+                }), { sale: 0, mat: 0, labor: 0, comm: 0, cost: 0, profit: 0, collected: 0 });
+                const totalMargin = totals.sale > 0 ? Math.round((totals.profit / totals.sale) * 100) : 0;
+
+                return (
+                  <div>
+                    {/* Summary cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                      <div className="rounded p-2.5 text-center" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                        <div className="text-lg font-bold text-green-600">${totals.sale >= 1000 ? (totals.sale / 1000).toFixed(1) + "k" : totals.sale.toFixed(0)}</div>
+                        <div className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}>Total Sales</div>
+                      </div>
+                      <div className="rounded p-2.5 text-center" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                        <div className="text-lg font-bold" style={{ color: "var(--zr-text-primary)" }}>${totals.cost >= 1000 ? (totals.cost / 1000).toFixed(1) + "k" : totals.cost.toFixed(0)}</div>
+                        <div className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}>Total Costs</div>
+                      </div>
+                      <div className="rounded p-2.5 text-center" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                        <div className={`text-lg font-bold ${totals.profit >= 0 ? "text-green-600" : "text-red-600"}`}>${totals.profit >= 1000 ? (totals.profit / 1000).toFixed(1) + "k" : totals.profit.toFixed(0)}</div>
+                        <div className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}>Gross Profit</div>
+                      </div>
+                      <div className="rounded p-2.5 text-center" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                        <div className={`text-lg font-bold ${totalMargin >= 30 ? "text-green-600" : totalMargin >= 15 ? "text-amber-600" : "text-red-600"}`}>{totalMargin}%</div>
+                        <div className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}>Avg Margin</div>
+                      </div>
+                    </div>
+
+                    {/* Cost breakdown bar */}
+                    {totals.cost > 0 && (
+                      <div className="mb-4">
+                        <div className="text-xs font-medium mb-1.5" style={{ color: "var(--zr-text-muted)" }}>COST BREAKDOWN</div>
+                        <div className="flex rounded overflow-hidden h-5">
+                          {totals.mat > 0 && <div style={{ width: `${(totals.mat / totals.cost) * 100}%`, background: "#60a5fa" }} className="flex items-center justify-center text-[9px] text-white font-medium">Materials</div>}
+                          {totals.labor > 0 && <div style={{ width: `${(totals.labor / totals.cost) * 100}%`, background: "#f59e0b" }} className="flex items-center justify-center text-[9px] text-white font-medium">Labor</div>}
+                          {totals.comm > 0 && <div style={{ width: `${(totals.comm / totals.cost) * 100}%`, background: "#a78bfa" }} className="flex items-center justify-center text-[9px] text-white font-medium">Commission</div>}
+                        </div>
+                        <div className="flex gap-4 mt-1.5">
+                          <span className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}><span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />Materials: ${totals.mat.toFixed(0)}</span>
+                          <span className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1" />Labor: ${totals.labor.toFixed(0)}</span>
+                          <span className="text-[10px]" style={{ color: "var(--zr-text-muted)" }}><span className="inline-block w-2 h-2 rounded-full bg-purple-400 mr-1" />Commissions: ${totals.comm.toFixed(0)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Job table */}
+                    <div className="overflow-x-auto -mx-4 px-4">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid var(--zr-border)" }}>
+                            <th className="text-left py-2 pr-2 font-medium" style={{ color: "var(--zr-text-muted)" }}>Customer / Job</th>
+                            <th className="text-right py-2 px-1 font-medium" style={{ color: "var(--zr-text-muted)" }}>Sale</th>
+                            <th className="text-right py-2 px-1 font-medium" style={{ color: "var(--zr-text-muted)" }}>Cost</th>
+                            <th className="text-right py-2 px-1 font-medium" style={{ color: "var(--zr-text-muted)" }}>Profit</th>
+                            <th className="text-right py-2 px-1 font-medium" style={{ color: "var(--zr-text-muted)" }}>%</th>
+                            <th className="text-right py-2 pl-1 font-medium" style={{ color: "var(--zr-text-muted)" }}>Collected</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {jobCosts.map(r => (
+                            <tr key={r.quoteId} style={{ borderBottom: "1px solid var(--zr-border)" }} className="hover:opacity-80">
+                              <td className="py-2 pr-2">
+                                <Link href={`/quotes/${r.quoteId}`} className="text-blue-600 hover:underline font-medium">{r.customerName}</Link>
+                                <div style={{ color: "var(--zr-text-muted)" }}>{r.title}</div>
+                              </td>
+                              <td className="py-2 px-1 text-right text-green-700">${r.saleAmount.toFixed(0)}</td>
+                              <td className="py-2 px-1 text-right" style={{ color: "var(--zr-text-secondary)" }}>
+                                ${r.totalCost.toFixed(0)}
+                                {(r.laborCost > 0 || r.commissionCost > 0) && (
+                                  <div style={{ color: "var(--zr-text-muted)", fontSize: "9px" }}>
+                                    {r.materialCost > 0 ? `M:$${r.materialCost.toFixed(0)}` : ""}
+                                    {r.laborCost > 0 ? ` L:$${r.laborCost.toFixed(0)}` : ""}
+                                    {r.commissionCost > 0 ? ` C:$${r.commissionCost.toFixed(0)}` : ""}
+                                  </div>
+                                )}
+                              </td>
+                              <td className={`py-2 px-1 text-right font-medium ${r.grossProfit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                                ${r.grossProfit.toFixed(0)}
+                              </td>
+                              <td className={`py-2 px-1 text-right ${r.margin >= 30 ? "text-green-700" : r.margin >= 15 ? "text-amber-600" : "text-red-600"}`}>
+                                {r.margin}%
+                              </td>
+                              <td className={`py-2 pl-1 text-right ${r.collected >= r.saleAmount ? "text-green-700" : r.collected > 0 ? "text-amber-600" : ""}`} style={{ color: r.collected === 0 ? "var(--zr-text-muted)" : undefined }}>
+                                ${r.collected.toFixed(0)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {showJobCost && jobCosts.length === 0 && !jobCostLoading && (
+                <p className="text-sm text-center py-4" style={{ color: "var(--zr-text-muted)" }}>No approved quotes with pricing data found.</p>
+              )}
+            </div>
 
             {/* Recent jobs */}
             <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-4">

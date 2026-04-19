@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../auth-provider";
 import { PermissionGate } from "../../permission-gate";
+import { generateContractorPay } from "../../../lib/auto-pay";
 
 type MeasureJob = {
   id: string;
@@ -220,6 +222,7 @@ function csvEscape(value: string) {
 export default function MeasureJobPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, companyId } = useAuth();
   const measureJobId = params.id as string;
 
   const [job, setJob] = useState<MeasureJob | null>(null);
@@ -672,6 +675,20 @@ export default function MeasureJobPage() {
       }]);
       setInstallCompleted(true);
       setShowInstallDoneActions(true);
+      // Auto-generate contractor pay entry
+      if (companyId && user?.id) {
+        generateContractorPay({
+          jobId: job.id, jobTitle: job.title,
+          customerId: job.customer_id, installerId: user.id,
+          windows: windows.map(w => ({
+            product: w.product, takedown: w.takedown,
+            over_10_ft: w.over_10_ft, metal_or_concrete: w.metal_or_concrete,
+            install_status: w.install_status,
+          })),
+          companyId,
+        }).then(r => { if (r.created) console.log("Contractor pay auto-created:", r); })
+          .catch(console.error);
+      }
     } else {
       // Create tasks for each issue
       const issueWindows = windows.filter(w => w.install_status === "issue");
@@ -747,6 +764,20 @@ export default function MeasureJobPage() {
     setShowSignOff(false);
     setInstallCompleted(true);
     setShowInstallDoneActions(true);
+    // Auto-generate contractor pay entry
+    if (companyId && user?.id) {
+      generateContractorPay({
+        jobId: job.id, jobTitle: job.title,
+        customerId: job.customer_id, installerId: user.id,
+        windows: windows.map(w => ({
+          product: w.product, takedown: w.takedown,
+          over_10_ft: w.over_10_ft, metal_or_concrete: w.metal_or_concrete,
+          install_status: w.install_status,
+        })),
+        companyId,
+      }).then(r => { if (r.created) console.log("Contractor pay auto-created:", r); })
+        .catch(console.error);
+    }
   }
 
   function initSignCanvas(canvas: HTMLCanvasElement | null): void {

@@ -8,6 +8,7 @@ import { supabase } from "../../../lib/supabase";
 import { useEmail } from "../../../lib/use-email";
 import { useAuth } from "../../auth-provider";
 import { PermissionGate } from "../../permission-gate";
+import { generateCommissionEntry } from "../../../lib/auto-pay";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -501,6 +502,16 @@ export default function QuotePage() {
         { customer_id: quote.customer_id, title: "Collect deposit", due_date: new Date().toISOString().slice(0, 10) },
         { customer_id: quote.customer_id, title: "Order all materials", due_date: new Date().toISOString().slice(0, 10) },
       ]);
+      // Auto-generate commission entry for the salesperson
+      if (companyId && quote.total) {
+        const commResult = await generateCommissionEntry({
+          quoteId, customerId: quote.customer_id,
+          saleAmount: Number(quote.total), companyId,
+        });
+        if (commResult.created) {
+          console.log("Commission auto-created:", commResult);
+        }
+      }
       // Auto-generate materials if none exist
       const { count } = await supabase.from("quote_materials").select("id", { count: "exact", head: true }).eq("quote_id", quoteId);
       if ((count ?? 0) === 0 && lines.length > 0) {
@@ -538,6 +549,13 @@ export default function QuotePage() {
       created_by: "ZeroRemake",
     }]);
     setQuote(prev => prev ? { ...prev, status: "approved", signature_data: sigData, signed_at: now, signed_name: signedName.trim() } : prev);
+    // Auto-generate commission entry for the salesperson
+    if (companyId && quote.total) {
+      generateCommissionEntry({
+        quoteId, customerId: quote.customer_id,
+        saleAmount: Number(quote.total), companyId,
+      }).catch(console.error);
+    }
     setShowSignature(false);
     setSavingSig(false);
   }

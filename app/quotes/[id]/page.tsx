@@ -795,6 +795,133 @@ export default function QuotePage() {
     setMaterials(prev => prev.filter(m => m.id !== id));
   }
 
+  // ── Purchase Order generation ────────────────────────────────
+
+  function generatePurchaseOrder(vendor?: string) {
+    if (!quote || !customer || lines.length === 0) return;
+
+    // Group lines by product for the PO
+    const poLines = lines.map(l => ({
+      product: l.product_name,
+      room: l.room_name || "",
+      window: l.window_label || "",
+      width: l.width || "",
+      height: l.height || "",
+      mount: l.mount_type || "",
+      motorized: l.is_motorized,
+      cost: l.cost,
+      motorCost: l.is_motorized ? l.motor_cost : 0,
+      notes: l.notes || "",
+    }));
+
+    const custName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+    const poDate = new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+    const poNumber = `PO-${quote.id.slice(0, 8).toUpperCase()}`;
+    const totalCost = lines.reduce((s, l) => s + l.cost + (l.is_motorized ? l.motor_cost : 0), 0);
+
+    // Build a clean HTML PO for printing
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Purchase Order ${poNumber}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, sans-serif; font-size: 12px; color: #222; padding: 24px; max-width: 800px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #222; }
+  .header h1 { font-size: 22px; }
+  .header .meta { text-align: right; font-size: 11px; line-height: 1.6; }
+  .meta strong { display: block; font-size: 14px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .info-box { background: #f9f9f9; padding: 12px; border-radius: 6px; }
+  .info-box .label { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #f3f3f3; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; color: #555; border-bottom: 1px solid #ddd; }
+  td { padding: 7px 10px; border-bottom: 1px solid #eee; font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+  .totals { text-align: right; margin-top: 12px; padding-top: 12px; border-top: 2px solid #222; }
+  .totals .line { display: flex; justify-content: flex-end; gap: 24px; margin-bottom: 4px; }
+  .totals .grand { font-size: 16px; font-weight: bold; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 10px; color: #888; }
+  .notes-box { margin-top: 20px; padding: 12px; border: 1px dashed #ccc; border-radius: 6px; min-height: 60px; }
+  .notes-box .label { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 6px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<div class="header">
+  <div>
+    <h1>PURCHASE ORDER</h1>
+    <div style="color:#666; margin-top:4px">${compSettings.name}</div>
+    ${compSettings.phone ? `<div style="color:#888; font-size:11px">${compSettings.phone}</div>` : ""}
+  </div>
+  <div class="meta">
+    <strong>${poNumber}</strong>
+    Date: ${poDate}<br>
+    Quote: ${quote.title || "Untitled"}
+  </div>
+</div>
+
+<div class="info-grid">
+  <div class="info-box">
+    <div class="label">Ship To / Job Site</div>
+    <strong>${custName}</strong><br>
+    ${customer.phone || ""}<br>
+    ${customer.email || ""}
+  </div>
+  <div class="info-box">
+    <div class="label">Vendor</div>
+    <strong>${vendor || "________________"}</strong><br>
+    <br>
+    <span style="color:#888">Account #: ________________</span>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Product</th>
+      <th>Room / Window</th>
+      <th>Size</th>
+      <th>Mount</th>
+      <th>Motor</th>
+      <th style="text-align:right">Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${poLines.map((l, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${l.product}</strong>${l.notes ? `<br><span style="color:#888;font-size:10px">${l.notes}</span>` : ""}</td>
+      <td>${[l.room, l.window].filter(Boolean).join(" / ")}</td>
+      <td>${l.width && l.height ? `${l.width}" × ${l.height}"` : "—"}</td>
+      <td>${l.mount || "—"}</td>
+      <td>${l.motorized ? "Yes" : "—"}</td>
+      <td style="text-align:right">$${(l.cost + l.motorCost).toFixed(2)}</td>
+    </tr>`).join("")}
+  </tbody>
+</table>
+
+<div class="totals">
+  <div class="line"><span>Items:</span><span>${lines.length}</span></div>
+  <div class="line grand"><span>Total Cost:</span><span>$${totalCost.toFixed(2)}</span></div>
+</div>
+
+<div class="notes-box">
+  <div class="label">Special Instructions / Notes</div>
+  ${quote.notes || "<span style='color:#ccc'>None</span>"}
+</div>
+
+<div class="footer">
+  Generated by ${compSettings.name} • ${poDate} • ${poNumber}
+</div>
+
+<script>window.onload = function() { window.print(); }</script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  }
+
   // ── Package tracking functions ─────────────────────────────
 
   async function loadPackages(materialId: string) {
@@ -1450,7 +1577,10 @@ export default function QuotePage() {
                   </span>
                 )}
               </div>
-              <button onClick={() => setShowAddMat(true)} className="text-xs border rounded px-2 py-1 hover:bg-gray-50">+ Add Item</button>
+              <div className="flex gap-1.5">
+                <button onClick={() => generatePurchaseOrder()} className="text-xs border rounded px-2 py-1 hover:bg-gray-50">📄 Generate PO</button>
+                <button onClick={() => setShowAddMat(true)} className="text-xs border rounded px-2 py-1 hover:bg-gray-50">+ Add Item</button>
+              </div>
             </div>
             {/* Ready to install banner */}
             {materials.length > 0 && materials.every(m => m.status === "received" || m.status === "staged") && (

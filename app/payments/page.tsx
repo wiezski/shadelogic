@@ -288,6 +288,195 @@ function CreateInvoiceModal({ open, onClose, onCreated }: {
   );
 }
 
+// ── Invoice Export Dropdown ────────────────────────────────────
+function InvoiceExportDropdown({ invoices }: { invoices: Invoice[] }) {
+  const [open, setOpen] = useState(false);
+
+  function downloadFile(content: string, filename: string, mime: string) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  function exportCSV() {
+    if (invoices.length === 0) { alert("No invoices to export."); return; }
+    const headers = [
+      "Invoice #","Customer","Type","Status","Subtotal","Tax %","Tax Amount",
+      "Total","Amount Paid","Amount Due","Due Date","Created","Sent","Paid",
+    ];
+    const rows = invoices.map(inv => [
+      inv.invoice_number,
+      `"${inv.customer_name}"`,
+      inv.type,
+      inv.status,
+      inv.subtotal.toFixed(2),
+      (inv.tax_pct || 0).toFixed(1),
+      (inv.tax_amount || 0).toFixed(2),
+      inv.total.toFixed(2),
+      inv.amount_paid.toFixed(2),
+      inv.amount_due.toFixed(2),
+      inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
+      new Date(inv.created_at).toLocaleDateString(),
+      inv.sent_at ? new Date(inv.sent_at).toLocaleDateString() : "",
+      inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : "",
+    ]);
+
+    // Summary
+    const outstanding = invoices.filter(i => !["paid","void"].includes(i.status)).reduce((s, i) => s + i.amount_due, 0);
+    const collected = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+
+    let csv = headers.join(",") + "\n";
+    csv += rows.map(r => r.join(",")).join("\n");
+    csv += "\n\n--- SUMMARY ---\n";
+    csv += `Total Outstanding,${outstanding.toFixed(2)}\n`;
+    csv += `Total Collected,${collected.toFixed(2)}\n`;
+    csv += `Total Invoices,${invoices.length}\n`;
+
+    downloadFile(csv, `invoices-${stamp}.csv`, "text/csv");
+    setOpen(false);
+  }
+
+  function exportQBIIF() {
+    if (invoices.length === 0) { alert("No invoices to export."); return; }
+
+    const lines: string[] = [];
+    lines.push("!TRNS\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tDOCNUM\tMEMO");
+    lines.push("!SPL\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tDOCNUM\tMEMO");
+    lines.push("!ENDTRNS\t\t\t\t\t\t\t");
+
+    for (const inv of invoices) {
+      if (inv.status === "void") continue;
+      const dateStr = new Date(inv.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+      const custName = inv.customer_name.replace(/\t/g, " ");
+      const typeLabel = inv.type === "deposit" ? "Deposit Invoice" : inv.type === "balance" ? "Balance Invoice" : "Invoice";
+
+      // Transaction line (debit Accounts Receivable)
+      lines.push(`TRNS\tINVOICE\t${dateStr}\tAccounts Receivable\t${custName}\t${inv.total.toFixed(2)}\t${inv.invoice_number}\t${typeLabel}`);
+
+      // Split line (credit Sales/Revenue)
+      const subtotal = inv.subtotal || inv.total;
+      lines.push(`SPL\tINVOICE\t${dateStr}\tSales:Window Treatments\t${custName}\t${(-subtotal).toFixed(2)}\t${inv.invoice_number}\t${typeLabel}`);
+
+      // Tax split if applicable
+      if (inv.tax_amount && inv.tax_amount > 0) {
+        lines.push(`SPL\tINVOICE\t${dateStr}\tSales Tax Payable\t${custName}\t${(-inv.tax_amount).toFixed(2)}\t${inv.invoice_number}\tTax`);
+      }
+
+      lines.push("ENDTRNS\t\t\t\t\t\t\t");
+    }
+
+    // Also export payments as RECEIVE PAYMENT entries
+    const paidInvoices = invoices.filter(i => i.amount_paid > 0);
+    if (paidInvoices.length > 0) {
+      lines.push("");
+      for (const inv of paidInvoices) {
+        const payDate = inv.paid_at
+          ? new Date(inv.paid_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+          : new Date(inv.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+        const custName = inv.customer_name.replace(/\t/g, " ");
+
+        lines.push(`TRNS\tPAYMENT\t${payDate}\tUndeposited Funds\t${custName}\t${inv.amount_paid.toFixed(2)}\t${inv.invoice_number}\tPayment received`);
+        lines.push(`SPL\tPAYMENT\t${payDate}\tAccounts Receivable\t${custName}\t${(-inv.amount_paid).toFixed(2)}\t${inv.invoice_number}\tPayment received`);
+        lines.push("ENDTRNS\t\t\t\t\t\t\t");
+      }
+    }
+
+    downloadFile(lines.join("\r\n"), `invoices-qb-${stamp}.iif`, "application/x-iif");
+    setOpen(false);
+  }
+
+  function exportAgingCSV() {
+    const outstanding = invoices.filter(i => !["paid","void"].includes(i.status) && i.amount_due > 0);
+    if (outstanding.length === 0) { alert("No outstanding invoices."); return; }
+
+    const now = Date.now();
+    const buckets = { current: [] as Invoice[], over30: [] as Invoice[], over60: [] as Invoice[], over90: [] as Invoice[] };
+
+    for (const inv of outstanding) {
+      const dueMs = inv.due_date ? new Date(inv.due_date).getTime() : new Date(inv.created_at).getTime() + 30 * 86400000;
+      const daysOverdue = Math.max(0, Math.floor((now - dueMs) / 86400000));
+      if (daysOverdue >= 90) buckets.over90.push(inv);
+      else if (daysOverdue >= 60) buckets.over60.push(inv);
+      else if (daysOverdue >= 30) buckets.over30.push(inv);
+      else buckets.current.push(inv);
+    }
+
+    let csv = "ACCOUNTS RECEIVABLE AGING REPORT\n";
+    csv += `Generated: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}\n\n`;
+    csv += "Customer,Invoice #,Due Date,Amount Due,Aging Bucket\n";
+
+    function addBucket(label: string, items: Invoice[]) {
+      for (const inv of items) {
+        csv += `"${inv.customer_name}",${inv.invoice_number},${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "N/A"},${inv.amount_due.toFixed(2)},${label}\n`;
+      }
+    }
+
+    addBucket("Current", buckets.current);
+    addBucket("30+ Days", buckets.over30);
+    addBucket("60+ Days", buckets.over60);
+    addBucket("90+ Days", buckets.over90);
+
+    csv += `\n--- AGING SUMMARY ---\n`;
+    csv += `Current,${buckets.current.reduce((s, i) => s + i.amount_due, 0).toFixed(2)}\n`;
+    csv += `30+ Days,${buckets.over30.reduce((s, i) => s + i.amount_due, 0).toFixed(2)}\n`;
+    csv += `60+ Days,${buckets.over60.reduce((s, i) => s + i.amount_due, 0).toFixed(2)}\n`;
+    csv += `90+ Days,${buckets.over90.reduce((s, i) => s + i.amount_due, 0).toFixed(2)}\n`;
+    csv += `Total Outstanding,${outstanding.reduce((s, i) => s + i.amount_due, 0).toFixed(2)}\n`;
+
+    downloadFile(csv, `ar-aging-${stamp}.csv`, "text/csv");
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(!open)}
+        className="text-xs px-3 py-1.5 rounded font-medium flex items-center gap-1.5"
+        style={{ background: "var(--zr-surface-2, #f5f5f5)", color: "var(--zr-text-secondary, #666)", border: "1px solid var(--zr-border, #e0e0e0)" }}>
+        📤 Export
+        <span className="text-[10px]">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border z-40 min-w-[240px]"
+            style={{ background: "var(--zr-surface-1, #fff)", border: "1px solid var(--zr-border, #e0e0e0)" }}>
+            <div className="p-1.5">
+              <button onClick={exportCSV}
+                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-50">
+                <div className="font-medium" style={{ color: "var(--zr-text-primary, #1a1a1a)" }}>CSV (Excel / Sheets)</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted, #999)" }}>All invoices with summary totals</div>
+              </button>
+              <button onClick={exportQBIIF}
+                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-50">
+                <div className="font-medium" style={{ color: "var(--zr-text-primary, #1a1a1a)" }}>QuickBooks (.iif)</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted, #999)" }}>Invoices + payments for QB Desktop</div>
+              </button>
+              <button onClick={exportAgingCSV}
+                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-50">
+                <div className="font-medium" style={{ color: "var(--zr-text-primary, #1a1a1a)" }}>A/R Aging Report</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted, #999)" }}>Outstanding invoices by age bucket</div>
+              </button>
+            </div>
+            <div className="border-t px-3 py-2">
+              <div className="text-[10px]" style={{ color: "var(--zr-text-muted, #999)" }}>
+                {invoices.length} invoices
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────
 export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<"invoices" | "quotes">("invoices");
@@ -455,7 +644,10 @@ export default function PaymentsPage() {
       <PermissionGate require="view_financials">
         <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
           <div className="mx-auto max-w-2xl space-y-5">
-            <h1 className="text-xl font-bold">Payments & Invoices</h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold">Payments & Invoices</h1>
+              <InvoiceExportDropdown invoices={invoices} />
+            </div>
 
             {/* Summary */}
             {activeTab === "invoices" && (

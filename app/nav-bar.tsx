@@ -52,6 +52,7 @@ export function NavBar() {
           { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
           { href: "/settings",  label: "Settings",  show: permissions.access_settings },
           { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
+          { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
           { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
         ].filter(i => i.show).map(({ href, label, badge }) => (
           <Link key={href} href={href}

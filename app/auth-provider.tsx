@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
 
-  const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r));
+  const isPublic = pathname === "/" || PUBLIC_ROUTES.some(r => pathname.startsWith(r));
 
   async function loadProfile(uid: string) {
     const { data } = await supabase

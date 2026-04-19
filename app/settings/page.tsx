@@ -875,6 +875,176 @@ function BrandingSection() {
   );
 }
 
+// ── Integration Toggles (SMS / Live Payments) ────────────────
+
+function IntegrationToggles() {
+  const { companyId, role } = useAuth();
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [livePayEnabled, setLivePayEnabled] = useState(false);
+  const [twilioSid, setTwilioSid] = useState("");
+  const [twilioToken, setTwilioToken] = useState("");
+  const [twilioPhone, setTwilioPhone] = useState("");
+  const [stripeConnectId, setStripeConnectId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!companyId) return;
+    supabase.from("companies")
+      .select("sms_enabled, live_payments_enabled, twilio_account_sid, twilio_auth_token, twilio_phone_number, stripe_connect_account_id")
+      .eq("id", companyId).single()
+      .then(({ data }) => {
+        if (data) {
+          setSmsEnabled(data.sms_enabled || false);
+          setLivePayEnabled(data.live_payments_enabled || false);
+          setTwilioSid(data.twilio_account_sid || "");
+          setTwilioToken(data.twilio_auth_token || "");
+          setTwilioPhone(data.twilio_phone_number || "");
+          setStripeConnectId(data.stripe_connect_account_id || "");
+        }
+        setLoading(false);
+      });
+  }, [companyId]);
+
+  async function saveSms() {
+    if (!companyId) return;
+    await supabase.from("companies").update({
+      sms_enabled: smsEnabled,
+      twilio_account_sid: twilioSid || null,
+      twilio_auth_token: twilioToken || null,
+      twilio_phone_number: twilioPhone || null,
+    }).eq("id", companyId);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function toggleSms(val: boolean) {
+    setSmsEnabled(val);
+    if (!val) {
+      await supabase.from("companies").update({ sms_enabled: false }).eq("id", companyId);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  }
+
+  async function toggleLivePay(val: boolean) {
+    setLivePayEnabled(val);
+    await supabase.from("companies").update({ live_payments_enabled: val }).eq("id", companyId);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  if (role !== "owner" && role !== "admin") return null;
+  if (loading) return null;
+
+  return (
+    <div className="rounded p-4 space-y-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Integration Toggles</h2>
+        {saved && <span className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>Saved</span>}
+      </div>
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+        Enable cost-bearing integrations when you're ready. They're off by default.
+      </p>
+
+      {/* SMS / Twilio */}
+      <div className="rounded p-3 space-y-3" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>SMS via Twilio</div>
+            <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+              Send texts directly from ZeroRemake instead of opening the native messaging app. ~$0.0079/msg.
+            </div>
+          </div>
+          <button
+            onClick={() => toggleSms(!smsEnabled)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${smsEnabled ? "" : "bg-gray-300"}`}
+            style={smsEnabled ? { background: "var(--zr-success)" } : {}}>
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${smsEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+
+        {smsEnabled && (
+          <div className="space-y-2 pt-1">
+            <div className="rounded p-2 text-xs" style={{ background: "rgba(59,130,246,0.1)", color: "var(--zr-info)" }}>
+              Get your Twilio credentials at <a href="https://console.twilio.com" target="_blank" rel="noreferrer" className="underline">console.twilio.com</a>. New accounts get free trial credit.
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Account SID</label>
+              <input value={twilioSid} onChange={e => setTwilioSid(e.target.value)}
+                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="w-full rounded px-2 py-1.5 text-sm font-mono"
+                style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Auth Token</label>
+              <input value={twilioToken} onChange={e => setTwilioToken(e.target.value)}
+                type="password" placeholder="Your auth token"
+                className="w-full rounded px-2 py-1.5 text-sm font-mono"
+                style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Twilio Phone Number</label>
+              <input value={twilioPhone} onChange={e => setTwilioPhone(e.target.value)}
+                placeholder="+18015551234"
+                className="w-full rounded px-2 py-1.5 text-sm font-mono"
+                style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+            </div>
+            <button onClick={saveSms}
+              className="rounded px-3 py-1.5 text-xs font-medium text-white"
+              style={{ background: "var(--zr-orange)" }}>
+              Save Twilio Settings
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Stripe Connect / Live Payments */}
+      <div className="rounded p-3 space-y-3" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>Live Customer Payments</div>
+            <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+              Accept credit cards and ACH via Stripe Connect on customer invoices. 2.9% + 30¢ per transaction.
+            </div>
+          </div>
+          <button
+            onClick={() => toggleLivePay(!livePayEnabled)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${livePayEnabled ? "" : "bg-gray-300"}`}
+            style={livePayEnabled ? { background: "var(--zr-success)" } : {}}>
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${livePayEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+
+        {livePayEnabled && (
+          <div className="space-y-2 pt-1">
+            <div className="rounded p-2 text-xs" style={{ background: "rgba(59,130,246,0.1)", color: "var(--zr-info)" }}>
+              Stripe Connect lets your customers pay directly on their invoice. Funds go to your Stripe account minus processing fees.
+            </div>
+            {stripeConnectId ? (
+              <div className="rounded p-2" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid var(--zr-success)" }}>
+                <div className="text-xs font-medium" style={{ color: "var(--zr-success)" }}>Stripe Account Connected</div>
+                <div className="text-xs font-mono mt-0.5" style={{ color: "var(--zr-text-muted)" }}>{stripeConnectId}</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>
+                  You need a Stripe account to accept live payments. Click below to start the onboarding process.
+                </p>
+                <a href={`/api/stripe/connect/onboard?company_id=${companyId}`}
+                  className="inline-block rounded px-3 py-1.5 text-xs font-medium text-white"
+                  style={{ background: "#635BFF" }}>
+                  Connect with Stripe
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Data export ───────────────────────────────────────────────
 
 function DataExportSection() {
@@ -1544,6 +1714,7 @@ export default function SettingsPage() {
               <span className="text-lg" style={{ color: "var(--zr-text-secondary)" }}>→</span>
             </Link>
 
+            <IntegrationToggles />
             <PlanSection />
             <BrandingSection />
             <EmailTrackingSection />

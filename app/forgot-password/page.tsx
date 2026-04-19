@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { supabase } from "../../lib/supabase";
 import { ZRLogo } from "../zr-logo";
 
 export default function ForgotPasswordPage() {
@@ -16,12 +15,25 @@ export default function ForgotPasswordPage() {
     if (!email.trim()) { setError("Enter your email address."); return; }
     setError(""); setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/reset-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: redirectUrl,
-    });
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(false);
-    if (error) { setError(error.message); return; }
     setSent(true);
   }
 

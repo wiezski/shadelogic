@@ -38,6 +38,7 @@ import {
   quoteDelivery,
   installFollowup,
   quoteFollowup,
+  passwordReset,
 } from "../../../lib/email-templates";
 
 export async function POST(req: NextRequest) {

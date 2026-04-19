@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./auth-provider";
 import { EmptyState } from "./ui";
+import { LandingPage } from "./landing-page";
 import {
   QuickActionsWidget,
   KPIStripWidget,
@@ -80,7 +81,10 @@ const stageStyle: Record<string, string> = {
 };
 
 export default function HomePage() {
-  const { role, permissions } = useAuth();
+  const { user, role, permissions } = useAuth();
+
+  // Show landing page for unauthenticated visitors
+  if (!user) return <LandingPage />;
   const [tab, setTab] = useState<"dashboard" | "customers">("dashboard");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);

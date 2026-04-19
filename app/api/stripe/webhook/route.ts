@@ -235,6 +235,68 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // ── Stripe Connect Events ──────────────────────────────────
+
+      case "account.updated": {
+        // A connected account completed onboarding or changed status
+        const account = event.data.object as Stripe.Account;
+        const accountId = account.id;
+
+        // Find company with this Connect account
+        const { data: connectCompanies } = await supabaseAdmin
+          .from("companies")
+          .select("id")
+          .eq("stripe_connect_account_id", accountId);
+
+        if (connectCompanies && connectCompanies.length > 0) {
+          const isOnboarded = account.charges_enabled && account.payouts_enabled;
+          await supabaseAdmin
+            .from("companies")
+            .update({ stripe_connect_onboarded: isOnboarded })
+            .eq("id", connectCompanies[0].id);
+
+          console.log(`[stripe/webhook] Connect account ${accountId} updated: onboarded=${isOnboarded}`);
+        }
+        break;
+      }
+
+      case "payment_intent.succeeded": {
+        // A customer payment succeeded via Connect
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const invoiceId = pi.metadata?.invoice_id;
+        const piCompanyId = pi.metadata?.company_id;
+
+        if (invoiceId && piCompanyId) {
+          // Record the payment on the invoice
+          const amountDollars = pi.amount / 100;
+
+          // Get current invoice
+          const { data: inv } = await supabaseAdmin
+            .from("invoices")
+            .select("amount_paid, total_amount, status")
+            .eq("id", invoiceId)
+            .single();
+
+          if (inv) {
+            const newPaid = (inv.amount_paid || 0) + amountDollars;
+            const newStatus = newPaid >= inv.total_amount ? "paid" : "partial";
+
+            await supabaseAdmin
+              .from("invoices")
+              .update({
+                amount_paid: newPaid,
+                status: newStatus,
+                last_payment_at: new Date().toISOString(),
+                last_payment_method: "stripe_connect",
+              })
+              .eq("id", invoiceId);
+
+            console.log(`[stripe/webhook] Invoice ${invoiceId} payment: $${amountDollars}, status=${newStatus}`);
+          }
+        }
+        break;
+      }
+
       default:
         console.log(`[stripe/webhook] Unhandled event type: ${event.type}`);
     }

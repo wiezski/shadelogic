@@ -63,6 +63,9 @@ type Material = {
   order_pdf_path: string | null;
   order_pdf_text: string | null;
   eta: string | null;
+  staged_at: string | null;
+  staged_by: string | null;
+  storage_location: string | null;
 };
 
 type MaterialPackage = {
@@ -74,7 +77,11 @@ type MaterialPackage = {
   received_at: string | null;
   received_by: string | null;
   notes: string | null;
+  storage_location: string | null;
+  checked_in_at: string | null;
 };
+
+const STORAGE_LOCATIONS = ["Warehouse", "Garage", "Shelf A", "Shelf B", "Shelf C", "Shop", "Truck", "Job Site", "Other"];
 
 const MATERIAL_STATUSES = [
   { value: "not_ordered", label: "Not Ordered", color: "bg-gray-100 text-gray-600" },
@@ -153,7 +160,7 @@ export default function QuotePage() {
   const params  = useParams();
   const quoteId = params.id as string;
   const router  = useRouter();
-  const { companyId } = useAuth();
+  const { user, companyId } = useAuth();
   const { send: sendEmailApi, sending: emailSending } = useEmail();
   const [emailSentQuote, setEmailSentQuote] = useState(false);
 
@@ -200,6 +207,7 @@ export default function QuotePage() {
   // Package tracking
   const [packages,     setPackages]     = useState<Record<string, MaterialPackage[]>>({});
   const [expandedMat,  setExpandedMat]  = useState<string | null>(null);
+  const [showChecklist, setShowChecklist] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState<string | null>(null);
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
   const [pkgTracking,  setPkgTracking]  = useState("");
@@ -958,16 +966,17 @@ export default function QuotePage() {
     setPkgTracking(""); setPkgDesc(""); setAddingPkg(null);
   }
 
-  async function checkInPackage(materialId: string, packageId: string) {
+  async function checkInPackage(materialId: string, packageId: string, location?: string) {
     const now = new Date().toISOString();
     await supabase.from("material_packages").update({
-      status: "received", received_at: now, received_by: "User",
+      status: "received", received_at: now, received_by: user?.id || "User",
+      checked_in_at: now, storage_location: location || null,
     }).eq("id", packageId);
 
     setPackages(prev => ({
       ...prev,
       [materialId]: (prev[materialId] || []).map(p =>
-        p.id === packageId ? { ...p, status: "received", received_at: now } : p
+        p.id === packageId ? { ...p, status: "received", received_at: now, storage_location: location || null, checked_in_at: now } : p
       ),
     }));
 
@@ -975,6 +984,12 @@ export default function QuotePage() {
     const mat = materials.find(m => m.id === materialId);
     const newReceivedCount = (mat?.received_packages || 0) + 1;
     await updateMaterialField(materialId, "received_packages", newReceivedCount);
+
+    // If location set, also update parent material storage_location
+    if (location) {
+      await supabase.from("quote_materials").update({ storage_location: location }).eq("id", materialId);
+      setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, storage_location: location } : m));
+    }
 
     // Check if all packages received
     const updatedPkgs = (packages[materialId] || []).map(p =>
@@ -986,15 +1001,79 @@ export default function QuotePage() {
     }
   }
 
+  async function checkInAllPackages(materialId: string, location?: string) {
+    const now = new Date().toISOString();
+    const matPkgs = packages[materialId] || [];
+    const pending = matPkgs.filter(p => p.status !== "received");
+    if (pending.length === 0) return;
+
+    // Batch update all pending packages
+    for (const pkg of pending) {
+      await supabase.from("material_packages").update({
+        status: "received", received_at: now, received_by: user?.id || "User",
+        checked_in_at: now, storage_location: location || null,
+      }).eq("id", pkg.id);
+    }
+
+    setPackages(prev => ({
+      ...prev,
+      [materialId]: (prev[materialId] || []).map(p =>
+        p.status !== "received" ? { ...p, status: "received", received_at: now, storage_location: location || null, checked_in_at: now } : p
+      ),
+    }));
+
+    const totalPkgs = matPkgs.length;
+    await updateMaterialField(materialId, "received_packages", totalPkgs);
+    await updateMaterialStatus(materialId, "received");
+    if (location) {
+      await supabase.from("quote_materials").update({ storage_location: location }).eq("id", materialId);
+      setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, storage_location: location } : m));
+    }
+  }
+
+  async function stageForInstall(materialId: string) {
+    const now = new Date().toISOString();
+    await supabase.from("quote_materials").update({
+      status: "staged", staged_at: now, staged_by: user?.id || null,
+    }).eq("id", materialId);
+    setMaterials(prev => prev.map(m =>
+      m.id === materialId ? { ...m, status: "staged", staged_at: now } : m
+    ));
+  }
+
+  async function stageAllMaterials() {
+    const now = new Date().toISOString();
+    const receivedMats = materials.filter(m => m.status === "received");
+    for (const mat of receivedMats) {
+      await supabase.from("quote_materials").update({
+        status: "staged", staged_at: now, staged_by: user?.id || null,
+      }).eq("id", mat.id);
+    }
+    setMaterials(prev => prev.map(m =>
+      m.status === "received" ? { ...m, status: "staged", staged_at: now } : m
+    ));
+  }
+
+  async function updatePackageLocation(materialId: string, packageId: string, location: string) {
+    await supabase.from("material_packages").update({ storage_location: location }).eq("id", packageId);
+    setPackages(prev => ({
+      ...prev,
+      [materialId]: (prev[materialId] || []).map(p =>
+        p.id === packageId ? { ...p, storage_location: location } : p
+      ),
+    }));
+  }
+
   async function undoCheckIn(materialId: string, packageId: string) {
     await supabase.from("material_packages").update({
       status: "pending", received_at: null, received_by: null,
+      checked_in_at: null, storage_location: null,
     }).eq("id", packageId);
 
     setPackages(prev => ({
       ...prev,
       [materialId]: (prev[materialId] || []).map(p =>
-        p.id === packageId ? { ...p, status: "pending", received_at: null } : p
+        p.id === packageId ? { ...p, status: "pending", received_at: null, storage_location: null } : p
       ),
     }));
 
@@ -1565,6 +1644,103 @@ export default function QuotePage() {
           </Link>
         )}
 
+        {/* ── JOB MATERIALS CHECKLIST ── */}
+        {quote.status === "approved" && lines.length > 0 && materials.length > 0 && (
+          <div className="rounded border">
+            <button
+              onClick={() => setShowChecklist(!showChecklist)}
+              className="w-full flex items-center justify-between px-3 py-2 border-b hover:bg-gray-50 text-left">
+              <div className="font-semibold text-sm flex items-center gap-2">
+                Job Materials Checklist
+                {(() => {
+                  const allReceived = materials.length > 0 && materials.every(m => m.status === "received" || m.status === "staged");
+                  const total = lines.length;
+                  const matched = lines.filter(l => materials.some(m => m.description.includes(l.product_name))).length;
+                  return (
+                    <span className={`text-xs font-normal ${allReceived ? "text-green-600" : "text-gray-400"}`}>
+                      {allReceived ? "All received" : `${matched}/${total} items tracked`}
+                    </span>
+                  );
+                })()}
+              </div>
+              <span className="text-xs text-gray-400">{showChecklist ? "▾" : "▸"}</span>
+            </button>
+            {showChecklist && (
+              <div className="text-xs">
+                {/* Header row */}
+                <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px] gap-1 px-3 py-1.5 bg-gray-100 border-b font-semibold text-gray-500">
+                  <span>Product</span>
+                  <span>Measured</span>
+                  <span>Quoted</span>
+                  <span>Order Status</span>
+                  <span>Location</span>
+                  <span>Match</span>
+                </div>
+                {/* One row per quote line, matched against materials */}
+                {lines.map(line => {
+                  const matchedMat = materials.find(m =>
+                    m.description.includes(line.product_name) ||
+                    (line.room_name && m.description.includes(line.room_name))
+                  );
+                  const matStatus = matchedMat ? (MATERIAL_STATUSES.find(s => s.value === matchedMat.status) || MATERIAL_STATUSES[0]) : null;
+                  const isReceived = matchedMat?.status === "received" || matchedMat?.status === "staged";
+                  const isMismatch = false; // Could add size comparison later
+
+                  return (
+                    <div key={line.id}
+                      className={`grid grid-cols-[1fr_80px_80px_90px_80px_70px] gap-1 px-3 py-1.5 border-b items-center ${isReceived ? "bg-green-50" : ""}`}>
+                      <div className="truncate">
+                        <span className="font-medium">{line.product_name}</span>
+                        {line.room_name && <span className="text-gray-400 ml-1">({line.room_name}{line.window_label ? ` - ${line.window_label}` : ""})</span>}
+                      </div>
+                      <div className="text-gray-600">
+                        {line.width && line.height ? `${line.width}" × ${line.height}"` : "—"}
+                      </div>
+                      <div className="text-gray-600">
+                        {line.mount_type || "—"}
+                        {line.is_motorized && <span className="text-amber-600 ml-0.5">⚡</span>}
+                      </div>
+                      <div>
+                        {matchedMat ? (
+                          <span className={`rounded px-1.5 py-0.5 ${matStatus?.color}`}>{matStatus?.label}</span>
+                        ) : (
+                          <span className="text-gray-300">Not tracked</span>
+                        )}
+                      </div>
+                      <div className="text-purple-600 truncate">
+                        {matchedMat?.storage_location || "—"}
+                      </div>
+                      <div>
+                        {matchedMat ? (
+                          isReceived ? (
+                            <span className="text-green-600 font-medium">✓ OK</span>
+                          ) : isMismatch ? (
+                            <span className="text-red-600 font-medium">⚠ Check</span>
+                          ) : (
+                            <span className="text-amber-600">Pending</span>
+                          )
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Summary footer */}
+                <div className="px-3 py-2 bg-gray-50 flex items-center justify-between">
+                  <div className="text-gray-500">
+                    {lines.length} items quoted &middot;{" "}
+                    {materials.filter(m => m.status === "received" || m.status === "staged").length}/{materials.length} materials received
+                  </div>
+                  {materials.length > 0 && materials.every(m => m.status === "received" || m.status === "staged") && (
+                    <span className="text-green-600 font-semibold">Ready for install</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── MATERIALS ── */}
         {quote.status === "approved" && (
           <div className="rounded border">
@@ -1582,10 +1758,21 @@ export default function QuotePage() {
                 <button onClick={() => setShowAddMat(true)} className="text-xs border rounded px-2 py-1 hover:bg-gray-50">+ Add Item</button>
               </div>
             </div>
-            {/* Ready to install banner */}
+            {/* Ready to install / stage banner */}
             {materials.length > 0 && materials.every(m => m.status === "received" || m.status === "staged") && (
-              <div className="px-3 py-2 bg-green-50 border-b text-xs text-green-700 font-semibold">
-                ✓ All materials received — ready to schedule install
+              <div className="px-3 py-2 bg-green-50 border-b text-xs text-green-700 font-semibold flex items-center justify-between">
+                <span>✓ All materials received — ready to schedule install</span>
+                {materials.some(m => m.status === "received") && (
+                  <button onClick={stageAllMaterials}
+                    className="bg-emerald-600 text-white rounded px-2 py-0.5 text-xs hover:bg-emerald-700">
+                    Stage All for Install
+                  </button>
+                )}
+              </div>
+            )}
+            {materials.length > 0 && materials.every(m => m.status === "staged") && (
+              <div className="px-3 py-2 bg-emerald-50 border-b text-xs text-emerald-700 font-semibold">
+                ✓ All materials staged and ready to load
               </div>
             )}
             {materials.length === 0 ? (
@@ -1647,6 +1834,9 @@ export default function QuotePage() {
                               {m.tracking_number && (
                                 <a href={`https://www.google.com/search?q=${encodeURIComponent(m.tracking_number)}`} target="_blank" rel="noreferrer"
                                   className="text-xs text-blue-600 hover:underline">Track {m.tracking_number}</a>
+                              )}
+                              {m.storage_location && (
+                                <span className="text-xs text-purple-600">📍 {m.storage_location}</span>
                               )}
                               {m.order_pdf_path && (
                                 <span className="text-xs text-green-600">📄 PDF uploaded</span>
@@ -1719,41 +1909,101 @@ export default function QuotePage() {
                       {/* Expanded package list */}
                       {isExpanded && (
                         <div className="bg-gray-50 border-t px-3 py-2 space-y-1.5">
+                          {/* Batch actions */}
+                          {matPkgs.length > 0 && matPkgs.some(p => p.status !== "received") && (
+                            <div className="flex items-center gap-2 pb-1 border-b border-gray-200 mb-1">
+                              <button onClick={() => checkInAllPackages(m.id, m.storage_location || undefined)}
+                                className="bg-green-600 text-white rounded px-2.5 py-1 text-xs hover:bg-green-700">
+                                Check In All ({matPkgs.filter(p => p.status !== "received").length} pending)
+                              </button>
+                              <select
+                                value={m.storage_location || ""}
+                                onChange={e => {
+                                  const loc = e.target.value;
+                                  supabase.from("quote_materials").update({ storage_location: loc || null }).eq("id", m.id);
+                                  setMaterials(prev => prev.map(mm => mm.id === m.id ? { ...mm, storage_location: loc || null } : mm));
+                                }}
+                                className="text-xs border rounded px-1.5 py-1"
+                                style={{ color: m.storage_location ? "#16a34a" : "#9ca3af" }}>
+                                <option value="">Storage location...</option>
+                                {STORAGE_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                              </select>
+                            </div>
+                          )}
+                          {/* Stage button for received materials */}
+                          {m.status === "received" && (
+                            <div className="flex items-center gap-2 pb-1 border-b border-gray-200 mb-1">
+                              <button onClick={() => stageForInstall(m.id)}
+                                className="bg-emerald-600 text-white rounded px-2.5 py-1 text-xs hover:bg-emerald-700">
+                                Stage for Install
+                              </button>
+                              {m.storage_location && (
+                                <span className="text-xs text-gray-500">Located: {m.storage_location}</span>
+                              )}
+                            </div>
+                          )}
+                          {m.status === "staged" && m.staged_at && (
+                            <div className="text-xs text-emerald-600 font-medium pb-1 border-b border-gray-200 mb-1">
+                              Staged {new Date(m.staged_at).toLocaleDateString()}
+                              {m.storage_location && <span className="text-gray-500 ml-2">from {m.storage_location}</span>}
+                            </div>
+                          )}
                           {matPkgs.length === 0 && (
                             <div className="text-xs text-gray-400 text-center py-2">No packages tracked yet.</div>
                           )}
                           {matPkgs.map(pkg => (
-                            <div key={pkg.id} className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs ${pkg.status === "received" ? "bg-green-50" : "bg-white border"}`}>
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                {pkg.status === "received" ? (
-                                  <span className="text-green-600 shrink-0">✓</span>
-                                ) : (
-                                  <span className="text-gray-300 shrink-0">○</span>
-                                )}
-                                <span className={`truncate ${pkg.status === "received" ? "text-green-700" : ""}`}>
-                                  {pkg.description || "Package"}
-                                </span>
-                                {pkg.tracking_number && (
-                                  <a href={`https://www.google.com/search?q=${encodeURIComponent(pkg.tracking_number)}`}
-                                    target="_blank" rel="noreferrer"
-                                    className="text-blue-500 hover:underline shrink-0">
-                                    {pkg.tracking_number}
-                                  </a>
-                                )}
-                                {pkg.received_at && (
-                                  <span className="text-gray-400 shrink-0">
-                                    {new Date(pkg.received_at).toLocaleDateString()}
+                            <div key={pkg.id} className={`rounded px-2 py-1.5 text-xs ${pkg.status === "received" ? "bg-green-50" : "bg-white border"}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  {pkg.status === "received" ? (
+                                    <span className="text-green-600 shrink-0">✓</span>
+                                  ) : (
+                                    <span className="text-gray-300 shrink-0">○</span>
+                                  )}
+                                  <span className={`truncate ${pkg.status === "received" ? "text-green-700" : ""}`}>
+                                    {pkg.description || "Package"}
                                   </span>
-                                )}
+                                  {pkg.tracking_number && (
+                                    <a href={`https://www.google.com/search?q=${encodeURIComponent(pkg.tracking_number)}`}
+                                      target="_blank" rel="noreferrer"
+                                      className="text-blue-500 hover:underline shrink-0">
+                                      {pkg.tracking_number}
+                                    </a>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {pkg.status === "received" ? (
+                                    <>
+                                      {pkg.storage_location && (
+                                        <span className="text-gray-400">{pkg.storage_location}</span>
+                                      )}
+                                      {pkg.received_at && (
+                                        <span className="text-gray-400">
+                                          {new Date(pkg.received_at).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                      <button onClick={() => undoCheckIn(m.id, pkg.id)}
+                                        className="text-gray-400 hover:text-red-500">Undo</button>
+                                    </>
+                                  ) : (
+                                    <button onClick={() => checkInPackage(m.id, pkg.id, m.storage_location || undefined)}
+                                      className="bg-green-600 text-white rounded px-2 py-0.5 hover:bg-green-700">
+                                      Check In
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              {pkg.status === "received" ? (
-                                <button onClick={() => undoCheckIn(m.id, pkg.id)}
-                                  className="text-xs text-gray-400 hover:text-red-500 shrink-0">Undo</button>
-                              ) : (
-                                <button onClick={() => checkInPackage(m.id, pkg.id)}
-                                  className="bg-green-600 text-white rounded px-2 py-0.5 text-xs hover:bg-green-700 shrink-0">
-                                  Check In
-                                </button>
+                              {/* Location selector for received packages */}
+                              {pkg.status === "received" && !pkg.storage_location && (
+                                <div className="mt-1 ml-5">
+                                  <select
+                                    onChange={e => updatePackageLocation(m.id, pkg.id, e.target.value)}
+                                    className="text-xs border rounded px-1 py-0.5 text-gray-400"
+                                    defaultValue="">
+                                    <option value="" disabled>Set location...</option>
+                                    {STORAGE_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                  </select>
+                                </div>
                               )}
                             </div>
                           ))}

@@ -193,7 +193,31 @@ export function installFollowup(params: {
   return { subject, html };
 }
 
-// ── 5. Quote Follow-Up (no response) ─────────────────────────
+// ── 5. Password Reset ───────────────────────────────────────
+
+export function passwordReset(params: {
+  email: string;
+  resetUrl: string;
+}) {
+  const subject = "Reset your password — ZeroRemake";
+
+  const html = emailLayout(`
+    <h1>Reset Your Password</h1>
+    <p>We received a request to reset the password for <strong>${params.email}</strong>.</p>
+
+    <p>Click the button below to set a new password. This link expires in 1 hour.</p>
+
+    <p style="text-align: center;">
+      <a href="${params.resetUrl}" class="btn">Reset Password</a>
+    </p>
+
+    <p class="muted">If you didn't request this, you can safely ignore this email. Your password won't be changed.</p>
+  `, "ZeroRemake");
+
+  return { subject, html };
+}
+
+// ── 6. Quote Follow-Up (no response) ─────────────────────────
 
 export function quoteFollowup(params: {
   customerFirstName: string;

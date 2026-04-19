@@ -19,6 +19,7 @@ export type EmailType =
   | "appointment_reminder"
   | "quote_delivery"
   | "install_followup"
+  | "password_reset"
   | "custom";
 
 export type SendEmailParams = {

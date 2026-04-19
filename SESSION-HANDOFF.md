@@ -234,6 +234,10 @@ PDF parsing, manufacturer library, product change detection. See details below.
 ### Quote Detail (`/quotes/[id]`) — ENHANCED
 - Materials & Orders section with package-level tracking, order PDF upload
 - **Generate PO** button: creates print-ready purchase order with all line items, dimensions, costs, vendor blank
+- **Storage location tracking**: per-package and per-material location (Warehouse/Garage/Shelf/Truck/etc)
+- **Batch check-in**: "Check In All" button for receiving entire shipments at once
+- **Stage for Install**: marks received materials as staged/loaded, with timestamps
+- **Job Materials Checklist**: cross-references measured → sold → ordered → received with match status per line item
 
 ### Permission Guards
 - `PermissionGate` + `FeatureGate` double layer on all protected pages
@@ -258,7 +262,20 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - Postmark inbound webhook, PDF attachment parsing, package-level auto-updates
 
 ### Automated Email Outreach
-- Resend integration, 5 templates, daily cron reminders
+- Resend integration, 6 templates (+ password reset), daily cron reminders
+
+### Manufacturer Spec Library (`/manufacturers`)
+- 18 products from 5 brands (Hunter Douglas, Norman, Graber, Levolor, Alta)
+- Search, filter by manufacturer/category, expandable product cards
+- Company-level manufacturer accounts (account #, rep info, discount %)
+
+### SMS Integration (Twilio)
+- Server-side SMS via Twilio when enabled, graceful fallback to native `sms:` links
+- Toggle + credential config in Settings, off by default
+
+### Stripe Connect (Live Payments)
+- Express onboarding, payment intent creation, webhook-driven invoice updates
+- Toggle in Settings, off by default, 1% platform fee
 
 ### Payments & Invoicing (`/payments` and `/invoices/[id]`)
 - Invoice generation from quotes, payment recording, public invoice view (`/i/[token]`)
@@ -281,10 +298,11 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - `automation_rules`, `automation_log`, `automation_queue`
 - `builder_contacts`, `builder_projects`, `builder_project_quotes`, `builder_messages`
 - `pay_rates`, `pay_entries`, `payroll_runs`
+- `manufacturer_specs`, `company_manufacturers`
 - `app_feedback`
 
 ### Auth & billing tables
-- `companies`: plan, features, brand_*, trial_ends_at, stripe_customer_id, stripe_subscription_id, subscription_status, current_period_end
+- `companies`: plan, features, brand_*, trial_ends_at, stripe_customer_id, stripe_subscription_id, subscription_status, current_period_end, sms_enabled, live_payments_enabled, twilio_*, stripe_connect_*
 - `profiles`: id (= auth.users.id), company_id, full_name, role, permissions JSONB, status (active/pending)
 - `company_settings`: invoice_prefix, next_invoice_number, default_payment_terms_days, etc.
 - `user_sessions`: device session tracking (user_id, device_id, device_label, last_active)
@@ -298,6 +316,8 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - lead_assignment.sql ✓, phase15_session_tracking.sql ✓, phase16_user_approval_flow.sql ✓
 - phase19_fix_pay_rates_trigger.sql ✓, phase20_fix_pay_type_constraint.sql ✓
 - phase21_appointments_assigned_to.sql ✓
+- phase22_manufacturer_specs.sql ✓
+- phase23_warehouse_tracking.sql ✓
 
 ---
 
@@ -349,12 +369,71 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - Inline orange totals card
 - "Create Measure Job" with customer picker modal (search + add new customer)
 
+### Phase 21 — Password Reset + Manufacturer Specs + SMS + Stripe Connect — Complete ✓
+
+**Password Reset Email** (via Resend):
+- Custom branded password reset email template (matches existing email design)
+- `/api/auth/reset-password` API route: generates recovery link via Supabase admin, sends via Resend
+- Forgot-password page updated to use our API instead of Supabase's default email
+- Prevents email enumeration (always returns success)
+
+**Manufacturer Spec Library** (`/manufacturers`):
+- `manufacturer_specs` table with 18 seeded products from 5 brands: Hunter Douglas, Norman, Graber, Levolor, Alta
+- Product specs include: size ranges, lead times, warranty, colors, materials, features, pricing/ordering notes
+- `company_manufacturers` table for per-company account details (account #, rep contact, discount %)
+- Full search/filter UI by manufacturer, category (blind/shade/shutter/motorization)
+- Expandable product detail cards with all spec data
+- "My Accounts" section for owner/admin to save rep info and dealer account numbers
+- "Specs" nav link visible to anyone with `create_quotes` permission
+
+**Twilio SMS Integration** (toggle-controlled):
+- `/api/sms` route: sends via Twilio REST API (no SDK), falls back to native `sms:` link when disabled
+- `useSMS()` client hook: tries API first, auto-falls back to native messaging
+- Integration toggle in Settings → Company tab with credential fields (Account SID, Auth Token, Phone #)
+- `sms_enabled` flag on companies table (default: false)
+- SMS logged to activity_log
+
+**Stripe Connect Live Payments** (toggle-controlled):
+- `/api/stripe/connect/onboard` — creates Express Connect account, redirects to Stripe onboarding
+- `/api/stripe/connect/payment-intent` — creates Payment Intent on connected account with 1% platform fee
+- Webhook handling: `account.updated` (marks onboarding complete), `payment_intent.succeeded` (records payment on invoice)
+- Integration toggle in Settings with Stripe Connect button
+- `live_payments_enabled`, `stripe_connect_account_id`, `stripe_connect_onboarded` on companies table (default: false)
+
+SQL migration: `phase22_manufacturer_specs.sql` ✓
+
+### Phase 23 — Warehouse Tracking + Job Materials Checklist — Complete ✓
+
+**Storage Location Tracking:**
+- `storage_location` field on both `material_packages` and `quote_materials`
+- Quick-set location dropdown (Warehouse, Garage, Shelf A/B/C, Shop, Truck, Job Site, Other)
+- Location shows on material row header and individual package rows
+- Location auto-propagates from material to packages on check-in
+
+**Batch Package Check-In:**
+- "Check In All" button for materials with pending packages
+- Sets all pending packages to received in one click
+- Auto-applies storage location when set
+
+**Stage for Install Workflow:**
+- "Stage for Install" button on received materials
+- "Stage All for Install" button when all materials received
+- Staged status with timestamp tracks when material was pulled for loading
+- `staged_at`, `staged_by` fields on quote_materials
+
+**Job Materials Checklist:**
+- Collapsible grid view on quote detail: Product → Measured Size → Quote Details → Order Status → Location → Match
+- Cross-references quote line items against tracked materials
+- Shows match status (OK/Pending/Not tracked) per line item
+- Summary footer with total counts and "Ready for install" indicator
+
+SQL migration: `phase23_warehouse_tracking.sql` ✓
+
+---
+
 ## Backlog (not yet scheduled)
-- SMS strategy (built-in vs. add-on, Twilio ~$0.01/msg)
-- Manufacturer spec library (top 5 brands with curated product data)
 - Manufacturer API integrations (EDI / direct catalog feeds)
 - Direct QuickBooks Online API integration (OAuth + real-time sync)
-- Password reset flow (pages exist, need email delivery)
 - React Native mobile app + offline mode
 - Google/Apple Calendar two-way sync (currently one-way .ics export)
 - AI features: auto-quote from photos, product suggestions, close probability

@@ -100,7 +100,7 @@ export function LandingPage() {
     },
     {
       q: "Can I try it before paying?",
-      a: "Yes. Every plan comes with a free 14-day trial with full access to all features. No credit card required to start.",
+      a: "Yes. Every plan comes with a free 14-day trial with full access to all features.",
     },
     {
       q: "What about my existing customers?",
@@ -183,7 +183,7 @@ export function LandingPage() {
             </a>
           </div>
           <p className="mt-4 text-xs" style={{ color: "#9ca3af" }}>
-            No credit card required. Works on iPhone, Android & desktop.
+            Works on iPhone, Android & desktop. No app download needed.
           </p>
         </div>
       </section>
@@ -287,7 +287,7 @@ export function LandingPage() {
           </h2>
           <div className="grid gap-8 sm:grid-cols-3">
             {[
-              { step: "1", title: "Sign Up", desc: "Create your account in 30 seconds. No credit card, no app download." },
+              { step: "1", title: "Sign Up", desc: "Create your account in 30 seconds. No app download needed." },
               { step: "2", title: "Add Your First Lead", desc: "Enter a customer and start tracking. Save to your phone's home screen for the app experience." },
               { step: "3", title: "Measure, Quote, Install", desc: "Use ZeroRemake for the full workflow. See the difference on your very first job." },
             ].map((s, i) => (
@@ -348,7 +348,7 @@ export function LandingPage() {
               Simple, honest pricing
             </h2>
             <p className="mt-3 text-base" style={{ color: "#6b7280" }}>
-              14-day free trial on every plan. No credit card to start.
+              14-day free trial on every plan. Cancel anytime.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
@@ -452,7 +452,7 @@ export function LandingPage() {
           </h2>
           <p className="mt-4 text-base" style={{ color: "#9ca3af" }}>
             Join the window treatment pros who are running their business from their phone.
-            Free for 14 days, no credit card required.
+            Free for 14 days. Cancel anytime.
           </p>
           <Link
             href="/signup"

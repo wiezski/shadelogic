@@ -285,7 +285,7 @@ function PayrollPageInner() {
         <EntriesTab entries={filteredEntries} team={team} personSummary={personSummary} onUpdated={loadAll} />
       )}
       {tab === "rates" && (
-        <RatesTab rates={rates} team={team} contractorRates={contractorRates} onUpdated={loadAll} />
+        <RatesTab rates={rates} team={team} contractorRates={contractorRates} companyId={companyId} filterPerson={filterPerson} onUpdated={loadAll} />
       )}
       {tab === "runs" && (
         <RunsTab runs={runs} onUpdated={loadAll} />
@@ -442,10 +442,12 @@ function EntriesTab({ entries, team, personSummary, onUpdated }: {
 }
 
 // ── Rates Tab ──────────────────────────────────────────────────
-function RatesTab({ rates, team, contractorRates, onUpdated }: {
+function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpdated }: {
   rates: PayRate[];
   team: TeamMember[];
   contractorRates: ContractorRateItem[];
+  companyId: string | null;
+  filterPerson: string;
   onUpdated: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -487,9 +489,12 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
     setShowForm(true);
   }
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   async function saveRate() {
     if (!formPerson || (!formHourly && !formCommission && !formSalary && !formContractor)) return;
     setSaving(true);
+    setSaveError(null);
     const payType = formContractor ? "contractor" : formSalary ? "salary" : formHourly ? "hourly" : "commission_only";
     const data = {
       pay_type: payType,
@@ -503,22 +508,37 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
       rate: formHourly ? (formHourlyRate ? parseFloat(formHourlyRate) : 0) : formSalary ? (formSalaryAmt ? parseFloat(formSalaryAmt) : 0) : 0,
       notes: formNotes || null,
     };
-    if (editingId) {
-      await supabase.from("pay_rates").update(data).eq("id", editingId);
-    } else {
-      await supabase.from("pay_rates").update({ active: false }).eq("profile_id", formPerson).eq("active", true);
-      await supabase.from("pay_rates").insert([{ profile_id: formPerson, active: true, ...data }]);
-      // If contractor, seed default rate card if none exists
-      if (formContractor) {
-        const existing = contractorRates.filter(cr => cr.profile_id === formPerson);
-        if (existing.length === 0) {
-          await supabase.from("contractor_rate_items").insert(
-            DEFAULT_CONTRACTOR_SERVICES.map((s, i) => ({ profile_id: formPerson, ...s, sort_order: i }))
-          );
+    try {
+      if (editingId) {
+        const { error } = await supabase.from("pay_rates").update(data).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        // Deactivate old rate (if any)
+        await supabase.from("pay_rates").update({ active: false }).eq("profile_id", formPerson).eq("active", true);
+        // Insert new rate — always include company_id explicitly
+        const { error } = await supabase.from("pay_rates").insert([{
+          profile_id: formPerson,
+          company_id: companyId,
+          active: true,
+          ...data,
+        }]);
+        if (error) throw error;
+        // If contractor, seed default rate card if none exists
+        if (formContractor) {
+          const existing = contractorRates.filter(cr => cr.profile_id === formPerson);
+          if (existing.length === 0) {
+            const { error: crError } = await supabase.from("contractor_rate_items").insert(
+              DEFAULT_CONTRACTOR_SERVICES.map((s, i) => ({ profile_id: formPerson, company_id: companyId, ...s, sort_order: i }))
+            );
+            if (crError) console.error("Rate card seed error:", crError);
+          }
         }
       }
+      setShowForm(false); setEditingId(null);
+    } catch (err: any) {
+      console.error("Save rate error:", err);
+      setSaveError(err?.message || "Failed to save pay rate. Please try again.");
     }
-    setShowForm(false); setEditingId(null);
     setSaving(false);
     onUpdated();
   }
@@ -544,6 +564,7 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
     // Insert updated items
     const toInsert = crItems.filter(i => i.service_name.trim()).map((i, idx) => ({
       profile_id: editingContractor,
+      company_id: companyId,
       service_name: i.service_name.trim(),
       rate: i.rate ? parseFloat(i.rate) : 0,
       unit_label: i.unit_label || "each",
@@ -561,6 +582,9 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
   for (const r of rates) {
     if (!byPerson.has(r.profile_id)) byPerson.set(r.profile_id, r);
   }
+
+  // Filter team by selected person
+  const filteredTeam = filterPerson === "all" ? team : team.filter(t => t.id === filterPerson);
 
   function getPaySummary(r: PayRate): string[] {
     const parts: string[] = [];
@@ -677,13 +701,19 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
               className="w-full text-sm rounded px-2.5 py-1.5" style={inputStyle} />
           </div>
 
+          {saveError && (
+            <div className="mt-2 text-xs px-3 py-2 rounded" style={{ background: "rgba(220,38,38,0.1)", color: "var(--zr-error)" }}>
+              {saveError}
+            </div>
+          )}
+
           <div className="flex gap-2 mt-4">
             <button onClick={saveRate} disabled={saving || !formPerson || (!formHourly && !formCommission && !formSalary && !formContractor)}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
               style={{ background: "var(--zr-orange)", color: "#fff", opacity: saving || !formPerson ? 0.5 : 1 }}>
               {saving ? "Saving..." : editingId ? "Update" : "Save Pay Rate"}
             </button>
-            <button onClick={() => { setShowForm(false); setEditingId(null); }}
+            <button onClick={() => { setShowForm(false); setEditingId(null); setSaveError(null); }}
               className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
               style={{ color: "var(--zr-text-muted)" }}>
               Cancel
@@ -747,35 +777,53 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
       )}
 
       {/* ── Rate Cards by Person ── */}
-      {byPerson.size === 0 ? (
-        <div className="text-center py-10">
-          <div className="text-4xl mb-3">💰</div>
-          <h3 className="text-base font-semibold mb-1" style={{ color: "var(--zr-text-primary)" }}>No pay rates configured</h3>
-          <p className="text-sm mb-4" style={{ color: "var(--zr-text-muted)" }}>Set up pay rates for your team members to start tracking compensation.</p>
-          <button onClick={openNew}
-            className="text-sm px-5 py-2 rounded-lg font-semibold transition-colors"
-            style={{ background: "var(--zr-orange)", color: "#fff" }}>
-            + Set Pay Rate
-          </button>
-        </div>
+      {filteredTeam.length === 0 ? (
+        <EmptyState title="No team members found" subtitle="Adjust the filter or add team members first." />
       ) : (
         <div className="flex flex-col gap-3">
-          {[...byPerson.entries()].map(([pid, r]) => {
-            const member = team.find(t => t.id === pid);
+          {filteredTeam.map(member => {
+            const r = byPerson.get(member.id);
+            const personCrItems = contractorRates.filter(cr => cr.profile_id === member.id);
+
+            // No rate configured yet
+            if (!r) {
+              return (
+                <div key={member.id} className="rounded-lg p-4"
+                  style={{ background: "var(--zr-surface-2)", border: "1px dashed var(--zr-border)" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-sm" style={{ color: "var(--zr-text-primary)" }}>
+                        {member.full_name || member.role}
+                      </span>
+                      <span className="ml-2 text-xs px-2 py-0.5 rounded-full"
+                        style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-muted)" }}>
+                        {member.role}
+                      </span>
+                    </div>
+                    <button onClick={() => { openNew(); setFormPerson(member.id); }}
+                      className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+                      style={{ background: "var(--zr-orange)", color: "#fff" }}>
+                      + Set Pay Rate
+                    </button>
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: "var(--zr-text-muted)" }}>No pay rate configured</div>
+                </div>
+              );
+            }
+
             const summary = getPaySummary(r);
-            const personCrItems = contractorRates.filter(cr => cr.profile_id === pid);
 
             return (
-              <div key={pid} className="rounded-lg p-4"
+              <div key={member.id} className="rounded-lg p-4"
                 style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <span className="font-semibold text-sm" style={{ color: "var(--zr-text-primary)" }}>
-                      {member?.full_name || member?.role || "Unknown"}
+                      {member.full_name || member.role}
                     </span>
                     <span className="ml-2 text-xs px-2 py-0.5 rounded-full"
                       style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-muted)" }}>
-                      {r.is_contractor ? "Contractor" : member?.role || "—"}
+                      {r.is_contractor ? "Contractor" : member.role}
                     </span>
                   </div>
                   <div className="flex gap-1">
@@ -785,7 +833,7 @@ function RatesTab({ rates, team, contractorRates, onUpdated }: {
                       Edit
                     </button>
                     {r.is_contractor && (
-                      <button onClick={() => openContractorCard(pid)}
+                      <button onClick={() => openContractorCard(member.id)}
                         className="text-xs px-2 py-1 rounded font-medium transition-colors"
                         style={{ color: "var(--zr-info)" }}>
                         Rate Card

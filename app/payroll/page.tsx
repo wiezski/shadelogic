@@ -741,7 +741,7 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
             </div>
             {crItems.map((item, idx) => (
               <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 100px 90px 30px" }}>
-                <input type="text" value={item.service_name} placeholder="Service name"
+                <input type="text" value={item.service_name} placeholder="e.g. Custom Service"
                   onChange={e => { const n = [...crItems]; n[idx].service_name = e.target.value; setCrItems(n); }}
                   className="text-sm rounded px-2 py-1.5" style={inputStyle} />
                 <input type="number" step="0.01" value={item.rate} placeholder="0.00"
@@ -752,8 +752,11 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
                   className="text-xs rounded px-1.5 py-1.5" style={inputStyle}>
                   <option value="each">each</option>
                   <option value="per LF">per LF</option>
+                  <option value="per SF">per SF</option>
                   <option value="per hour">per hour</option>
                   <option value="per mile">per mile</option>
+                  <option value="per window">per window</option>
+                  <option value="per panel">per panel</option>
                   <option value="flat">flat</option>
                 </select>
                 <button onClick={() => setCrItems(crItems.filter((_, i) => i !== idx))}
@@ -761,14 +764,19 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
               </div>
             ))}
           </div>
-          <div className="flex gap-2 mt-3">
+          <div className="flex items-center gap-2 mt-3">
             <button onClick={saveContractorCard} disabled={savingCr}
               className="text-xs px-4 py-1.5 rounded font-medium"
               style={{ background: "var(--zr-orange)", color: "#fff", opacity: savingCr ? 0.5 : 1 }}>
               {savingCr ? "Saving..." : "Save Rate Card"}
             </button>
+            <button onClick={() => setCrItems([...crItems, { service_name: "", rate: "", unit_label: "each" }])}
+              className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+              style={{ border: "1px dashed var(--zr-border)", color: "var(--zr-text-secondary)" }}>
+              + Add Custom Service
+            </button>
             <button onClick={() => setEditingContractor(null)}
-              className="text-xs px-4 py-1.5 rounded font-medium"
+              className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
               style={{ color: "var(--zr-text-muted)" }}>
               Cancel
             </button>
@@ -858,23 +866,33 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
                 </div>
 
                 {/* Contractor rate card preview */}
-                {r.is_contractor && personCrItems.length > 0 && (
+                {r.is_contractor && (
                   <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--zr-border)" }}>
-                    <div className="text-xs font-semibold mb-1.5" style={{ color: "var(--zr-text-muted)" }}>RATE CARD</div>
-                    <div className="grid gap-1" style={{ gridTemplateColumns: "1fr auto auto" }}>
-                      {personCrItems.filter(i => i.rate > 0).map(item => (
-                        <div key={item.id} className="contents text-xs">
-                          <span style={{ color: "var(--zr-text-primary)" }}>{item.service_name}</span>
-                          <span className="font-semibold text-right" style={{ color: "var(--zr-text-primary)" }}>{fmtMoney(item.rate)}</span>
-                          <span style={{ color: "var(--zr-text-muted)" }}>/{item.unit_label}</span>
-                        </div>
-                      ))}
-                      {personCrItems.filter(i => i.rate > 0).length === 0 && (
-                        <span className="text-xs col-span-3" style={{ color: "var(--zr-text-muted)" }}>
-                          No rates set yet — click "Rate Card" to configure
-                        </span>
-                      )}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>RATE CARD</div>
+                      <button onClick={() => openContractorCard(member.id)}
+                        className="text-xs font-medium transition-colors"
+                        style={{ color: "var(--zr-orange)" }}>
+                        Edit / Add Services
+                      </button>
                     </div>
+                    {personCrItems.length > 0 ? (
+                      <div className="grid gap-1" style={{ gridTemplateColumns: "1fr auto auto" }}>
+                        {personCrItems.map(item => (
+                          <div key={item.id} className="contents text-xs">
+                            <span style={{ color: "var(--zr-text-primary)" }}>{item.service_name}</span>
+                            <span className="font-semibold text-right" style={{ color: item.rate > 0 ? "var(--zr-text-primary)" : "var(--zr-text-muted)" }}>
+                              {item.rate > 0 ? fmtMoney(item.rate) : "—"}
+                            </span>
+                            <span style={{ color: "var(--zr-text-muted)" }}>/{item.unit_label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                        No services configured — click "Edit / Add Services" above
+                      </span>
+                    )}
                   </div>
                 )}
 

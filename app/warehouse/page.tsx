@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
+import { getLocationNames, getLocationNote } from "../../lib/warehouse-locations";
+import type { WarehouseLocation } from "../../lib/warehouse-locations";
 
 // ── Types ────────────────────────────────────────────────────
 type Material = {
@@ -38,7 +40,7 @@ type Package = {
   notes: string | null;
 };
 
-const STORAGE_LOCATIONS = ["Warehouse", "Garage", "Shelf A", "Shelf B", "Shelf C", "Shop", "Truck", "Job Site", "Other"];
+// Locations loaded dynamically from company_settings
 
 const statusIcon: Record<string, string> = { ordered: "🔄", shipped: "🚚", received: "✅", staged: "📦", not_ordered: "⏳" };
 const statusLabel: Record<string, string> = { ordered: "Ordered", shipped: "In Transit", received: "Received", staged: "Staged", not_ordered: "Not Ordered" };
@@ -58,10 +60,21 @@ export default function WarehousePage() {
   const [filter, setFilter] = useState<"active" | "all" | "received">("active");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState("");
+  const [warehouseLocs, setWarehouseLocs] = useState<WarehouseLocation[]>([]);
 
   useEffect(() => {
-    if (user) loadMaterials();
+    if (user) {
+      loadMaterials();
+      loadLocations();
+    }
   }, [user]);
+
+  async function loadLocations() {
+    const { data } = await supabase.from("company_settings").select("warehouse_locations").maybeSingle();
+    if (data?.warehouse_locations) setWarehouseLocs(data.warehouse_locations);
+  }
+
+  const STORAGE_LOCATIONS = getLocationNames(warehouseLocs.length > 0 ? warehouseLocs : null);
 
   async function loadMaterials() {
     setLoading(true);
@@ -334,7 +347,10 @@ export default function WarehousePage() {
                       <select value={checkInLocation} onChange={e => setCheckInLocation(e.target.value)}
                         className="text-xs px-2 py-1.5 rounded outline-none" style={inputStyle}>
                         <option value="">No location</option>
-                        {STORAGE_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                        {STORAGE_LOCATIONS.map(loc => {
+                          const note = getLocationNote(warehouseLocs, loc);
+                          return <option key={loc} value={loc}>{loc}{note ? ` — ${note}` : ""}</option>;
+                        })}
                       </select>
 
                       {(mat.status === "shipped" || mat.status === "ordered") && (

@@ -9,6 +9,7 @@ import { useEmail } from "../../../lib/use-email";
 import { useAuth } from "../../auth-provider";
 import { PermissionGate } from "../../permission-gate";
 import { generateCommissionEntry } from "../../../lib/auto-pay";
+import { WarehouseLocation, getLocationNames } from "../../../lib/warehouse-locations";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ type MaterialPackage = {
   checked_in_at: string | null;
 };
 
-const STORAGE_LOCATIONS = ["Warehouse", "Garage", "Shelf A", "Shelf B", "Shelf C", "Shop", "Truck", "Job Site", "Other"];
+// Dynamic locations loaded from company_settings (fallback provided by shared utility)
 
 const MATERIAL_STATUSES = [
   { value: "not_ordered", label: "Not Ordered", color: "bg-gray-100 text-gray-600" },
@@ -165,6 +166,7 @@ export default function QuotePage() {
   const [emailSentQuote, setEmailSentQuote] = useState(false);
 
   const [compSettings, setCompSettings] = useState<{ name: string; phone: string | null }>({ name: "ZeroRemake", phone: null });
+  const [warehouseLocations, setWarehouseLocations] = useState<WarehouseLocation[]>([]);
 
   const [quote,       setQuote]       = useState<Quote | null>(null);
   const [customer,    setCustomer]    = useState<Customer | null>(null);
@@ -241,8 +243,11 @@ export default function QuotePage() {
 
   useEffect(() => {
     if (quoteId) load();
-    supabase.from("company_settings").select("name, phone").limit(1).single().then(({ data }) => {
-      if (data) setCompSettings({ name: data.name || "ZeroRemake", phone: data.phone || null });
+    supabase.from("company_settings").select("name, phone, warehouse_locations").limit(1).single().then(({ data }) => {
+      if (data) {
+        setCompSettings({ name: data.name || "ZeroRemake", phone: data.phone || null });
+        if (data.warehouse_locations) setWarehouseLocations(data.warehouse_locations as WarehouseLocation[]);
+      }
     });
   }, [quoteId]); // eslint-disable-line
 
@@ -1942,7 +1947,7 @@ export default function QuotePage() {
                                 className="text-xs border rounded px-1.5 py-1"
                                 style={{ color: m.storage_location ? "#16a34a" : "#9ca3af" }}>
                                 <option value="">Storage location...</option>
-                                {STORAGE_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                {getLocationNames(warehouseLocations).map(loc => <option key={loc} value={loc}>{loc}</option>)}
                               </select>
                             </div>
                           )}
@@ -2017,7 +2022,7 @@ export default function QuotePage() {
                                     className="text-xs border rounded px-1 py-0.5 text-gray-400"
                                     defaultValue="">
                                     <option value="" disabled>Set location...</option>
-                                    {STORAGE_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                    {getLocationNames(warehouseLocations).map(loc => <option key={loc} value={loc}>{loc}</option>)}
                                   </select>
                                 </div>
                               )}

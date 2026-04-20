@@ -9,6 +9,8 @@ import { PermissionGate } from "../permission-gate";
 import { PLAN_LABELS, PLAN_FEATURES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan, type FeatureKey } from "../../lib/features";
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 
+type WarehouseLocation = { name: string; notes: string };
+
 type Settings = {
   id: string;
   name: string;
@@ -28,6 +30,7 @@ type Settings = {
   default_deposit_pct: number;
   default_markup: number;
   default_quote_days: number;
+  warehouse_locations: WarehouseLocation[];
 };
 
 // ── Plan & Features ───────────────────────────────────────────
@@ -109,6 +112,123 @@ function PlanSection() {
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Warehouse Locations ──────────────────────────────────────
+
+const DEFAULT_LOCATIONS: WarehouseLocation[] = [
+  { name: "Warehouse", notes: "" },
+  { name: "Garage", notes: "" },
+  { name: "Shelf A", notes: "" },
+  { name: "Shelf B", notes: "" },
+  { name: "Shop", notes: "" },
+  { name: "Truck", notes: "" },
+];
+
+function WarehouseLocationsSection({ settings, setSettings }: {
+  settings: Settings | null;
+  setSettings: React.Dispatch<React.SetStateAction<Settings | null>>;
+}) {
+  const [newName, setNewName] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editNotes, setEditNotes] = useState("");
+
+  if (!settings) return null;
+
+  const locations: WarehouseLocation[] = (settings.warehouse_locations && settings.warehouse_locations.length > 0)
+    ? settings.warehouse_locations
+    : DEFAULT_LOCATIONS;
+
+  async function saveLocations(updated: WarehouseLocation[]) {
+    await supabase.from("company_settings").update({ warehouse_locations: updated }).eq("id", settings!.id);
+    setSettings(prev => prev ? { ...prev, warehouse_locations: updated } : prev);
+  }
+
+  function addLocation() {
+    const name = newName.trim();
+    if (!name) return;
+    if (locations.some(l => l.name.toLowerCase() === name.toLowerCase())) return;
+    const updated = [...locations, { name, notes: newNotes.trim() }];
+    saveLocations(updated);
+    setNewName("");
+    setNewNotes("");
+  }
+
+  function removeLocation(idx: number) {
+    const updated = locations.filter((_, i) => i !== idx);
+    saveLocations(updated);
+  }
+
+  function saveNotes(idx: number) {
+    const updated = locations.map((l, i) => i === idx ? { ...l, notes: editNotes } : l);
+    saveLocations(updated);
+    setEditIdx(null);
+  }
+
+  const inputStyle = { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", color: "var(--zr-text-primary)" };
+
+  return (
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>
+        📦 Warehouse Locations
+      </h2>
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+        Customize where packages can be stored. These show as options when checking in deliveries.
+      </p>
+
+      {/* Location list */}
+      <div className="space-y-1.5">
+        {locations.map((loc, idx) => (
+          <div key={idx} className="flex items-start gap-2 rounded px-3 py-2"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{loc.name}</span>
+                {loc.notes && editIdx !== idx && (
+                  <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>— {loc.notes}</span>
+                )}
+              </div>
+              {editIdx === idx ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <input value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                    placeholder="Add a note about this location..."
+                    className="flex-1 px-2 py-1 text-xs outline-none rounded" style={inputStyle}
+                    onKeyDown={e => { if (e.key === "Enter") saveNotes(idx); }} />
+                  <button onClick={() => saveNotes(idx)}
+                    className="text-xs px-2 py-1 rounded font-medium"
+                    style={{ background: "var(--zr-orange)", color: "#fff" }}>Save</button>
+                  <button onClick={() => setEditIdx(null)}
+                    className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Cancel</button>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => { setEditIdx(idx); setEditNotes(loc.notes || ""); }}
+                className="text-xs px-1.5 py-0.5 rounded" style={{ color: "var(--zr-text-muted)" }}>
+                {loc.notes ? "Edit" : "+ Note"}
+              </button>
+              <button onClick={() => removeLocation(idx)}
+                className="text-xs px-1.5 py-0.5 rounded" style={{ color: "var(--zr-error)" }}>✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add new */}
+      <div className="flex items-center gap-2">
+        <input value={newName} onChange={e => setNewName(e.target.value)}
+          placeholder="New location name" className="flex-1 px-2 py-1.5 text-sm outline-none rounded" style={inputStyle}
+          onKeyDown={e => { if (e.key === "Enter") addLocation(); }} />
+        <input value={newNotes} onChange={e => setNewNotes(e.target.value)}
+          placeholder="Note (optional)" className="flex-1 px-2 py-1.5 text-sm outline-none rounded" style={inputStyle}
+          onKeyDown={e => { if (e.key === "Enter") addLocation(); }} />
+        <button onClick={addLocation} disabled={!newName.trim()}
+          className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-40"
+          style={{ background: "var(--zr-orange)", color: "#fff" }}>+ Add</button>
       </div>
     </div>
   );
@@ -1668,6 +1788,9 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>These pre-fill on every new quote but can be changed per job.</p>
             </div>
+
+            {/* Warehouse Locations */}
+            <WarehouseLocationsSection settings={settings} setSettings={setSettings} />
 
             {/* Payment Connections link */}
             <Link

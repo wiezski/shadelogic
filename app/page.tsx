@@ -111,17 +111,41 @@ export default function HomePage() {
   const [shipments, setShipments] = useState<ShipmentItem[]>([]);
   const [shipmentsLoading, setShipmentsLoading] = useState(true);
 
-  // Layout state
-  const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = document.cookie.match(/zr_layout=([^;]+)/)?.[1];
-        if (saved) return JSON.parse(decodeURIComponent(saved)) as WidgetId[];
-      } catch {}
-    }
-    return ROLE_LAYOUTS[role] || ROLE_LAYOUTS.owner;
-  });
+  // Layout state — per-user, saved to profiles.dashboard_layout
+  const defaultLayout = ROLE_LAYOUTS[role] || ROLE_LAYOUTS.owner;
+  const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(defaultLayout);
+  const [hiddenWidgets, setHiddenWidgets] = useState<WidgetId[]>([]);
   const [editingLayout, setEditingLayout] = useState(false);
+  const [layoutLoaded, setLayoutLoaded] = useState(false);
+
+  // Load saved layout from profile
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user) return;
+      supabase.from("profiles").select("dashboard_layout").eq("id", data.user.id).single().then(({ data: prof }) => {
+        if (prof?.dashboard_layout) {
+          const saved = prof.dashboard_layout as { order?: WidgetId[]; hidden?: WidgetId[] };
+          if (saved.order && saved.order.length > 0) {
+            // Merge in any new widgets that weren't in saved layout
+            const known = new Set(saved.order);
+            const newWidgets = (WIDGET_IDS as readonly WidgetId[]).filter(w => !known.has(w));
+            setWidgetOrder([...saved.order, ...newWidgets]);
+          }
+          if (saved.hidden) setHiddenWidgets(saved.hidden);
+        }
+        setLayoutLoaded(true);
+      });
+    });
+  }, []); // eslint-disable-line
+
+  // Persist layout to profile
+  async function saveLayout(order: WidgetId[], hidden: WidgetId[]) {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u?.user) return;
+    await supabase.from("profiles").update({
+      dashboard_layout: { order, hidden },
+    }).eq("id", u.user.id);
+  }
 
   // Chart data
   const [revenueByMonth, setRevenueByMonth] = useState<{ label: string; value: number }[]>([]);
@@ -604,15 +628,23 @@ export default function HomePage() {
       if (newIdx < 0 || newIdx >= prev.length) return prev;
       const next = [...prev];
       [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
-      document.cookie = `zr_layout=${encodeURIComponent(JSON.stringify(next))};path=/;max-age=31536000`;
+      saveLayout(next, hiddenWidgets);
+      return next;
+    });
+  }
+
+  function toggleWidget(id: WidgetId) {
+    setHiddenWidgets(prev => {
+      const next = prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id];
+      saveLayout(widgetOrder, next);
       return next;
     });
   }
 
   function resetLayout() {
-    const defaultOrder = ROLE_LAYOUTS[role] || ROLE_LAYOUTS.owner;
-    setWidgetOrder(defaultOrder);
-    document.cookie = `zr_layout=;path=/;max-age=0`;
+    setWidgetOrder(defaultLayout);
+    setHiddenWidgets([]);
+    saveLayout(defaultLayout, []);
     setEditingLayout(false);
   }
 
@@ -677,21 +709,26 @@ export default function HomePage() {
 
         {tab === "dashboard" && (
           <>
-            {/* Widgets in user's order */}
-            {widgetOrder.map((id, idx) => (
+            {/* Visible widgets in user's order */}
+            {widgetOrder.filter(id => !hiddenWidgets.includes(id)).map((id, idx, visibleArr) => (
               <div key={id} className="mb-4">
                 {editingLayout && (
                   <div className="flex items-center justify-between mb-1 px-1">
                     <span className="text-xs font-medium" style={{ color: "var(--zr-text-muted)" }}>{WIDGET_LABELS[id]}</span>
                     <div className="flex gap-1">
+                      <button onClick={() => toggleWidget(id)}
+                        className="text-xs px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--zr-error)", border: "1px solid var(--zr-border)" }}>
+                        Hide
+                      </button>
                       <button onClick={() => moveWidget(id, -1)} disabled={idx === 0}
                         className="text-xs px-1.5 py-0.5 rounded"
                         style={{ background: "var(--zr-surface-2)", color: idx === 0 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
                         ▲
                       </button>
-                      <button onClick={() => moveWidget(id, 1)} disabled={idx === widgetOrder.length - 1}
+                      <button onClick={() => moveWidget(id, 1)} disabled={idx === visibleArr.length - 1}
                         className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: "var(--zr-surface-2)", color: idx === widgetOrder.length - 1 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                        style={{ background: "var(--zr-surface-2)", color: idx === visibleArr.length - 1 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
                         ▼
                       </button>
                     </div>
@@ -700,6 +737,22 @@ export default function HomePage() {
                 {renderWidget(id)}
               </div>
             ))}
+
+            {/* Hidden widgets — show in customize mode so user can re-enable */}
+            {editingLayout && hiddenWidgets.length > 0 && (
+              <div className="mb-4 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px dashed var(--zr-border)" }}>
+                <div className="text-xs font-medium mb-2" style={{ color: "var(--zr-text-muted)" }}>Hidden Widgets</div>
+                <div className="flex flex-wrap gap-2">
+                  {hiddenWidgets.map(id => (
+                    <button key={id} onClick={() => toggleWidget(id)}
+                      className="text-xs px-2.5 py-1.5 rounded font-medium"
+                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                      + {WIDGET_LABELS[id]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Bottom quick action */}
             <div className="flex gap-2">

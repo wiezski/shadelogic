@@ -8,6 +8,7 @@ import { useAuth } from "../auth-provider";
 import { PermissionGate } from "../permission-gate";
 import { PLAN_LABELS, PLAN_FEATURES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan, type FeatureKey } from "../../lib/features";
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
+import { WIDGET_IDS, WIDGET_LABELS, ROLE_LAYOUTS, type WidgetId } from "../dashboard-widgets";
 
 type WarehouseLocation = { name: string; notes: string };
 
@@ -1602,6 +1603,126 @@ function SetupSection() {
   );
 }
 
+// ── Dashboard Widgets (per-user) ─────────────────────────────
+function DashboardWidgetsSection() {
+  const { role } = useAuth();
+  const defaultLayout = ROLE_LAYOUTS[role] || ROLE_LAYOUTS.owner;
+  const [order, setOrder] = useState<WidgetId[]>(defaultLayout);
+  const [hidden, setHidden] = useState<WidgetId[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user) return;
+      supabase.from("profiles").select("dashboard_layout").eq("id", data.user.id).single().then(({ data: prof }) => {
+        if (prof?.dashboard_layout) {
+          const saved = prof.dashboard_layout as { order?: WidgetId[]; hidden?: WidgetId[] };
+          if (saved.order && saved.order.length > 0) {
+            const known = new Set(saved.order);
+            const newWidgets = (WIDGET_IDS as readonly WidgetId[]).filter(w => !known.has(w));
+            setOrder([...saved.order, ...newWidgets]);
+          }
+          if (saved.hidden) setHidden(saved.hidden);
+        }
+        setLoaded(true);
+      });
+    });
+  }, []);
+
+  async function persist(newOrder: WidgetId[], newHidden: WidgetId[]) {
+    setSaving(true);
+    const { data: u } = await supabase.auth.getUser();
+    if (u?.user) {
+      await supabase.from("profiles").update({ dashboard_layout: { order: newOrder, hidden: newHidden } }).eq("id", u.user.id);
+    }
+    setSaving(false);
+  }
+
+  function move(id: WidgetId, dir: -1 | 1) {
+    setOrder(prev => {
+      const idx = prev.indexOf(id);
+      if (idx < 0) return prev;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      persist(next, hidden);
+      return next;
+    });
+  }
+
+  function toggle(id: WidgetId) {
+    setHidden(prev => {
+      const next = prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id];
+      persist(order, next);
+      return next;
+    });
+  }
+
+  function reset() {
+    setOrder(defaultLayout);
+    setHidden([]);
+    persist(defaultLayout, []);
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Dashboard Widgets</h2>
+        <div className="flex items-center gap-2">
+          {saving && <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Saving...</span>}
+          <button onClick={reset} className="text-xs px-2 py-1 rounded" style={{ color: "var(--zr-text-muted)", border: "1px solid var(--zr-border)" }}>
+            Reset to Default
+          </button>
+        </div>
+      </div>
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+        Choose which widgets appear on your dashboard and their order. Toggle off widgets you don&apos;t need.
+      </p>
+
+      {/* Widget list */}
+      <div className="space-y-1">
+        {order.map((id, idx) => {
+          const isHidden = hidden.includes(id);
+          return (
+            <div key={id} className="flex items-center justify-between py-1.5 px-2 rounded"
+              style={{ background: isHidden ? "transparent" : "var(--zr-surface-2)", border: "1px solid var(--zr-border)", opacity: isHidden ? 0.5 : 1 }}>
+              <div className="flex items-center gap-2.5">
+                {/* Toggle */}
+                <button onClick={() => toggle(id)} className="relative w-8 h-[18px] rounded-full transition-colors"
+                  style={{ background: isHidden ? "var(--zr-border)" : "var(--zr-orange)" }}>
+                  <span className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all"
+                    style={{ left: isHidden ? "2px" : "14px" }} />
+                </button>
+                <span className="text-xs font-medium" style={{ color: isHidden ? "var(--zr-text-muted)" : "var(--zr-text-primary)" }}>
+                  {WIDGET_LABELS[id]}
+                </span>
+              </div>
+              {!isHidden && (
+                <div className="flex gap-1">
+                  <button onClick={() => move(id, -1)} disabled={idx === 0}
+                    className="text-xs px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--zr-surface-1)", color: idx === 0 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                    ▲
+                  </button>
+                  <button onClick={() => move(id, 1)} disabled={idx === order.length - 1}
+                    className="text-xs px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--zr-surface-1)", color: idx === order.length - 1 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                    ▼
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { permissions: myPerms } = useAuth();
   const searchParams = useSearchParams();
@@ -1611,7 +1732,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saved,    setSaved]    = useState(false);
   const [loading,  setLoading]  = useState(true);
-  const [activeTab, setActiveTab] = useState<"company" | "team" | "setup">(initialTab);
+  const [activeTab, setActiveTab] = useState<"company" | "team" | "setup" | "dashboard">(initialTab);
 
   useEffect(() => { load(); }, []);
 
@@ -1698,6 +1819,15 @@ export default function SettingsPage() {
               borderBottom: activeTab === "company" ? "2px solid var(--zr-orange)" : "2px solid transparent"
             }}>
             Company
+          </button>
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className="px-0 py-2 text-sm font-medium transition-colors"
+            style={{
+              color: activeTab === "dashboard" ? "var(--zr-orange)" : "var(--zr-text-muted)",
+              borderBottom: activeTab === "dashboard" ? "2px solid var(--zr-orange)" : "2px solid transparent"
+            }}>
+            My Dashboard
           </button>
           {showTeamTab && (
             <button
@@ -1843,6 +1973,14 @@ export default function SettingsPage() {
             <EmailTrackingSection />
             <ChecklistSection />
             <DataExportSection />
+          </div>
+        )}
+
+        {/* My Dashboard Tab */}
+        {activeTab === "dashboard" && (
+          <div className="space-y-5">
+            <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Customize which widgets you see on your dashboard and their order. These settings are per-user — each team member can have their own layout.</p>
+            <DashboardWidgetsSection />
           </div>
         )}
 

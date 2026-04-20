@@ -17,6 +17,7 @@ import {
   ReadyToInstallWidget,
   TodaysAppointmentsWidget,
   TasksDueWidget,
+  ShipmentTrackingWidget,
   WidgetId,
   WIDGET_IDS,
   WIDGET_LABELS,
@@ -25,6 +26,7 @@ import {
   type TodayAppt,
   type TaskDue,
   type WorkItem,
+  type ShipmentItem,
 } from "./dashboard-widgets";
 
 type Customer = {
@@ -106,6 +108,8 @@ export default function HomePage() {
   const [teamMap, setTeamMap] = useState<Record<string, string>>({});
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [pipelineValue, setPipelineValue] = useState<Record<string, number>>({});
+  const [shipments, setShipments] = useState<ShipmentItem[]>([]);
+  const [shipmentsLoading, setShipmentsLoading] = useState(true);
 
   // Layout state
   const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(() => {
@@ -159,6 +163,7 @@ export default function HomePage() {
     loadTodayFocus();
     loadWorkQueue();
     loadChartData();
+    loadShipments();
   }, []);
 
   async function loadDashboard() {
@@ -536,6 +541,43 @@ export default function HomePage() {
     setCloseRate(total > 0 ? (won / total) * 100 : 0);
   }
 
+  async function loadShipments() {
+    setShipmentsLoading(true);
+    try {
+      // Fetch quote_materials with active statuses
+      const { data: matData } = await supabase
+        .from("quote_materials")
+        .select("id, description, status, tracking_number, expected_packages, received_packages, eta, ordered_at, shipped_at, received_at, quote_id, quotes!inner(customer_id, customers!inner(first_name, last_name))")
+        .in("status", ["ordered", "shipped", "received"])
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      const items: ShipmentItem[] = (matData || []).map((m: any) => {
+        const cust = m.quotes?.customers;
+        const name = cust ? [cust.first_name, cust.last_name].filter(Boolean).join(" ") : "Unknown";
+        return {
+          id: m.id,
+          description: m.description || "Materials",
+          status: m.status,
+          customer_name: name,
+          customer_id: m.quotes?.customer_id || "",
+          quote_id: m.quote_id || "",
+          tracking_number: m.tracking_number || null,
+          expected_packages: m.expected_packages || null,
+          received_packages: m.received_packages || 0,
+          eta: m.eta || null,
+          ordered_at: m.ordered_at || null,
+          shipped_at: m.shipped_at || null,
+          received_at: m.received_at || null,
+        };
+      });
+      setShipments(items);
+    } catch (err) {
+      console.error("[loadShipments]", err);
+    }
+    setShipmentsLoading(false);
+  }
+
   async function addCustomer(e: React.FormEvent) {
     e.preventDefault();
     const first = firstName.trim();
@@ -596,6 +638,8 @@ export default function HomePage() {
         return <TodaysAppointmentsWidget todayAppts={todayAppts} />;
       case "tasks_due":
         return <TasksDueWidget tasksDue={tasksDue} />;
+      case "shipments":
+        return <ShipmentTrackingWidget shipments={shipments} loading={shipmentsLoading} />;
       default:
         return null;
     }

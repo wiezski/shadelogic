@@ -83,6 +83,7 @@ export const WIDGET_IDS = [
   "ready_to_install",
   "todays_appointments",
   "tasks_due",
+  "shipments",
 ] as const;
 
 export type WidgetId = typeof WIDGET_IDS[number];
@@ -98,18 +99,19 @@ export const WIDGET_LABELS: Record<WidgetId, string> = {
   ready_to_install: "Ready to Install",
   todays_appointments: "Today's Appointments",
   tasks_due: "Tasks Due",
+  shipments: "Shipments & Deliveries",
 };
 
 // ── Role-based defaults ───────────────────────────────────────
 export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
-  owner: ["quick_actions", "kpi_strip", "revenue_chart", "todays_focus", "sales_pipeline", "operations", "work_queue", "ready_to_install", "todays_appointments", "tasks_due"],
-  lead_sales: ["quick_actions", "todays_focus", "kpi_strip", "work_queue", "sales_pipeline", "todays_appointments", "tasks_due", "operations", "revenue_chart", "ready_to_install"],
-  sales: ["quick_actions", "todays_focus", "work_queue", "todays_appointments", "tasks_due", "sales_pipeline", "kpi_strip", "operations", "revenue_chart", "ready_to_install"],
-  office: ["quick_actions", "todays_appointments", "tasks_due", "operations", "work_queue", "ready_to_install", "kpi_strip", "sales_pipeline", "revenue_chart", "todays_focus"],
-  scheduler: ["quick_actions", "todays_appointments", "operations", "ready_to_install", "tasks_due", "work_queue", "kpi_strip", "sales_pipeline", "revenue_chart", "todays_focus"],
-  installer: ["quick_actions", "todays_appointments", "operations", "ready_to_install", "tasks_due", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
-  accounting: ["quick_actions", "kpi_strip", "revenue_chart", "tasks_due", "operations", "work_queue", "sales_pipeline", "todays_appointments", "ready_to_install", "todays_focus"],
-  warehouse: ["quick_actions", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
+  owner: ["quick_actions", "shipments", "kpi_strip", "revenue_chart", "todays_focus", "sales_pipeline", "operations", "work_queue", "ready_to_install", "todays_appointments", "tasks_due"],
+  lead_sales: ["quick_actions", "todays_focus", "kpi_strip", "work_queue", "sales_pipeline", "todays_appointments", "tasks_due", "shipments", "operations", "revenue_chart", "ready_to_install"],
+  sales: ["quick_actions", "todays_focus", "work_queue", "todays_appointments", "tasks_due", "sales_pipeline", "kpi_strip", "shipments", "operations", "revenue_chart", "ready_to_install"],
+  office: ["quick_actions", "todays_appointments", "tasks_due", "shipments", "operations", "work_queue", "ready_to_install", "kpi_strip", "sales_pipeline", "revenue_chart", "todays_focus"],
+  scheduler: ["quick_actions", "todays_appointments", "shipments", "operations", "ready_to_install", "tasks_due", "work_queue", "kpi_strip", "sales_pipeline", "revenue_chart", "todays_focus"],
+  installer: ["quick_actions", "todays_appointments", "shipments", "operations", "ready_to_install", "tasks_due", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
+  accounting: ["quick_actions", "kpi_strip", "revenue_chart", "tasks_due", "operations", "shipments", "work_queue", "sales_pipeline", "todays_appointments", "ready_to_install", "todays_focus"],
+  warehouse: ["quick_actions", "shipments", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
 };
 
 // ── 1. Quick Actions ──────────────────────────────────────────
@@ -616,6 +618,104 @@ export function TasksDueWidget({ tasksDue }: { tasksDue: TaskDue[] }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// ── 11. Shipment Tracking Widget ─────────────────────────────
+export type ShipmentItem = {
+  id: string;
+  description: string;
+  status: "ordered" | "shipped" | "received" | "staged";
+  customer_name: string;
+  customer_id: string;
+  quote_id: string;
+  tracking_number: string | null;
+  expected_packages: number | null;
+  received_packages: number;
+  eta: string | null;
+  ordered_at: string | null;
+  shipped_at: string | null;
+  received_at: string | null;
+};
+
+export function ShipmentTrackingWidget({ shipments, loading }: { shipments: ShipmentItem[]; loading: boolean }) {
+  const ordered = shipments.filter(s => s.status === "ordered");
+  const shipped = shipments.filter(s => s.status === "shipped");
+  const justArrived = shipments.filter(s => s.status === "received" && s.received_at && daysAgo(s.received_at) <= 3);
+
+  if (loading) {
+    return (
+      <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3">
+        <div className="h-4 w-40 bg-gray-200 rounded animate-pulse mb-3" />
+        <div className="space-y-2">
+          {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (shipments.length === 0 || (ordered.length === 0 && shipped.length === 0 && justArrived.length === 0)) {
+    return null; // Don't show widget if nothing active
+  }
+
+  const statusIcon: Record<string, string> = { ordered: "🔄", shipped: "🚚", received: "✅" };
+  const statusLabel: Record<string, string> = { ordered: "Ordered", shipped: "In Transit", received: "Delivered" };
+  const statusColor: Record<string, string> = { ordered: "var(--zr-info)", shipped: "var(--zr-warning)", received: "var(--zr-success)" };
+
+  function ShipmentRow({ s }: { s: ShipmentItem }) {
+    const pkgProgress = s.expected_packages ? `${s.received_packages}/${s.expected_packages} pkgs` : null;
+    return (
+      <Link href={`/quotes/${s.quote_id}`}
+        style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
+        className="flex items-center gap-3 rounded p-2.5 hover:opacity-80">
+        <span className="text-xl shrink-0">{statusIcon[s.status]}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span style={{ color: "var(--zr-text-primary)" }} className="text-sm font-medium truncate">{s.description || "Order"}</span>
+            <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: `${statusColor[s.status]}20`, color: statusColor[s.status] }}>
+              {statusLabel[s.status]}
+            </span>
+          </div>
+          <div style={{ color: "var(--zr-text-muted)" }} className="text-xs mt-0.5 flex items-center gap-2">
+            <span>{s.customer_name}</span>
+            {pkgProgress && <span>· {pkgProgress}</span>}
+            {s.eta && <span>· ETA: {s.eta}</span>}
+            {s.tracking_number && <span>· #{s.tracking_number.slice(-6)}</span>}
+          </div>
+        </div>
+        {s.status === "shipped" && s.expected_packages && s.expected_packages > 0 && (
+          <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "rgba(234,179,8,0.15)", color: "var(--zr-warning)" }}>
+            {s.received_packages}/{s.expected_packages}
+          </div>
+        )}
+      </Link>
+    );
+  }
+
+  return (
+    <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3">
+      <div className="mb-2.5 flex items-center justify-between">
+        <h2 style={{ color: "var(--zr-text-primary)" }} className="text-sm font-semibold flex items-center gap-2">
+          📦 Shipments & Deliveries
+          <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: "rgba(59,130,246,0.1)", color: "var(--zr-info)" }}>
+            {ordered.length + shipped.length} active
+          </span>
+        </h2>
+      </div>
+
+      <div className="space-y-1.5">
+        {/* In Transit first — most urgent */}
+        {shipped.map(s => <ShipmentRow key={s.id} s={s} />)}
+        {/* Just delivered */}
+        {justArrived.map(s => <ShipmentRow key={s.id} s={s} />)}
+        {/* Ordered / waiting */}
+        {ordered.slice(0, 5).map(s => <ShipmentRow key={s.id} s={s} />)}
+      </div>
+
+      {ordered.length > 5 && (
+        <p style={{ color: "var(--zr-text-muted)" }} className="mt-2 text-xs text-center">+{ordered.length - 5} more on order</p>
+      )}
     </div>
   );
 }

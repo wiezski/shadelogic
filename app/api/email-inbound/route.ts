@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
         // Search by order_number, description, or order_pdf_text
         const { data: mats } = await supabase
           .from("quote_materials")
-          .select("id, status, quote_id, expected_packages, received_packages")
+          .select("id, status, quote_id, expected_packages, received_packages, description")
           .eq("company_id", companyId)
           .or(`order_number.ilike.%${orderNum}%,description.ilike.%${orderNum}%,order_pdf_text.ilike.%${orderNum}%`)
           .limit(1);
@@ -306,17 +306,34 @@ export async function POST(req: NextRequest) {
           const allDone = quoteMats?.every(m => m.status === "received" || m.status === "staged");
           if (allDone && quoteMats && quoteMats.length > 0) {
             const { data: quote } = await supabase
-              .from("quotes").select("customer_id").eq("id", mat.quote_id).single();
+              .from("quotes").select("customer_id, customers(first_name, last_name)").eq("id", mat.quote_id).single();
             if (quote) {
               await supabase.from("customers")
                 .update({ next_action: "All materials received — ready to schedule install" })
                 .eq("id", quote.customer_id);
+
+              // Notification: All materials ready
+              const custN = (quote as any).customers
+                ? [(quote as any).customers.first_name, (quote as any).customers.last_name].filter(Boolean).join(" ")
+                : "Customer";
+              try {
+                await supabase.from("notifications").insert([{
+                  company_id: companyId,
+                  type: "ready_to_install",
+                  title: `🎉 Ready to Install — ${custN}`,
+                  message: `All materials received. Schedule the installation!`,
+                  icon: "🎉",
+                  link: `/quotes/${mat.quote_id}`,
+                  customer_id: quote.customer_id,
+                  quote_id: mat.quote_id,
+                }]);
+              } catch { /* non-critical */ }
             }
           }
 
-          // Log activity on customer
+          // Log activity on customer + create notification
           if (matched) {
-            const { data: q } = await supabase.from("quotes").select("customer_id").eq("id", mat.quote_id).single();
+            const { data: q } = await supabase.from("quotes").select("customer_id, customers(first_name, last_name)").eq("id", mat.quote_id).single();
             if (q) {
               const statusLabels: Record<string, string> = { ordered: "Order confirmed", shipped: "Order shipped", received: "Materials received" };
               const trackingStr = trackingNums.length > 0 ? ` — Tracking: ${trackingNums.join(", ")}` : "";
@@ -328,6 +345,36 @@ export async function POST(req: NextRequest) {
                 notes:       `📦 ${statusLabels[detectedStatus ?? ""] ?? detectedStatus}${pkgStr} (auto-detected from email: "${subject.slice(0, 80)}")${trackingStr}`,
                 created_by:  "Email Tracking",
               }]);
+
+              // Create in-app notification for shipment status changes
+              const custName = (q as any).customers
+                ? [(q as any).customers.first_name, (q as any).customers.last_name].filter(Boolean).join(" ")
+                : "Customer";
+              const notifIcons: Record<string, string> = { ordered: "🔄", shipped: "🚚", received: "✅" };
+              const notifTitles: Record<string, string> = {
+                ordered: `Order Confirmed — ${custName}`,
+                shipped: `Shipment In Transit — ${custName}`,
+                received: `Materials Delivered — ${custName}`,
+              };
+              const notifMessages: Record<string, string> = {
+                ordered: `${mat.description || "Materials"} order confirmed${eta ? `. ETA: ${eta}` : ""}`,
+                shipped: `${mat.description || "Materials"} shipped${trackingNums.length > 0 ? ` (tracking: ${trackingNums[0]})` : ""}${pkgStr}`,
+                received: `${mat.description || "Materials"} delivered to warehouse${pkgStr}. Ready to schedule install!`,
+              };
+              try {
+                await supabase.from("notifications").insert([{
+                  company_id: companyId,
+                  type: `shipment_${detectedStatus}`,
+                  title: notifTitles[detectedStatus ?? ""] || `Shipment Update — ${custName}`,
+                  message: notifMessages[detectedStatus ?? ""] || `${mat.description || "Materials"} status: ${detectedStatus}`,
+                  icon: notifIcons[detectedStatus ?? ""] || "📦",
+                  link: `/quotes/${mat.quote_id}`,
+                  customer_id: q.customer_id,
+                  quote_id: mat.quote_id,
+                }]);
+              } catch (notifErr) {
+                console.error("[email-inbound] Failed to create notification:", notifErr);
+              }
             }
           }
           break;

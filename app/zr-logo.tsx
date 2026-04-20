@@ -8,7 +8,7 @@ import { useAuth } from "./auth-provider";
  * When tenant branding is active, swaps to tenant logo + name.
  * Respects --zr-orange CSS variable for white-label recoloring.
  */
-export function ZRLogo({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
+export function ZRLogo({ size = "sm", iconOnly = false }: { size?: "sm" | "md" | "lg"; iconOnly?: boolean }) {
   // Try to get branding, but gracefully handle being outside AuthProvider
   let branding = null;
   try {
@@ -45,9 +45,11 @@ export function ZRLogo({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
         <text x="45" y="63" fontFamily="'Lexend Exa', sans-serif" fontWeight="900" fontSize="54" fill="white" textAnchor="middle">{mark}</text>
         <rect x="5" y="41" width="80" height="8" rx="4" fill="var(--zr-orange, #e63000)" transform="rotate(-22 45 45)" />
       </svg>
-      <span className={`font-black leading-none tracking-tight ${textSize}`} style={{ fontFamily: "var(--zr-font-display)" }}>
-        Zero<span style={{ color: "var(--zr-orange)" }}>Remake</span>
-      </span>
+      {!iconOnly && (
+        <span className={`font-black leading-none tracking-tight ${textSize}`} style={{ fontFamily: "var(--zr-font-display)" }}>
+          Zero<span style={{ color: "var(--zr-orange)" }}>Remake</span>
+        </span>
+      )}
     </span>
   );
 }

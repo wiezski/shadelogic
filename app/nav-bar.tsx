@@ -107,18 +107,22 @@ export function NavBar() {
   const isPublicRoute = HIDE_NAV_ROUTES.some(r => pathname.startsWith(r));
   if (!user || isPublicRoute) return null;
 
+  // Combine notification unread + reminder count for the bell badge
+  const totalBellCount = unreadCount + reminderCount;
+
   return (
     <header className="sticky top-0 z-40 shrink-0"
       style={{ background: "var(--zr-surface-1)", borderBottom: "1px solid var(--zr-border)" }}>
       <div className="flex items-center gap-0 px-2 py-2">
+        {/* Icon only — no wordmark on nav */}
         <Link href="/" className="shrink-0 mr-1 no-underline">
-          <ZRLogo size="sm" />
+          <ZRLogo size="sm" iconOnly />
         </Link>
-        {/* Scrollable nav links */}
+
+        {/* Scrollable nav links — Sign Out at the far end */}
         <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-0">
           {[
             { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
-            { href: "/reminders", label: "Reminders", show: true, badge: reminderCount },
             { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
             { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
             { href: "/calculator", label: "Calculator", show: features.quoting && permissions.view_pricing },
@@ -128,38 +132,40 @@ export function NavBar() {
             { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
             { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
             { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
-          ].filter(i => i.show).map(({ href, label, badge }) => (
+          ].filter(i => i.show).map(({ href, label }) => (
             <Link key={href} href={href}
               className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"
               style={{ color: pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)", fontWeight: pathname === href ? "600" : "normal" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; e.currentTarget.style.background = "var(--zr-surface-2)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)"; e.currentTarget.style.background = "transparent"; }}>
               {label}
-              {badge && badge > 0 ? (
-                <span className="absolute -top-0.5 -right-0.5 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none font-bold"
-                  style={{ background: "var(--zr-error)", fontSize: "9px" }}>
-                  {badge > 9 ? "9+" : badge}
-                </span>
-              ) : null}
             </Link>
           ))}
+          {/* Sign Out — scrolled to far right, only visible if you scroll all the way */}
+          <button onClick={signOut}
+            className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap ml-1"
+            style={{ color: "var(--zr-text-muted)" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "var(--zr-text-muted)"; }}>
+            Sign Out
+          </button>
         </div>
 
-        {/* Pinned right: Bell + Sign Out — always visible */}
+        {/* Pinned right: Bell — always visible */}
         <div ref={bellRef} className="relative shrink-0 ml-1">
           <button onClick={() => setBellOpen(!bellOpen)}
             className="relative p-1.5 rounded transition-colors"
-            style={{ color: unreadCount > 0 ? "var(--zr-orange)" : "var(--zr-text-muted)" }}
+            style={{ color: totalBellCount > 0 ? "var(--zr-orange)" : "var(--zr-text-muted)" }}
             onMouseEnter={e => { e.currentTarget.style.background = "var(--zr-surface-2)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            {unreadCount > 0 && (
+            {totalBellCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 text-white rounded-full min-w-[16px] h-4 flex items-center justify-center leading-none font-bold px-1"
                 style={{ background: "var(--zr-error)", fontSize: "9px" }}>
-                {unreadCount > 99 ? "99+" : unreadCount}
+                {totalBellCount > 99 ? "99+" : totalBellCount}
               </span>
             )}
           </button>
@@ -177,7 +183,32 @@ export function NavBar() {
                 )}
               </div>
               <div className="max-h-80 overflow-y-auto">
-                {notifications.length === 0 ? (
+                {/* Reminder banner — links to /reminders page */}
+                {reminderCount > 0 && (
+                  <div
+                    className="flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+                    style={{
+                      background: "rgba(234,88,12,0.08)",
+                      borderBottom: "1px solid var(--zr-border)",
+                    }}
+                    onClick={() => { setBellOpen(false); window.location.href = "/reminders"; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "var(--zr-surface-2)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(234,88,12,0.08)"; }}>
+                    <span className="text-base shrink-0 mt-0.5">🔔</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>
+                          {reminderCount} follow-up reminder{reminderCount !== 1 ? "s" : ""} due
+                        </span>
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--zr-orange)" }} />
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                        Quotes, deposits, or customers need attention
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {notifications.length === 0 && reminderCount === 0 ? (
                   <div className="p-4 text-center text-xs" style={{ color: "var(--zr-text-muted)" }}>
                     No notifications yet
                   </div>
@@ -213,14 +244,6 @@ export function NavBar() {
             </div>
           )}
         </div>
-
-        <button onClick={signOut}
-          className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap ml-1"
-          style={{ color: "var(--zr-text-muted)" }}
-          onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "var(--zr-text-muted)"; }}>
-          Sign Out
-        </button>
       </div>
     </header>
   );

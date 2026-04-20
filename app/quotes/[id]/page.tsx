@@ -268,11 +268,27 @@ export default function QuotePage() {
     setLines((lRes.data || []) as LineItem[]);
     setProducts((pRes.data || []) as Product[]);
     setMeasureJobs((mRes.data || []) as MeasureJob[]);
-    setMaterials((matRes.data || []) as Material[]);
+    const loadedMats = (matRes.data || []) as Material[];
+    setMaterials(loadedMats);
     setDepositPct(String(quoteData.deposit_pct ?? 50));
     setPayMethod(quoteData.payment_method ?? "check");
     setPayNotes(quoteData.payment_notes ?? "");
     setLoading(false);
+
+    // Auto-load packages for all materials with active statuses
+    const activeMats = loadedMats.filter(m => m.status !== "not_ordered");
+    if (activeMats.length > 0) {
+      for (const m of activeMats) {
+        const { data: pkgData } = await supabase.from("material_packages")
+          .select("*").eq("material_id", m.id).order("created_at");
+        if (pkgData && pkgData.length > 0) {
+          setPackages(prev => ({ ...prev, [m.id]: pkgData as MaterialPackage[] }));
+        }
+      }
+      // Auto-expand first material that has packages and isn't fully staged
+      const firstActive = activeMats.find(m => m.status === "shipped" || m.status === "received" || m.status === "ordered");
+      if (firstActive) setExpandedMat(firstActive.id);
+    }
   }
 
   // ── Pull from measure job ─────────────────────────────────────

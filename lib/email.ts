@@ -32,6 +32,10 @@ export type SendEmailParams = {
   quoteId?: string;
   companyId: string;
   replyTo?: string;
+  /** Override the "from" display name (dealer's company name) */
+  fromName?: string;
+  /** Override the reply-to with dealer's email */
+  fromEmail?: string;
 };
 
 export type SendEmailResult = {
@@ -58,7 +62,14 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
     return { success: false, error: "RESEND_API_KEY not configured" };
   }
 
-  const from = process.env.EMAIL_FROM_ADDRESS || "ZeroRemake <onboarding@resend.dev>";
+  // The "from" address must be a verified domain in Resend.
+  // We use the platform's verified domain but customize the display name
+  // with the dealer's company name so customers see who it's from.
+  // Reply-to goes to the dealer's actual email so responses reach them directly.
+  const platformDomain = process.env.EMAIL_FROM_ADDRESS || "noreply@zeroremake.com";
+  const displayName = params.fromName || "ZeroRemake";
+  const from = `${displayName} <${platformDomain.includes("@") ? platformDomain.split("<").pop()?.replace(">", "").trim() || platformDomain : platformDomain}>`;
+  const replyTo = params.replyTo || params.fromEmail || undefined;
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -72,7 +83,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
         to: [params.to],
         subject: params.subject,
         html: params.html,
-        reply_to: params.replyTo || undefined,
+        reply_to: replyTo,
       }),
     });
 

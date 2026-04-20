@@ -147,6 +147,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Unknown email type: ${type}` }, { status: 400 });
     }
 
+    // Look up the dealer's company email so replies go to them, not to us
+    let dealerEmail: string | undefined;
+    if (companyId && !replyTo) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        const { data: co } = await admin.from("company_settings").select("email").eq("company_id", companyId).single();
+        if (co?.email) dealerEmail = co.email;
+      } catch { /* non-critical */ }
+    }
+
     const result = await sendEmail({
       to,
       subject,
@@ -156,7 +167,9 @@ export async function POST(req: NextRequest) {
       appointmentId,
       quoteId,
       companyId,
-      replyTo,
+      replyTo: replyTo || dealerEmail,
+      fromName: companyName || undefined,
+      fromEmail: dealerEmail,
     });
 
     if (!result.success) {

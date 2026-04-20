@@ -702,6 +702,7 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
             {ordered.length + shipped.length} active
           </span>
         </h2>
+        <Link href="/warehouse" style={{ color: "var(--zr-orange)" }} className="text-xs hover:underline">View All →</Link>
       </div>
 
       <div className="space-y-1.5">

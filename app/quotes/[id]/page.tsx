@@ -1742,7 +1742,7 @@ export default function QuotePage() {
         )}
 
         {/* ── MATERIALS ── */}
-        {quote.status === "approved" && (
+        {(quote.status === "approved" || materials.length > 0) && (
           <div className="rounded border">
             <div className="flex items-center justify-between px-3 py-2 border-b">
               <div className="font-semibold text-sm">

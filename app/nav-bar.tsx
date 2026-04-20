@@ -110,40 +110,43 @@ export function NavBar() {
   return (
     <header className="sticky top-0 z-40 shrink-0"
       style={{ background: "var(--zr-surface-1)", borderBottom: "1px solid var(--zr-border)" }}>
-      <div className="flex items-center gap-0 px-2 py-2 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-0 px-2 py-2">
         <Link href="/" className="shrink-0 mr-1 no-underline">
           <ZRLogo size="sm" />
         </Link>
-        {[
-          { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
-          { href: "/reminders", label: "Reminders", show: true, badge: reminderCount },
-          { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
-          { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
-          { href: "/calculator", label: "Calculator", show: features.quoting && permissions.view_pricing },
-          { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
-          { href: "/settings",  label: "Settings",  show: permissions.access_settings },
-          { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
-          { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
-          { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
-        ].filter(i => i.show).map(({ href, label, badge }) => (
-          <Link key={href} href={href}
-            className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"
-            style={{ color: pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)", fontWeight: pathname === href ? "600" : "normal" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; e.currentTarget.style.background = "var(--zr-surface-2)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)"; e.currentTarget.style.background = "transparent"; }}>
-            {label}
-            {badge && badge > 0 ? (
-              <span className="absolute -top-0.5 -right-0.5 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none font-bold"
-                style={{ background: "var(--zr-error)", fontSize: "9px" }}>
-                {badge > 9 ? "9+" : badge}
-              </span>
-            ) : null}
-          </Link>
-        ))}
-        <div className="flex-1" />
+        {/* Scrollable nav links */}
+        <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-0">
+          {[
+            { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
+            { href: "/reminders", label: "Reminders", show: true, badge: reminderCount },
+            { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
+            { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
+            { href: "/calculator", label: "Calculator", show: features.quoting && permissions.view_pricing },
+            { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },
+            { href: "/warehouse", label: "Warehouse", show: true },
+            { href: "/settings",  label: "Settings",  show: permissions.access_settings },
+            { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
+            { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
+            { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
+          ].filter(i => i.show).map(({ href, label, badge }) => (
+            <Link key={href} href={href}
+              className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"
+              style={{ color: pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)", fontWeight: pathname === href ? "600" : "normal" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; e.currentTarget.style.background = "var(--zr-surface-2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)"; e.currentTarget.style.background = "transparent"; }}>
+              {label}
+              {badge && badge > 0 ? (
+                <span className="absolute -top-0.5 -right-0.5 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none font-bold"
+                  style={{ background: "var(--zr-error)", fontSize: "9px" }}>
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              ) : null}
+            </Link>
+          ))}
+        </div>
 
-        {/* Notification Bell */}
-        <div ref={bellRef} className="relative shrink-0 mr-1">
+        {/* Pinned right: Bell + Sign Out — always visible */}
+        <div ref={bellRef} className="relative shrink-0 ml-1">
           <button onClick={() => setBellOpen(!bellOpen)}
             className="relative p-1.5 rounded transition-colors"
             style={{ color: unreadCount > 0 ? "var(--zr-orange)" : "var(--zr-text-muted)" }}

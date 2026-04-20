@@ -25,9 +25,26 @@ function SignupInner() {
   const [fullName,    setFullName]    = useState("");
   const [email,       setEmail]       = useState("");
   const [password,    setPassword]    = useState("");
+  const [promoCode,   setPromoCode]   = useState("");
+  const [promoValid,  setPromoValid]  = useState<null | { plan: string; duration: string; max_users: number; label: string | null }>(null);
+  const [promoError,  setPromoError]  = useState("");
   const [error,       setError]       = useState("");
   const [loading,     setLoading]     = useState(false);
   const [pending,     setPending]     = useState(false);
+
+  async function checkPromoCode() {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) { setPromoValid(null); setPromoError(""); return; }
+    setPromoError("");
+    const { data } = await supabase
+      .from("promo_codes")
+      .select("plan, duration, max_users, label, used_by_company")
+      .eq("code", code)
+      .single();
+    if (!data) { setPromoValid(null); setPromoError("Invalid promo code"); return; }
+    if (data.used_by_company) { setPromoValid(null); setPromoError("This code has already been used"); return; }
+    setPromoValid({ plan: data.plan, duration: data.duration, max_users: data.max_users, label: data.label });
+  }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -92,8 +109,9 @@ function SignupInner() {
       }
     } else {
       // Create new company
+      const planToSet = promoValid ? promoValid.plan : "trial";
       const { data: company } = await supabase.from("companies")
-        .insert([{ name: companyName.trim() }]).select("id").single();
+        .insert([{ name: companyName.trim(), plan: planToSet }]).select("id").single();
       if (!company) { setError("Error creating company."); setLoading(false); return; }
       await supabase.from("profiles").insert([{
         id: userId, company_id: company.id,
@@ -101,6 +119,23 @@ function SignupInner() {
         status: "active",
       }]);
       await supabase.from("company_settings").insert([{ name: companyName.trim(), company_id: company.id }]);
+
+      // Redeem promo code if provided
+      if (promoValid && promoCode.trim()) {
+        const code = promoCode.trim().toUpperCase();
+        let expiresAt: string | null = null;
+        if (promoValid.duration !== "lifetime") {
+          const months = promoValid.duration === "3mo" ? 3 : promoValid.duration === "6mo" ? 6 : 12;
+          const exp = new Date();
+          exp.setMonth(exp.getMonth() + months);
+          expiresAt = exp.toISOString();
+        }
+        await supabase.from("promo_codes").update({
+          used_by_company: company.id,
+          used_at: new Date().toISOString(),
+          expires_at: expiresAt,
+        }).eq("code", code);
+      }
     }
 
     setLoading(false);
@@ -180,6 +215,28 @@ function SignupInner() {
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                 placeholder="6+ characters" className="w-full px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </div>
+            {!isInvite && (
+              <div>
+                <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Promo Code <span style={{ color: "var(--zr-text-muted)", fontWeight: 400 }}>(optional)</span></label>
+                <div className="flex gap-2">
+                  <input value={promoCode} onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoValid(null); setPromoError(""); }}
+                    placeholder="e.g. UTAH-VIP-2026" className="flex-1 px-3 py-2.5 text-sm outline-none font-mono tracking-wider" style={inputStyle} />
+                  <button type="button" onClick={checkPromoCode} disabled={!promoCode.trim()}
+                    className="px-3 py-2 text-xs font-medium rounded disabled:opacity-40"
+                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>
+                    Apply
+                  </button>
+                </div>
+                {promoError && <p className="mt-1 text-xs" style={{ color: "var(--zr-error)" }}>{promoError}</p>}
+                {promoValid && (
+                  <div className="mt-1.5 rounded px-3 py-2" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)" }}>
+                    <p className="text-xs font-medium" style={{ color: "#22c55e" }}>
+                      ✓ {promoValid.label || "Promo code applied"} — {promoValid.plan.charAt(0).toUpperCase() + promoValid.plan.slice(1)} plan, {promoValid.duration === "lifetime" ? "free forever" : `free for ${promoValid.duration.replace("mo", " months")}`}, up to {promoValid.max_users} users
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             <button type="submit" disabled={loading}
               className="w-full py-3 font-bold text-white disabled:opacity-50 cursor-pointer"
               style={{ background: "var(--zr-orange)", borderRadius: "var(--zr-radius-md)", border: "none" }}>

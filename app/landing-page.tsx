@@ -476,9 +476,12 @@ export function LandingPage() {
             <Link href="/signup" className="hover:underline">Sign Up</Link>
             <a href="#features" className="hover:underline">Features</a>
             <a href="#pricing" className="hover:underline">Pricing</a>
+            <a href="mailto:support@zeroremake.com" className="hover:underline">Contact</a>
           </div>
           <p className="text-xs" style={{ color: "#9ca3af" }}>
             &copy; {new Date().getFullYear()} ZeroRemake. All rights reserved.
+            {" · "}
+            <a href="mailto:support@zeroremake.com" className="hover:underline" style={{ color: "#9ca3af" }}>support@zeroremake.com</a>
           </p>
         </div>
       </footer>

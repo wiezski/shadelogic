@@ -42,6 +42,7 @@ type Invoice = {
   sent_at: string | null;
   paid_at: string | null;
   voided_at: string | null;
+  public_token: string | null;
   created_at: string;
 };
 
@@ -477,6 +478,198 @@ function InvoiceExportDropdown({ invoices }: { invoices: Invoice[] }) {
   );
 }
 
+// ── Bulk Send Modal ───────────────────────────────────────────
+function BulkSendModal({ open, onClose, invoices, onSent }: {
+  open: boolean;
+  onClose: () => void;
+  invoices: Invoice[];
+  onSent: () => void;
+}) {
+  const { companyId } = useAuth();
+  const [sendMethod, setSendMethod] = useState<"sms" | "email">("sms");
+  const [sending, setSending] = useState(false);
+  const [results, setResults] = useState<{ name: string; ok: boolean; error?: string }[]>([]);
+  const [done, setDone] = useState(false);
+  const [customerData, setCustomerData] = useState<Record<string, { phone: string | null; email: string | null }>>({});
+
+  useEffect(() => {
+    if (open && invoices.length > 0) {
+      loadCustomerContacts();
+      setResults([]);
+      setDone(false);
+    }
+  }, [open, invoices]);
+
+  async function loadCustomerContacts() {
+    const custIds = [...new Set(invoices.map(i => i.customer_id))];
+    const { data } = await supabase.from("customers").select("id, phone, email").in("id", custIds);
+    const map: Record<string, { phone: string | null; email: string | null }> = {};
+    (data || []).forEach((c: any) => { map[c.id] = { phone: c.phone, email: c.email }; });
+    setCustomerData(map);
+  }
+
+  async function sendAll() {
+    setSending(true);
+    const newResults: typeof results = [];
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+    for (const inv of invoices) {
+      const contact = customerData[inv.customer_id];
+      const invLink = inv.public_token ? `${baseUrl}/i/${inv.public_token}` : `${baseUrl}/invoices/${inv.id}`;
+      const msg = `Hi! Your invoice ${inv.invoice_number} for ${fmtMoney(inv.amount_due)} is ready. View it here: ${invLink}`;
+
+      try {
+        if (sendMethod === "sms") {
+          if (!contact?.phone) {
+            newResults.push({ name: inv.customer_name, ok: false, error: "No phone number" });
+            continue;
+          }
+          const res = await fetch("/api/sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contact.phone, message: msg, companyId }),
+          });
+          const data = await res.json();
+          if (data.error) {
+            newResults.push({ name: inv.customer_name, ok: false, error: data.error });
+          } else {
+            newResults.push({ name: inv.customer_name, ok: true });
+            // Mark invoice as sent
+            await supabase.from("invoices").update({ status: inv.status === "draft" ? "sent" : inv.status, sent_at: inv.sent_at || new Date().toISOString() }).eq("id", inv.id);
+          }
+        } else {
+          if (!contact?.email) {
+            newResults.push({ name: inv.customer_name, ok: false, error: "No email address" });
+            continue;
+          }
+          const res = await fetch("/api/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: contact.email,
+              subject: `Invoice ${inv.invoice_number} — ${fmtMoney(inv.amount_due)} Due`,
+              html: `<p>Hi,</p><p>Your invoice <strong>${inv.invoice_number}</strong> for <strong>${fmtMoney(inv.amount_due)}</strong> is ready.</p><p><a href="${invLink}" style="background:#f97316;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;">View Invoice</a></p><p>Thank you!</p>`,
+            }),
+          });
+          const data = await res.json();
+          if (data.error) {
+            newResults.push({ name: inv.customer_name, ok: false, error: data.error });
+          } else {
+            newResults.push({ name: inv.customer_name, ok: true });
+            await supabase.from("invoices").update({ status: inv.status === "draft" ? "sent" : inv.status, sent_at: inv.sent_at || new Date().toISOString() }).eq("id", inv.id);
+          }
+        }
+      } catch (err) {
+        newResults.push({ name: inv.customer_name, ok: false, error: String(err) });
+      }
+    }
+
+    setResults(newResults);
+    setSending(false);
+    setDone(true);
+    onSent();
+  }
+
+  if (!open) return null;
+
+  const successCount = results.filter(r => r.ok).length;
+  const failCount = results.filter(r => !r.ok).length;
+  const canSend = invoices.some(inv => {
+    const c = customerData[inv.customer_id];
+    return sendMethod === "sms" ? !!c?.phone : !!c?.email;
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded-lg max-w-md w-full p-4 space-y-4">
+        <h2 className="font-bold text-lg">Send {invoices.length} Invoice{invoices.length !== 1 ? "s" : ""}</h2>
+
+        {!done ? (
+          <>
+            <div>
+              <label className="text-xs font-medium block mb-1.5">Send via</label>
+              <div className="flex gap-2">
+                <button onClick={() => setSendMethod("sms")}
+                  className={`flex-1 rounded p-2 text-sm font-medium border ${sendMethod === "sms" ? "ring-2 ring-orange-400" : ""}`}
+                  style={{ background: sendMethod === "sms" ? "rgba(249,115,22,0.1)" : "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                  📱 Text Message
+                </button>
+                <button onClick={() => setSendMethod("email")}
+                  className={`flex-1 rounded p-2 text-sm font-medium border ${sendMethod === "email" ? "ring-2 ring-orange-400" : ""}`}
+                  style={{ background: sendMethod === "email" ? "rgba(249,115,22,0.1)" : "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                  ✉️ Email
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto rounded" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+              {invoices.map(inv => {
+                const c = customerData[inv.customer_id];
+                const hasContact = sendMethod === "sms" ? !!c?.phone : !!c?.email;
+                return (
+                  <div key={inv.id} className="flex items-center justify-between px-3 py-2 border-b last:border-0 text-xs" style={{ borderColor: "var(--zr-border)" }}>
+                    <div>
+                      <div className="font-medium">{inv.customer_name}</div>
+                      <div style={{ color: "var(--zr-text-secondary)" }}>{inv.invoice_number} — {fmtMoney(inv.amount_due)}</div>
+                    </div>
+                    {hasContact ? (
+                      <span className="text-green-600 text-xs">Ready</span>
+                    ) : (
+                      <span className="text-red-500 text-xs">No {sendMethod === "sms" ? "phone" : "email"}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={onClose}
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
+                className="flex-1 rounded p-2 text-sm font-medium hover:opacity-80">
+                Cancel
+              </button>
+              <button onClick={sendAll}
+                disabled={sending || !canSend}
+                style={{ background: "var(--zr-orange)" }}
+                className="flex-1 rounded p-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+                {sending ? "Sending…" : `Send All via ${sendMethod === "sms" ? "SMS" : "Email"}`}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-center py-4">
+              <div className="text-3xl mb-2">{failCount === 0 ? "✅" : "⚠️"}</div>
+              <div className="font-semibold">{successCount} sent{failCount > 0 ? `, ${failCount} failed` : ""}</div>
+            </div>
+
+            {results.length > 0 && (
+              <div className="max-h-40 overflow-y-auto rounded text-xs" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                {results.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5 border-b last:border-0" style={{ borderColor: "var(--zr-border)" }}>
+                    <span>{r.name}</span>
+                    {r.ok ? (
+                      <span className="text-green-600">Sent</span>
+                    ) : (
+                      <span className="text-red-500">{r.error}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={onClose}
+              style={{ background: "var(--zr-orange)" }}
+              className="w-full rounded p-2 text-sm font-medium text-white hover:opacity-90">
+              Done
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────
 export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<"invoices" | "quotes">("invoices");
@@ -484,6 +677,8 @@ export default function PaymentsPage() {
   const [quotes, setQuotes] = useState<PaymentQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSendOpen, setBulkSendOpen] = useState(false);
 
   useEffect(() => {
     load();
@@ -498,7 +693,7 @@ export default function PaymentsPage() {
   async function loadInvoices() {
     const { data } = await supabase
       .from("invoices")
-      .select("id, invoice_number, customer_id, quote_id, type, status, subtotal, tax_pct, tax_amount, total, amount_paid, due_date, sent_at, paid_at, voided_at, created_at")
+      .select("id, invoice_number, customer_id, quote_id, type, status, subtotal, tax_pct, tax_amount, total, amount_paid, due_date, sent_at, paid_at, voided_at, public_token, created_at")
       .order("created_at", { ascending: false });
 
     if (!data) return;
@@ -566,34 +761,67 @@ export default function PaymentsPage() {
     balanceDue.reduce((s, q) => s + (q.deposit_amount || 0), 0) +
     paidInFull.reduce((s, q) => s + (q.total || 0), 0);
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const sendable = invoices.filter(inv => !["paid", "void"].includes(inv.status) && inv.amount_due > 0);
+    if (selectedIds.size === sendable.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sendable.map(inv => inv.id)));
+    }
+  }
+
+  const selectedInvoices = invoices.filter(inv => selectedIds.has(inv.id));
+  const sendableCount = invoices.filter(inv => !["paid", "void"].includes(inv.status) && inv.amount_due > 0).length;
+
   function InvoiceRow({ inv }: { inv: Invoice }) {
-    const days = daysSince(inv.created_at);
     const badge = getStatusBadge(inv.status);
+    const isSendable = !["paid", "void"].includes(inv.status) && inv.amount_due > 0;
+    const isSelected = selectedIds.has(inv.id);
     return (
-      <Link
-        href={`/invoices/${inv.id}`}
-        className="flex items-start justify-between rounded border p-3 hover:opacity-80 gap-3"
-        style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="font-medium truncate">{inv.customer_name}</div>
-            <span className={`text-xs rounded px-1.5 py-0.5 ${badge.bg} ${badge.text}`}>
-              {inv.status}
-            </span>
-          </div>
-          <div className="text-xs text-gray-500 truncate">{inv.invoice_number}</div>
-          {inv.due_date && (
-            <div className="text-xs text-gray-500 mt-0.5">
-              Due {new Date(inv.due_date).toLocaleDateString()}
+      <div className="flex items-center gap-2">
+        {isSendable && (
+          <input type="checkbox" checked={isSelected}
+            onChange={() => toggleSelect(inv.id)}
+            className="h-4 w-4 shrink-0 rounded cursor-pointer" />
+        )}
+        {!isSendable && <div className="w-4 shrink-0" />}
+        <Link
+          href={`/invoices/${inv.id}`}
+          className="flex-1 flex items-start justify-between rounded border p-3 hover:opacity-80 gap-3"
+          style={{
+            background: isSelected ? "rgba(249,115,22,0.06)" : "var(--zr-surface-2)",
+            border: isSelected ? "1px solid var(--zr-orange)" : "1px solid var(--zr-border)",
+          }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="font-medium truncate">{inv.customer_name}</div>
+              <span className={`text-xs rounded px-1.5 py-0.5 ${badge.bg} ${badge.text}`}>
+                {inv.status}
+              </span>
             </div>
-          )}
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="font-bold text-sm">{fmtMoney(inv.amount_due)}</div>
-          <div className="text-xs text-gray-500">of {fmtMoney(inv.total)}</div>
-        </div>
-      </Link>
+            <div className="text-xs text-gray-500 truncate">{inv.invoice_number}</div>
+            {inv.due_date && (
+              <div className="text-xs text-gray-500 mt-0.5">
+                Due {new Date(inv.due_date).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="font-bold text-sm">{fmtMoney(inv.amount_due)}</div>
+            <div className="text-xs text-gray-500">of {fmtMoney(inv.total)}</div>
+          </div>
+        </Link>
+      </div>
     );
   }
 
@@ -727,13 +955,44 @@ export default function PaymentsPage() {
               </div>
             ) : activeTab === "invoices" ? (
               <>
-                <button
-                  onClick={() => setCreateModalOpen(true)}
-                  style={{ background: "var(--zr-orange)" }}
-                  className="w-full rounded p-2 text-sm font-medium text-white hover:opacity-90"
-                >
-                  Create Invoice
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCreateModalOpen(true)}
+                    style={{ background: "var(--zr-orange)" }}
+                    className="flex-1 rounded p-2 text-sm font-medium text-white hover:opacity-90"
+                  >
+                    Create Invoice
+                  </button>
+                  {sendableCount > 0 && (
+                    <button
+                      onClick={toggleSelectAll}
+                      style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                      className="rounded px-3 py-2 text-xs font-medium hover:opacity-80"
+                    >
+                      {selectedIds.size === sendableCount ? "Deselect All" : "Select All"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Bulk action bar */}
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center justify-between rounded-lg px-4 py-2.5" style={{ background: "rgba(249,115,22,0.1)", border: "1px solid var(--zr-orange)" }}>
+                    <div className="text-sm font-medium" style={{ color: "var(--zr-orange)" }}>
+                      {selectedIds.size} invoice{selectedIds.size !== 1 ? "s" : ""} selected — {fmtMoney(selectedInvoices.reduce((s, i) => s + i.amount_due, 0))} total
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedIds(new Set())}
+                        className="text-xs px-2 py-1 rounded" style={{ color: "var(--zr-text-secondary)" }}>
+                        Clear
+                      </button>
+                      <button onClick={() => setBulkSendOpen(true)}
+                        style={{ background: "var(--zr-orange)" }}
+                        className="rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+                        Send Selected
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {invoices.length === 0 ? (
                   <EmptyState type="invoices" title="No invoices yet" subtitle="Create your first invoice from an approved quote." />
@@ -823,6 +1082,12 @@ export default function PaymentsPage() {
           </div>
 
           <CreateInvoiceModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreated={load} />
+          <BulkSendModal
+            open={bulkSendOpen}
+            onClose={() => { setBulkSendOpen(false); setSelectedIds(new Set()); }}
+            invoices={selectedInvoices}
+            onSent={load}
+          />
         </main>
       </PermissionGate>
     </FeatureGate>

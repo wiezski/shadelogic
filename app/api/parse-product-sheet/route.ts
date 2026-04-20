@@ -115,13 +115,12 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
     const m = line.match(priceLineRegex);
     if (m) {
       const name = m[1].trim();
-      // Skip header-like lines
       if (/^(product|item|description|name|sku|price|cost|total)/i.test(name)) continue;
       if (name.length < 3) continue;
 
       const sku = m[2]?.trim() || null;
       const cost = parseFloat(m[3]) || null;
-      const sizes = extractSizes(text); // Use whole doc for sizes
+      const sizes = extractSizes(text);
 
       products.push({
         name,
@@ -130,20 +129,46 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
         sku,
         cost,
         multiplier: null,
-        min_width: sizes.minW,
-        max_width: sizes.maxW,
-        min_height: sizes.minH,
-        max_height: sizes.maxH,
-        lead_time_days: null,
-        color_options: null,
-        notes: null,
+        min_width: sizes.minW, max_width: sizes.maxW,
+        min_height: sizes.minH, max_height: sizes.maxH,
+        lead_time_days: null, color_options: null, notes: null,
       });
     }
   }
 
-  // Strategy 2: If no tabular data found, look for product names with descriptions
+  // Strategy 1b: Tab-separated or multi-space columns with dollar amounts
+  // Common in exported price lists: "Roller Blackout\t$85.00\t$212.50"
   if (products.length === 0) {
-    // Look for patterns like "- Product Name" or "• Product Name" or numbered lists
+    for (const line of lines) {
+      const tabParts = line.split(/\t+/);
+      if (tabParts.length >= 2) {
+        const name = tabParts[0].trim();
+        if (name.length < 3 || /^(product|item|description|name|sku|price|cost|total|#)/i.test(name)) continue;
+        // Find first price-like value in the remaining parts
+        let cost: number | null = null;
+        let sku: string | null = null;
+        for (const part of tabParts.slice(1)) {
+          const priceMatch = part.trim().match(/^\$?\s*(\d{1,6}(?:\.\d{1,2})?)$/);
+          if (priceMatch && !cost) {
+            cost = parseFloat(priceMatch[1]);
+          } else if (/^[A-Z0-9][\w-]{2,20}$/.test(part.trim()) && !sku) {
+            sku = part.trim();
+          }
+        }
+        if (cost !== null || sku) {
+          products.push({
+            name, category: guessCategory(name), manufacturer: detectedManufacturer,
+            sku, cost, multiplier: null,
+            min_width: null, max_width: null, min_height: null, max_height: null,
+            lead_time_days: null, color_options: null, notes: null,
+          });
+        }
+      }
+    }
+  }
+
+  // Strategy 2: Look for product names with descriptions (bullet lists)
+  if (products.length === 0) {
     const listRegex = /^[\-•●○◦\*]\s+(.{5,80})$|^(\d+[\.\)]\s+.{5,80})$/;
     for (const line of lines) {
       const m = line.match(listRegex);
@@ -154,25 +179,17 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
 
         const sz = extractSizes(line);
         products.push({
-          name,
-          category: guessCategory(name),
-          manufacturer: detectedManufacturer,
-          sku: null,
-          cost: null,
-          multiplier: null,
-          min_width: sz.minW,
-          max_width: sz.maxW,
-          min_height: sz.minH,
-          max_height: sz.maxH,
-          lead_time_days: null,
-          color_options: null,
-          notes: null,
+          name, category: guessCategory(name), manufacturer: detectedManufacturer,
+          sku: null, cost: null, multiplier: null,
+          min_width: sz.minW, max_width: sz.maxW,
+          min_height: sz.minH, max_height: sz.maxH,
+          lead_time_days: null, color_options: null, notes: null,
         });
       }
     }
   }
 
-  // Strategy 3: Look for any line that looks like a product (has a price nearby)
+  // Strategy 3: Look for any line that has "Product Name" followed by $ price
   if (products.length === 0) {
     const priceNearby = /(.{5,60}?)\s+\$(\d+\.?\d{0,2})/g;
     let match;
@@ -181,17 +198,42 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
       if (/^(total|subtotal|tax|shipping|discount|price|cost)/i.test(name)) continue;
       if (name.length < 3) continue;
       products.push({
-        name,
-        category: guessCategory(name),
-        manufacturer: detectedManufacturer,
-        sku: null,
-        cost: parseFloat(match[2]) || null,
-        multiplier: null,
+        name, category: guessCategory(name), manufacturer: detectedManufacturer,
+        sku: null, cost: parseFloat(match[2]) || null, multiplier: null,
         min_width: null, max_width: null, min_height: null, max_height: null,
-        lead_time_days: null,
-        color_options: null,
-        notes: null,
+        lead_time_days: null, color_options: null, notes: null,
       });
+    }
+  }
+
+  // Strategy 4: Section-heading based — detect product groups under category headings
+  // e.g., "ROLLER SHADES\n  Blackout Standard\n  Light Filtering..."
+  if (products.length === 0) {
+    let currentSection: string | null = null;
+    for (const line of lines) {
+      // Detect section headers (ALL CAPS, or ending with colon, or short + bold-like)
+      if (/^[A-Z][A-Z\s&\/\-]{3,40}$/.test(line) || /^.{3,40}:$/.test(line)) {
+        currentSection = line.replace(/:$/, "").trim();
+        continue;
+      }
+      // Under a section, any decent-length line could be a product
+      if (currentSection && line.length >= 5 && line.length <= 80) {
+        if (/^(note|warning|disclaimer|page|see |for |please|available)/i.test(line)) continue;
+        if (/^\d+$/.test(line)) continue; // skip pure numbers
+        const priceInLine = line.match(/\$(\d+\.?\d{0,2})/);
+        const nameClean = line.replace(/\$\d+\.?\d{0,2}/g, "").trim();
+        if (nameClean.length < 3) continue;
+        products.push({
+          name: nameClean,
+          category: guessCategory(currentSection + " " + nameClean),
+          manufacturer: detectedManufacturer,
+          sku: null,
+          cost: priceInLine ? parseFloat(priceInLine[1]) : null,
+          multiplier: null,
+          min_width: null, max_width: null, min_height: null, max_height: null,
+          lead_time_days: null, color_options: null, notes: null,
+        });
+      }
     }
   }
 
@@ -199,9 +241,16 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
   const ltMatch = text.match(/lead\s*time\s*:?\s*(\d+)\s*(?:days?|business\s*days?|weeks?)/i);
   const leadTime = ltMatch ? parseInt(ltMatch[1]) * (ltMatch[0].toLowerCase().includes("week") ? 7 : 1) : null;
 
-  // Extract colors
-  const colorMatch = text.match(/(?:colors?|finishes?|options?)\s*:?\s*([A-Za-z,\s|\/]+(?:White|Black|Gray|Cream|Ivory|Beige|Brown|Tan|Navy|Pewter|Bronze|Champagne|Silver|Alabaster|Linen)[A-Za-z,\s|\/]*)/i);
-  const colors = colorMatch ? colorMatch[1].trim().replace(/\s{2,}/g, " ") : null;
+  // Extract colors — broader matching
+  const colorPatterns = [
+    /(?:colors?|finishes?|fabric\s*options?)\s*:?\s*([A-Za-z,\s|\/]+(?:White|Black|Gray|Grey|Cream|Ivory|Beige|Brown|Tan|Navy|Pewter|Bronze|Champagne|Silver|Alabaster|Linen|Snow|Pearl|Charcoal|Espresso|Mocha|Sand|Dune|Stone|Slate|Fog|Mist|Cloud|Dove|Ash|Smoke|Bone|Natural|Wheat|Oat|Flax|Camel|Cocoa|Walnut|Mahogany|Oak|Maple)[A-Za-z,\s|\/]*)/i,
+    /(?:available\s+in|comes\s+in|offered\s+in)\s*:?\s*([A-Za-z,\s|\/&]{10,200})/i,
+  ];
+  let colors: string | null = null;
+  for (const pat of colorPatterns) {
+    const colorMatch = text.match(pat);
+    if (colorMatch) { colors = colorMatch[1].trim().replace(/\s{2,}/g, " "); break; }
+  }
 
   // Apply doc-level data to products
   if (leadTime || colors) {
@@ -218,7 +267,7 @@ function parseProducts(text: string, detectedManufacturer: string | null): Parse
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, 100);
+  }).slice(0, 200); // Increased limit for large catalogs
 }
 
 // ── Route handler ────────────────────────────────────────────

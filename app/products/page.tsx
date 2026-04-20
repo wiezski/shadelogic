@@ -158,6 +158,9 @@ export default function ProductsPage() {
   const [pdfParsing,   setPdfParsing]   = useState(false);
   const [pdfImporting, setPdfImporting] = useState(false);
   const [pdfMfg,       setPdfMfg]       = useState<string | null>(null);
+  const [bulkCategory,   setBulkCategory]   = useState<string>(""); // "" = use detected
+  const [bulkMultiplier, setBulkMultiplier] = useState<string>("2.50");
+  const [bulkManufacturer, setBulkManufacturer] = useState<string>("");
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   // Product spec viewer
@@ -330,13 +333,15 @@ export default function ProductsPage() {
   async function importPDF() {
     if (pdfPreview.length === 0) return;
     setPdfImporting(true);
+    const mult = parseFloat(bulkMultiplier) || 2.5;
+    const mfgOverride = bulkManufacturer.trim() || pdfMfg || null;
     const inserts = pdfPreview.map(p => ({
       name: p.name || "Unnamed",
-      category: p.category || "other",
+      category: bulkCategory || p.category || "other",
       default_cost: p.default_cost || 0,
-      default_multiplier: p.default_multiplier || 2.5,
+      default_multiplier: mult,
       notes: p.notes || null,
-      manufacturer: p.manufacturer || pdfMfg || null,
+      manufacturer: mfgOverride,
       sku: p.sku || null,
       min_width: p.min_width || null,
       max_width: p.max_width || null,
@@ -354,6 +359,7 @@ export default function ProductsPage() {
     } else {
       setImportResult(`Successfully imported ${inserts.length} products from PDF`);
       setPdfPreview([]);
+      setBulkCategory(""); setBulkMultiplier("2.50"); setBulkManufacturer("");
       if (pdfInputRef.current) pdfInputRef.current.value = "";
       load();
     }
@@ -493,9 +499,9 @@ export default function ProductsPage() {
 
             {/* PDF Import Section */}
             <div className="border-t pt-2 mt-2" style={{ borderColor: "rgba(59,130,246,0.3)" }}>
-              <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold mb-1">Import from PDF</div>
+              <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold mb-1">Import from PDF — Bulk Catalog Upload</div>
               <p style={{ color: "var(--zr-info)" }} className="text-xs mb-1.5">
-                Upload a manufacturer price sheet or spec sheet (PDF). We'll extract product names, prices, sizes, and specs automatically.
+                Upload a manufacturer price sheet or product list (PDF). We'll extract product names, prices, sizes, and specs. You can set a default markup and category for the whole batch.
               </p>
               <div className="flex items-center gap-2">
                 <input ref={pdfInputRef} type="file" accept=".pdf,image/*"
@@ -512,44 +518,80 @@ export default function ProductsPage() {
                   <div style={{ color: "var(--zr-info)" }} className="text-xs font-medium">
                     Found {pdfPreview.length} products{pdfMfg ? ` from ${pdfMfg}` : ""}
                   </div>
-                  <div style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="max-h-48 overflow-y-auto rounded">
+
+                  {/* Bulk settings for all imported products */}
+                  <div className="rounded p-2.5 space-y-2" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
+                    <div className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>Apply to all imported products:</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>Manufacturer</label>
+                        <input value={bulkManufacturer || pdfMfg || ""} onChange={e => setBulkManufacturer(e.target.value)}
+                          placeholder={pdfMfg || "Auto-detected"}
+                          className="w-full border rounded px-2 py-1 text-xs mt-0.5" />
+                      </div>
+                      <div>
+                        <label className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>Category</label>
+                        <select value={bulkCategory} onChange={e => setBulkCategory(e.target.value)}
+                          className="w-full border rounded px-2 py-1 text-xs mt-0.5">
+                          <option value="">Use auto-detected</option>
+                          {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs" style={{ color: "var(--zr-text-secondary)" }}>Markup Multiplier</label>
+                        <input value={bulkMultiplier} onChange={e => setBulkMultiplier(e.target.value)}
+                          type="number" step="0.1" min="1" placeholder="2.50"
+                          className="w-full border rounded px-2 py-1 text-xs mt-0.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }} className="max-h-56 overflow-y-auto rounded">
                     <table style={{ color: "var(--zr-text-primary)" }} className="w-full text-xs">
                       <thead style={{ background: "var(--zr-surface-3)" }} className="sticky top-0">
                         <tr>
                           <th className="text-left px-2 py-1 font-medium">Name</th>
-                          <th className="text-left px-2 py-1 font-medium">Cat</th>
+                          <th className="text-left px-2 py-1 font-medium">Category</th>
                           <th className="text-left px-2 py-1 font-medium">SKU</th>
                           <th className="text-right px-2 py-1 font-medium">Cost</th>
-                          <th className="text-right px-2 py-1 font-medium">Sizes</th>
+                          <th className="text-right px-2 py-1 font-medium">Retail Est.</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {pdfPreview.slice(0, 25).map((p, i) => (
-                          <tr key={i} className="border-t">
-                            <td className="px-2 py-1 truncate max-w-[120px]">{p.name}</td>
-                            <td className="px-2 py-1 text-gray-500">{p.category}</td>
-                            <td className="px-2 py-1 text-gray-500 truncate max-w-[60px]">{p.sku || "—"}</td>
-                            <td className="px-2 py-1 text-right">{p.default_cost ? `$${Number(p.default_cost).toFixed(2)}` : "—"}</td>
-                            <td className="px-2 py-1 text-right text-gray-400">
-                              {p.min_width && p.max_width ? `${p.min_width}–${p.max_width}"` : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                        {pdfPreview.length > 25 && (
+                        {pdfPreview.slice(0, 50).map((p, i) => {
+                          const mult = parseFloat(bulkMultiplier) || 2.5;
+                          const cat = bulkCategory || p.category || "other";
+                          const retailEst = (p.default_cost || 0) * mult;
+                          return (
+                            <tr key={i} className="border-t">
+                              <td className="px-2 py-1 truncate max-w-[140px]">{p.name}</td>
+                              <td className="px-2 py-1 text-gray-500">{CATEGORIES.find(c => c.value === cat)?.label ?? cat}</td>
+                              <td className="px-2 py-1 text-gray-500 truncate max-w-[60px]">{p.sku || "—"}</td>
+                              <td className="px-2 py-1 text-right">{p.default_cost ? `$${Number(p.default_cost).toFixed(2)}` : "—"}</td>
+                              <td className="px-2 py-1 text-right" style={{ color: "var(--zr-success)" }}>
+                                {retailEst > 0 ? `$${retailEst.toFixed(2)}` : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {pdfPreview.length > 50 && (
                           <tr><td colSpan={5} className="px-2 py-1 text-gray-400 text-center">
-                            …and {pdfPreview.length - 25} more
+                            …and {pdfPreview.length - 50} more
                           </td></tr>
                         )}
                       </tbody>
                     </table>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <button onClick={importPDF} disabled={pdfImporting}
                       className="bg-blue-600 text-white rounded px-3 py-1.5 text-xs disabled:opacity-50">
-                      {pdfImporting ? "Importing…" : `Import ${pdfPreview.length} Products`}
+                      {pdfImporting ? "Importing…" : `Import All ${pdfPreview.length} Products`}
                     </button>
-                    <button onClick={() => { setPdfPreview([]); setPdfMfg(null); if (pdfInputRef.current) pdfInputRef.current.value = ""; }}
+                    <button onClick={() => { setPdfPreview([]); setPdfMfg(null); setBulkCategory(""); setBulkMultiplier("2.50"); setBulkManufacturer(""); if (pdfInputRef.current) pdfInputRef.current.value = ""; }}
                       className="border rounded px-3 py-1.5 text-xs">Cancel</button>
+                    <span className="text-xs text-gray-400 ml-auto">
+                      Products will be added to your catalog. You can edit them individually later.
+                    </span>
                   </div>
                 </div>
               )}

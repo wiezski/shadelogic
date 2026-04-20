@@ -22,6 +22,35 @@ type Notification = {
 // Routes where the nav bar should never appear (public-facing portals)
 const HIDE_NAV_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/forgot-password", "/reset-password"];
 
+// ── Task Modes ──────────────────────────────────────────────
+// Each mode shows only relevant nav items to reduce UI clutter.
+export type TaskMode = "all" | "measuring" | "quoting" | "scheduling" | "warehouse";
+
+const MODE_LABELS: Record<TaskMode, string> = {
+  all: "All",
+  measuring: "Measuring",
+  quoting: "Quoting",
+  scheduling: "Scheduling",
+  warehouse: "Warehouse",
+};
+
+const MODE_ICONS: Record<TaskMode, string> = {
+  all: "⚡",
+  measuring: "📐",
+  quoting: "💰",
+  scheduling: "📅",
+  warehouse: "📦",
+};
+
+// Which nav hrefs are visible in each mode (empty = show all)
+const MODE_NAV_FILTER: Record<TaskMode, string[] | null> = {
+  all: null, // show everything
+  measuring: ["/schedule", "/warehouse"],
+  quoting: ["/calculator", "/products", "/manufacturers", "/payments"],
+  scheduling: ["/schedule", "/warehouse", "/payroll"],
+  warehouse: ["/warehouse"],
+};
+
 export function NavBar() {
   const { user, signOut, permissions, features } = useAuth();
   const pathname = usePathname();
@@ -30,6 +59,30 @@ export function NavBar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [bellOpen, setBellOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
+  const [taskMode, setTaskMode] = useState<TaskMode>("all");
+  const [modeOpen, setModeOpen] = useState(false);
+  const modeRef = useRef<HTMLDivElement>(null);
+
+  // Load saved mode from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("zr-task-mode") as TaskMode | null;
+    if (saved && MODE_LABELS[saved]) setTaskMode(saved);
+  }, []);
+
+  function changeMode(mode: TaskMode) {
+    setTaskMode(mode);
+    setModeOpen(false);
+    localStorage.setItem("zr-task-mode", mode);
+  }
+
+  // Close mode dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -119,6 +172,44 @@ export function NavBar() {
           <ZRLogo size="sm" iconOnly />
         </Link>
 
+        {/* Task Mode Selector */}
+        <div ref={modeRef} className="relative shrink-0 mr-1">
+          <button onClick={() => setModeOpen(!modeOpen)}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
+            style={{
+              background: taskMode === "all" ? "transparent" : "rgba(234,88,12,0.12)",
+              border: taskMode === "all" ? "1px solid var(--zr-border)" : "1px solid rgba(234,88,12,0.3)",
+              color: taskMode === "all" ? "var(--zr-text-secondary)" : "var(--zr-orange)",
+            }}>
+            <span>{MODE_ICONS[taskMode]}</span>
+            <span className="hidden sm:inline">{MODE_LABELS[taskMode]}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          {modeOpen && (
+            <div className="absolute left-0 top-full mt-1 w-44 rounded-lg shadow-xl z-50 overflow-hidden"
+              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+              <div className="px-3 py-1.5" style={{ borderBottom: "1px solid var(--zr-border)" }}>
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-muted)" }}>Focus Mode</span>
+              </div>
+              {(Object.keys(MODE_LABELS) as TaskMode[]).map(mode => (
+                <button key={mode} onClick={() => changeMode(mode)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors"
+                  style={{
+                    background: taskMode === mode ? "rgba(234,88,12,0.08)" : "transparent",
+                    color: taskMode === mode ? "var(--zr-orange)" : "var(--zr-text-primary)",
+                    fontWeight: taskMode === mode ? "600" : "normal",
+                  }}
+                  onMouseEnter={e => { if (taskMode !== mode) e.currentTarget.style.background = "var(--zr-surface-2)"; }}
+                  onMouseLeave={e => { if (taskMode !== mode) e.currentTarget.style.background = "transparent"; }}>
+                  <span>{MODE_ICONS[mode]}</span>
+                  <span>{MODE_LABELS[mode]}</span>
+                  {taskMode === mode && <span className="ml-auto">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Scrollable nav links — Sign Out at the far end */}
         <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-0">
           {[
@@ -132,7 +223,13 @@ export function NavBar() {
             { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
             { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
             { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
-          ].filter(i => i.show).map(({ href, label }) => (
+          ].filter(i => i.show).filter(i => {
+            const allowed = MODE_NAV_FILTER[taskMode];
+            if (!allowed) return true; // "all" mode shows everything
+            // Always show Settings
+            if (i.href === "/settings") return true;
+            return allowed.includes(i.href);
+          }).map(({ href, label }) => (
             <Link key={href} href={href}
               className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"
               style={{ color: pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)", fontWeight: pathname === href ? "600" : "normal" }}

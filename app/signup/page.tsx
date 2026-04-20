@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { ZRLogo } from "../zr-logo";
 import { PLAN_USER_LIMITS, type Plan } from "../../lib/features";
+import { TurnstileWidget, useTurnstile } from "../turnstile";
 
 export default function SignupPage() {
   return (
@@ -31,6 +32,7 @@ function SignupInner() {
   const [error,       setError]       = useState("");
   const [loading,     setLoading]     = useState(false);
   const [pending,     setPending]     = useState(false);
+  const turnstile = useTurnstile();
 
   async function checkPromoCode() {
     const code = promoCode.trim().toUpperCase();
@@ -48,6 +50,7 @@ function SignupInner() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
+    if (turnstile.enabled && !turnstile.token) { setError("Please complete the verification."); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (!isInvite && !companyName.trim()) { setError("Company name is required."); return; }
     setError(""); setLoading(true);
@@ -237,6 +240,7 @@ function SignupInner() {
                 )}
               </div>
             )}
+            <TurnstileWidget onToken={turnstile.setToken} />
             <button type="submit" disabled={loading}
               className="w-full py-3 font-bold text-white disabled:opacity-50 cursor-pointer"
               style={{ background: "var(--zr-orange)", borderRadius: "var(--zr-radius-md)", border: "none" }}>

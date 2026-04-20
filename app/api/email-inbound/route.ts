@@ -140,6 +140,16 @@ function extractVendor(text: string, fromEmail: string): string | null {
     [/3\s*day\s*blinds/i, "3 Day Blinds"],
     [/select\s*blinds/i, "Select Blinds"],
     [/costco/i, "Costco"],
+    [/lowe'?s/i, "Lowe's"],
+    [/home\s*depot/i, "Home Depot"],
+    [/menards/i, "Menards"],
+    [/star\s*blinds/i, "Star Blinds"],
+    [/budget\s*blinds/i, "Budget Blinds"],
+    [/next\s*day\s*blinds/i, "Next Day Blinds"],
+    [/american\s*blinds/i, "American Blinds"],
+    [/shade\s*store/i, "The Shade Store"],
+    [/lutron/i, "Lutron"],
+    [/somfy/i, "Somfy"],
   ];
   for (const [re, name] of vendors) {
     if (re.test(t)) return name;

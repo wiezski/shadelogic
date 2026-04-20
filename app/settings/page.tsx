@@ -531,7 +531,191 @@ type TeamMember = {
   permissions: Record<string, boolean>;
   status?: string;
   email?: string;
+  // Contractor/employee details
+  worker_type?: "w2" | "1099";
+  legal_business_name?: string;
+  ein?: string;
+  phone?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  w9_on_file?: boolean;
+  w9_received_date?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  hire_date?: string;
+  notes?: string;
 };
+
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+
+function MemberDetailEditor({ member, saving, onSave }: { member: TeamMember; saving: boolean; onSave: (u: Partial<TeamMember>) => void }) {
+  const [form, setForm] = useState({
+    worker_type: member.worker_type || "w2",
+    legal_business_name: member.legal_business_name || "",
+    ein: member.ein || "",
+    phone: member.phone || "",
+    email: member.email || "",
+    address_line1: member.address_line1 || "",
+    address_line2: member.address_line2 || "",
+    city: member.city || "",
+    state: member.state || "",
+    zip: member.zip || "",
+    w9_on_file: member.w9_on_file || false,
+    w9_received_date: member.w9_received_date || "",
+    emergency_contact_name: member.emergency_contact_name || "",
+    emergency_contact_phone: member.emergency_contact_phone || "",
+    hire_date: member.hire_date || "",
+    notes: member.notes || "",
+  });
+  const [dirty, setDirty] = useState(false);
+
+  function update(field: string, value: any) {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setDirty(true);
+  }
+
+  const inputStyle = { background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" };
+  const labelStyle = { color: "var(--zr-text-secondary)" };
+
+  return (
+    <div className="border-t pt-3 space-y-3" style={{ borderTopColor: "var(--zr-border)" }}>
+      {/* Worker Type Toggle */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-medium" style={labelStyle}>Worker Type:</span>
+        <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+          <button onClick={() => update("worker_type", "w2")}
+            className="text-xs px-3 py-1 font-medium"
+            style={{ background: form.worker_type === "w2" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: form.worker_type === "w2" ? "#fff" : "var(--zr-text-secondary)" }}>
+            W-2 Employee
+          </button>
+          <button onClick={() => update("worker_type", "1099")}
+            className="text-xs px-3 py-1 font-medium"
+            style={{ background: form.worker_type === "1099" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: form.worker_type === "1099" ? "#fff" : "var(--zr-text-secondary)" }}>
+            1099 Contractor
+          </button>
+        </div>
+      </div>
+
+      {/* Contact Info */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={labelStyle}>Contact Info</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs block mb-0.5" style={labelStyle}>Phone</label>
+            <input type="tel" value={form.phone} onChange={e => update("phone", e.target.value)}
+              className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="(555) 123-4567" />
+          </div>
+          <div>
+            <label className="text-xs block mb-0.5" style={labelStyle}>Email</label>
+            <input type="email" value={form.email} onChange={e => update("email", e.target.value)}
+              className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="email@example.com" />
+          </div>
+        </div>
+      </div>
+
+      {/* Address */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={labelStyle}>Address</div>
+        <div className="space-y-2">
+          <input value={form.address_line1} onChange={e => update("address_line1", e.target.value)}
+            className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="Street address" />
+          <input value={form.address_line2} onChange={e => update("address_line2", e.target.value)}
+            className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="Apt, suite, etc. (optional)" />
+          <div className="grid grid-cols-3 gap-2">
+            <input value={form.city} onChange={e => update("city", e.target.value)}
+              className="text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="City" />
+            <select value={form.state} onChange={e => update("state", e.target.value)}
+              className="text-xs rounded px-2 py-1.5" style={inputStyle}>
+              <option value="">State</option>
+              {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <input value={form.zip} onChange={e => update("zip", e.target.value)}
+              className="text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="ZIP" />
+          </div>
+        </div>
+      </div>
+
+      {/* Tax / Business Info (show extra fields for 1099) */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={labelStyle}>
+          {form.worker_type === "1099" ? "Business & Tax Info" : "Tax Info"}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {form.worker_type === "1099" && (
+            <>
+              <div>
+                <label className="text-xs block mb-0.5" style={labelStyle}>Legal Business Name</label>
+                <input value={form.legal_business_name} onChange={e => update("legal_business_name", e.target.value)}
+                  className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="Business name (if applicable)" />
+              </div>
+              <div>
+                <label className="text-xs block mb-0.5" style={labelStyle}>EIN</label>
+                <input value={form.ein} onChange={e => update("ein", e.target.value)}
+                  className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="XX-XXXXXXX" />
+              </div>
+            </>
+          )}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="checkbox" checked={form.w9_on_file}
+                onChange={e => update("w9_on_file", e.target.checked)}
+                className="h-3.5 w-3.5" />
+              <span style={{ color: "var(--zr-text-primary)" }}>W-9 on file</span>
+            </label>
+          </div>
+          {form.w9_on_file && (
+            <div>
+              <label className="text-xs block mb-0.5" style={labelStyle}>W-9 Received Date</label>
+              <input type="date" value={form.w9_received_date} onChange={e => update("w9_received_date", e.target.value)}
+                className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Hire Date + Emergency Contact */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={labelStyle}>Other</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs block mb-0.5" style={labelStyle}>Hire / Start Date</label>
+            <input type="date" value={form.hire_date} onChange={e => update("hire_date", e.target.value)}
+              className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} />
+          </div>
+          <div>
+            <label className="text-xs block mb-0.5" style={labelStyle}>Emergency Contact</label>
+            <input value={form.emergency_contact_name} onChange={e => update("emergency_contact_name", e.target.value)}
+              className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="Name" />
+          </div>
+          <div className="col-start-2">
+            <input type="tel" value={form.emergency_contact_phone} onChange={e => update("emergency_contact_phone", e.target.value)}
+              className="w-full text-xs rounded px-2 py-1.5" style={inputStyle} placeholder="Emergency phone" />
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="text-xs block mb-0.5" style={labelStyle}>Notes</label>
+        <textarea value={form.notes} onChange={e => update("notes", e.target.value)} rows={2}
+          className="w-full text-xs rounded px-2 py-1.5 resize-none" style={inputStyle} placeholder="Internal notes about this team member..." />
+      </div>
+
+      {/* Save + Export */}
+      <div className="flex items-center gap-2">
+        <button onClick={() => onSave(form)} disabled={!dirty || saving}
+          className="text-xs px-4 py-1.5 rounded font-medium disabled:opacity-40"
+          style={{ background: "var(--zr-orange)", color: "#fff" }}>
+          {saving ? "Saving..." : "Save Details"}
+        </button>
+        {!dirty && <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>No changes</span>}
+      </div>
+    </div>
+  );
+}
 
 function TeamSection() {
   const { user, companyId, permissions: myPerms, plan } = useAuth();
@@ -539,6 +723,8 @@ function TeamSection() {
   const [loading,    setLoading]    = useState(true);
   const [inviteLink, setInviteLink] = useState("");
   const [editingId,  setEditingId]  = useState<string | null>(null);
+  const [detailId,   setDetailId]   = useState<string | null>(null);
+  const [detailSaving, setDetailSaving] = useState(false);
 
   const activeMembers = members.filter(m => m.status !== "pending");
   const userLimits = PLAN_USER_LIMITS[plan as Plan] ?? PLAN_USER_LIMITS.trial;
@@ -554,7 +740,7 @@ function TeamSection() {
 
   async function loadTeam() {
     const { data } = await supabase.from("profiles")
-      .select("id, full_name, role, permissions, status")
+      .select("id, full_name, role, permissions, status, email, worker_type, legal_business_name, ein, phone, address_line1, address_line2, city, state, zip, w9_on_file, w9_received_date, emergency_contact_name, emergency_contact_phone, hire_date, notes")
       .eq("company_id", companyId)
       .in("status", ["active", "pending"]);
     setMembers((data || []) as TeamMember[]);
@@ -574,6 +760,13 @@ function TeamSection() {
     const updated = { ...base, ...member.permissions, [perm]: !current };
     await supabase.from("profiles").update({ permissions: updated }).eq("id", memberId);
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, permissions: updated } : m));
+  }
+
+  async function saveMemberDetails(memberId: string, updates: Partial<TeamMember>) {
+    setDetailSaving(true);
+    await supabase.from("profiles").update(updates).eq("id", memberId);
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updates } : m));
+    setDetailSaving(false);
   }
 
   const [removing, setRemoving] = useState<string | null>(null);
@@ -701,10 +894,15 @@ function TeamSection() {
                     </select>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => setEditingId(editingId === m.id ? null : m.id)}
+                    <button onClick={() => { setDetailId(detailId === m.id ? null : m.id); if (editingId === m.id) setEditingId(null); }}
                       className="text-xs hover:underline"
                       style={{ color: "var(--zr-orange)" }}>
-                      {editingId === m.id ? "Close" : "Edit permissions"}
+                      {detailId === m.id ? "Close" : "Details"}
+                    </button>
+                    <button onClick={() => { setEditingId(editingId === m.id ? null : m.id); if (detailId === m.id) setDetailId(null); }}
+                      className="text-xs hover:underline"
+                      style={{ color: "var(--zr-text-secondary)" }}>
+                      {editingId === m.id ? "Close" : "Permissions"}
                     </button>
                     {!isMe && (
                       <button
@@ -732,10 +930,37 @@ function TeamSection() {
                     ))}
                   </div>
                 )}
+
+                {detailId === m.id && (
+                  <MemberDetailEditor member={m} saving={detailSaving} onSave={(u) => saveMemberDetails(m.id, u)} />
+                )}
               </li>
             );
           })}
         </ul>
+      )}
+
+      {/* CSV Export for QuickBooks */}
+      {activeMembers.length > 0 && (
+        <button onClick={() => {
+          const headers = ["Full Name","Email","Role","Worker Type","Legal Business Name","EIN","Phone","Address","City","State","ZIP","W-9 On File","W-9 Date","Hire Date","Emergency Contact","Emergency Phone","Notes"];
+          const rows = activeMembers.map(m => [
+            m.full_name || "", m.email || "", m.role || "", (m.worker_type || "w2").toUpperCase(),
+            m.legal_business_name || "", m.ein || "", m.phone || "",
+            [m.address_line1, m.address_line2].filter(Boolean).join(" "), m.city || "", m.state || "", m.zip || "",
+            m.w9_on_file ? "Yes" : "No", m.w9_received_date || "", m.hire_date || "",
+            m.emergency_contact_name || "", m.emergency_contact_phone || "", (m.notes || "").replace(/[\n,]/g, " "),
+          ]);
+          const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+          const blob = new Blob([csv], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = "team-export.csv"; a.click();
+          URL.revokeObjectURL(url);
+        }}
+          className="text-xs px-3 py-1.5 rounded font-medium"
+          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>
+          Export Team to CSV (QuickBooks)
+        </button>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { ZRLogo } from "../zr-logo";
+import { TurnstileWidget, useTurnstile } from "../turnstile";
 
 export default function LoginPage() {
   const router  = useRouter();
@@ -12,9 +13,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+  const turnstile = useTurnstile();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (turnstile.enabled && !turnstile.token) { setError("Please complete the verification."); return; }
     setError(""); setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
@@ -65,6 +68,7 @@ export default function LoginPage() {
                 style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", color: "var(--zr-text-primary)" }}
               />
             </div>
+            <TurnstileWidget onToken={turnstile.setToken} />
             <button type="submit" disabled={loading}
               className="w-full py-3 font-bold text-white disabled:opacity-50 cursor-pointer"
               style={{ background: "var(--zr-orange)", borderRadius: "var(--zr-radius-md)", border: "none" }}>

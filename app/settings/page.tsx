@@ -1092,10 +1092,10 @@ function ChecklistSection() {
 const OWNER_COMPANY_ID = "92811199-4342-40d2-9332-dfe92e8210db";
 
 function BrandingSection() {
-  const { companyId, role, plan, branding } = useAuth();
-  // Only show for business plan OR the platform owner's company
-  const canWhiteLabel = plan === "business" || companyId === OWNER_COMPANY_ID;
-  if (!canWhiteLabel) return null;
+  const { companyId, role, plan, features, branding } = useAuth();
+  // Uses the feature flag so gating stays consistent with PLAN_FEATURES.
+  // Platform owner (ShadeLogic) always sees it regardless of plan.
+  const canWhiteLabel = features.white_label || companyId === OWNER_COMPANY_ID;
   const [slug,         setSlug]         = useState(branding?.slug ?? "");
   const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor ?? "");
   const [primaryHover, setPrimaryHover] = useState(branding?.primaryHover ?? "");
@@ -1135,6 +1135,28 @@ function BrandingSection() {
   }
 
   if (role !== "owner" && role !== "admin") return null;
+
+  // Plans without white_label get an upsell card instead of the full editor.
+  if (!canWhiteLabel) {
+    return (
+      <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Branding / White-Label</h2>
+          <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5" style={{ background: "rgba(230,48,0,0.1)", color: "var(--zr-orange)" }}>Business plan</span>
+        </div>
+        <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+          Add your own logo, colors, and font to the dashboard and every customer-facing page — quotes, invoices, builder portal. Available on the Business plan.
+        </p>
+        <Link
+          href="/settings/billing"
+          className="inline-block rounded px-3 py-1.5 text-xs font-semibold"
+          style={{ background: "var(--zr-orange)", color: "#fff" }}
+        >
+          Upgrade to unlock →
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>

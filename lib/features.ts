@@ -5,7 +5,8 @@ export type FeatureKey =
   | "inventory"
   | "analytics"
   | "builder_portal"
-  | "automation";
+  | "automation"
+  | "white_label";
 
 export type Features = Record<FeatureKey, boolean>;
 
@@ -37,6 +38,10 @@ export const PLAN_USER_LIMITS: Record<Plan, { included: number; perUserPrice: nu
 export const MAX_DEVICES_PER_USER = 3;
 
 export const PLAN_FEATURES: Record<Plan, Features> = {
+  // Trial gets every feature so users can experience the full product.
+  // White-label is enabled on trial too so owners can set up their branding
+  // BEFORE committing to a Business subscription — it just won't persist for
+  // customer-facing views once they downgrade to Starter/Pro.
   trial: {
     crm: true,
     scheduling: true,
@@ -45,6 +50,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     analytics: true,
     builder_portal: true,
     automation: true,
+    white_label: true,
   },
   starter: {
     crm: true,
@@ -54,6 +60,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     analytics: false,
     builder_portal: false,
     automation: false,
+    white_label: false,
   },
   professional: {
     crm: true,
@@ -63,6 +70,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     analytics: true,
     builder_portal: false,
     automation: true,
+    white_label: false,
   },
   business: {
     crm: true,
@@ -72,6 +80,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     analytics: true,
     builder_portal: true,
     automation: true,
+    white_label: true,
   },
 };
 
@@ -83,6 +92,7 @@ export const FEATURE_LABELS: Record<FeatureKey, { label: string; desc: string }>
   analytics: { label: "Analytics", desc: "Business reports and performance metrics" },
   builder_portal: { label: "Builder Portal", desc: "Contractor login, project management, bid requests" },
   automation: { label: "Automation Engine", desc: "Workflow rules, auto follow-ups, triggered actions" },
+  white_label: { label: "White-Label Branding", desc: "Custom colors, font, and logo on your dashboard + all customer-facing pages (quotes, invoices, builder portal)" },
 };
 
 // Resolve: plan defaults merged with any company-specific overrides

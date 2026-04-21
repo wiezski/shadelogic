@@ -224,7 +224,7 @@ function SignupInner() {
                 <label className="block mb-1" style={{ fontSize: "13px", fontWeight: 600, color: "var(--zr-text-secondary)" }}>Promo Code <span style={{ color: "var(--zr-text-muted)", fontWeight: 400 }}>(optional)</span></label>
                 <div className="flex gap-2">
                   <input value={promoCode} onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoValid(null); setPromoError(""); }}
-                    placeholder="e.g. UTAH-VIP-2026" className="flex-1 px-3 py-2.5 text-sm outline-none font-mono tracking-wider" style={inputStyle} />
+                    placeholder="Enter code" className="flex-1 px-3 py-2.5 text-sm outline-none font-mono tracking-wider" style={inputStyle} />
                   <button type="button" onClick={checkPromoCode} disabled={!promoCode.trim()}
                     className="px-3 py-2 text-xs font-medium rounded disabled:opacity-40"
                     style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>

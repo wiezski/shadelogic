@@ -205,6 +205,14 @@ DB migration: `phase24_business_type.sql` ✓ (adds business_type TEXT + hidden_
 - **JSON-LD structured data** on landing page: Organization + SoftwareApplication (with offers for all 3 plans) + FAQPage (from existing faqs array). Enables Google rich results for pricing and FAQ snippets.
 - **manifest.json enhanced**: added categories (business/productivity/utilities), scope, id, lang, longer description.
 
+### Phase 29 — Invite over-limit gate fix — Complete ✓
+With tenant-scoped RLS on `companies` + `profiles`, the signup invite flow's two direct reads (to check plan + count current users) both returned empty/zero, so over-limit invitees silently skipped the pending-approval gate and joined as active users. Pre-existing bug on profiles; Phase 28 made it worse by sealing companies too.
+
+Fix: added a SECURITY DEFINER RPC `check_invite_capacity(p_company_id uuid)` that bypasses RLS and returns `(plan, current_users, included_limit, needs_approval)`. Signup calls the RPC instead of the two failed queries. RPC granted to `authenticated` only. Also changed signup to fail CLOSED on RPC error (defaults to `needs_approval=true`) rather than fail open.
+
+Migration: `supabase/phase29_invite_capacity_rpc.sql` ✓ (applied live).
+Code: `app/signup/page.tsx` invite branch swapped.
+
 ### Phase 28 — Companies RLS lockdown — Complete ✓
 Before: RLS was DISABLED on `companies` — anyone with an authenticated JWT could read/update/delete any tenant's row, including live secrets (`twilio_auth_token`, `stripe_customer_id`, `stripe_subscription_id`, `stripe_connect_account_id`).
 

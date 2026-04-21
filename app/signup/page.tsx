@@ -5,7 +5,8 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { ZRLogo } from "../zr-logo";
-import { PLAN_USER_LIMITS, type Plan } from "../../lib/features";
+// PLAN_USER_LIMITS + Plan no longer imported directly — invite-capacity check
+// now runs server-side via the check_invite_capacity RPC (Phase 29).
 import { TurnstileWidget, useTurnstile } from "../turnstile";
 
 export default function SignupPage() {
@@ -62,31 +63,25 @@ function SignupInner() {
     const userId = authData.user.id;
 
     if (isInvite) {
-      // Check if company is at/over its plan user limit
+      // Check if company is at/over its plan user limit.
+      // Uses a SECURITY DEFINER RPC (check_invite_capacity) because neither
+      // `companies` nor `profiles` can be queried by the invitee directly —
+      // they don't have a profile row pointing at this company yet, so
+      // tenant-scoped RLS blocks both reads. The RPC bypasses RLS and
+      // returns only the counts needed for the approval decision.
       let needsApproval = false;
       try {
-        // Get company plan
-        const { data: company } = await supabase
-          .from("companies")
-          .select("plan")
-          .eq("id", inviteCompanyId)
+        const { data: cap, error: capErr } = await supabase
+          .rpc("check_invite_capacity", { p_company_id: inviteCompanyId })
           .single();
-
-        const plan = (company?.plan ?? "trial") as Plan;
-        const limits = PLAN_USER_LIMITS[plan] ?? PLAN_USER_LIMITS.trial;
-
-        // Count current active members
-        const { count } = await supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("company_id", inviteCompanyId)
-          .eq("status", "active");
-
-        const currentUsers = count ?? 0;
-        needsApproval = currentUsers >= limits.included;
-      } catch {
-        // If we can't check, default to no approval needed (fail open)
-        needsApproval = false;
+        if (capErr) throw capErr;
+        needsApproval = !!(cap as { needs_approval: boolean } | null)?.needs_approval;
+      } catch (err) {
+        // Fail CLOSED (needs approval) — safer than letting unlimited joins
+        // slip past the gate if the RPC is unavailable.
+        // eslint-disable-next-line no-console
+        console.error("[signup check_invite_capacity]", err);
+        needsApproval = true;
       }
 
       if (needsApproval) {

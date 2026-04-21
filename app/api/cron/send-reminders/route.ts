@@ -209,7 +209,7 @@ export async function GET(req: NextRequest) {
 
         const first = (owner.full_name || "").split(" ")[0] || "there";
         const tpl = trialReminder3Days({ firstName: first, trialEndsAt: co.trial_ends_at!, companyName: co.name });
-        await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+        await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, type: "trial_reminder", companyId: co.id });
         await svc.from("companies").update({ trial_reminder_3d_sent_at: new Date().toISOString() }).eq("id", co.id);
         trialResults.sent_3d++;
       } catch (err) {
@@ -242,7 +242,7 @@ export async function GET(req: NextRequest) {
 
         const first = (owner.full_name || "").split(" ")[0] || "there";
         const tpl = trialReminder1Day({ firstName: first, trialEndsAt: co.trial_ends_at!, companyName: co.name });
-        await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+        await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, type: "trial_reminder", companyId: co.id });
         await svc.from("companies").update({ trial_reminder_1d_sent_at: new Date().toISOString() }).eq("id", co.id);
         trialResults.sent_1d++;
       } catch (err) {

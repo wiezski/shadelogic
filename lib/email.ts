@@ -20,6 +20,7 @@ export type EmailType =
   | "quote_delivery"
   | "install_followup"
   | "password_reset"
+  | "trial_reminder"
   | "custom";
 
 export type SendEmailParams = {

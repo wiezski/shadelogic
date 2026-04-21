@@ -820,23 +820,56 @@ export default function CustomerPage() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Tags & Source</h2>
           <div className="mb-3">
             <label className="mb-1.5 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Tags</label>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_TAGS.map(tag => {
-                const active = (customer.tags ?? []).includes(tag);
-                return (
-                  <button key={tag} type="button"
-                    onClick={async () => {
-                      const current = customer.tags ?? [];
-                      const updated = active ? current.filter(t => t !== tag) : [...current, tag];
-                      updateLocal("tags", updated);
-                      await supabase.from("customers").update({ tags: updated }).eq("id", customerId);
-                    }}
-                    style={active ? { background: "var(--zr-orange)", color: "#fff", border: `1px solid var(--zr-orange)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors`}>
-                    {tag}
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {(() => {
+                const currentTags = customer.tags ?? [];
+                // Merge presets with any custom tags the customer already has,
+                // preserving order (presets first, then custom).
+                const allTags = [
+                  ...PRESET_TAGS,
+                  ...currentTags.filter(t => !PRESET_TAGS.includes(t)),
+                ];
+                return allTags.map(tag => {
+                  const active = currentTags.includes(tag);
+                  const isCustom = !PRESET_TAGS.includes(tag);
+                  return (
+                    <button key={tag} type="button"
+                      onClick={async () => {
+                        const updated = active ? currentTags.filter(t => t !== tag) : [...currentTags, tag];
+                        updateLocal("tags", updated);
+                        await supabase.from("customers").update({ tags: updated }).eq("id", customerId);
+                      }}
+                      title={isCustom ? "Custom tag — click to toggle, ×-button removes it permanently" : ""}
+                      style={active ? { background: "var(--zr-orange)", color: "#fff", border: `1px solid var(--zr-orange)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors`}>
+                      {tag}
+                    </button>
+                  );
+                });
+              })()}
+              {/* + Add custom tag */}
+              <button
+                type="button"
+                onClick={async () => {
+                  const raw = window.prompt("Add a custom tag for this customer:");
+                  const tag = raw?.trim();
+                  if (!tag) return;
+                  if (tag.length > 30) {
+                    alert("Tags must be 30 characters or less.");
+                    return;
+                  }
+                  const current = customer.tags ?? [];
+                  if (current.includes(tag)) return; // already on them
+                  const updated = [...current, tag];
+                  updateLocal("tags", updated);
+                  await supabase.from("customers").update({ tags: updated }).eq("id", customerId);
+                }}
+                style={{ background: "transparent", border: "1px dashed var(--zr-border)", color: "var(--zr-text-muted)" }}
+                className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors hover:text-orange-600"
+                title="Add a custom tag"
+              >
+                + Custom
+              </button>
             </div>
           </div>
           <div>

@@ -66,14 +66,14 @@ type CustomerOption = {
 
 // ── Constants ──────────────────────────────────────────────────
 
-const APPT_TYPES: Record<AppointmentType, { label: string; color: string; bg: string; dot: string; defaultMins: number }> = {
-  sales_consultation: { label: "Sales Consult",  color: "text-blue-700",   bg: "bg-blue-100 border-blue-300",    dot: "bg-blue-500",   defaultMins: 60  },
-  measure:            { label: "Measure",         color: "text-purple-700", bg: "bg-purple-100 border-purple-300", dot: "bg-purple-500", defaultMins: 90  },
-  install:            { label: "Install",         color: "text-green-700",  bg: "bg-green-100 border-green-300",   dot: "bg-green-500",  defaultMins: 120 },
-  service_call:       { label: "Service Call",    color: "text-orange-700", bg: "bg-orange-100 border-orange-300", dot: "bg-orange-500", defaultMins: 60  },
-  repair:             { label: "Repair",          color: "text-amber-700",  bg: "bg-amber-100 border-amber-300",   dot: "bg-amber-500",  defaultMins: 60  },
-  site_walk:          { label: "Site Walk",       color: "text-teal-700",   bg: "bg-teal-100 border-teal-300",     dot: "bg-teal-500",   defaultMins: 90  },
-  punch:              { label: "Punch Visit",     color: "text-slate-700",  bg: "bg-slate-100 border-slate-300",   dot: "bg-slate-500",  defaultMins: 45  },
+const APPT_TYPES: Record<AppointmentType, { label: string; color: string; bg: string; dot: string; defaultMins: number; description: string }> = {
+  sales_consultation: { label: "Sales Consult",  color: "text-blue-700",   bg: "bg-blue-100 border-blue-300",    dot: "bg-blue-500",   defaultMins: 60,  description: "First meeting with a prospect — walk the home, discuss options, build rapport before measuring." },
+  measure:            { label: "Measure",         color: "text-purple-700", bg: "bg-purple-100 border-purple-300", dot: "bg-purple-500", defaultMins: 90,  description: "On-site measurement appointment to capture window dimensions and finalize the product selection." },
+  install:            { label: "Install",         color: "text-green-700",  bg: "bg-green-100 border-green-300",   dot: "bg-green-500",  defaultMins: 120, description: "Product installation visit — hanging blinds, shades, or shutters once materials arrive." },
+  service_call:       { label: "Service Call",    color: "text-orange-700", bg: "bg-orange-100 border-orange-300", dot: "bg-orange-500", defaultMins: 60,  description: "Post-install issue visit — broken cord, motor fix, warranty work. Usually billable." },
+  repair:             { label: "Repair",          color: "text-amber-700",  bg: "bg-amber-100 border-amber-300",   dot: "bg-amber-500",  defaultMins: 60,  description: "Scheduled repair work on an existing product (not a warranty issue — a paid fix job)." },
+  site_walk:          { label: "Site Walk",       color: "text-teal-700",   bg: "bg-teal-100 border-teal-300",     dot: "bg-teal-500",   defaultMins: 90,  description: "Pre-construction walk-through with a builder or contractor — usually for new builds before drywall." },
+  punch:              { label: "Punch Visit",     color: "text-slate-700",  bg: "bg-slate-100 border-slate-300",   dot: "bg-slate-500",  defaultMins: 45,  description: "Quick follow-up to fix punch-list items after an install — missing hardware, minor adjustments, wrong color." },
 };
 
 const SECOND_VISIT_REASONS = [
@@ -700,10 +700,14 @@ function SchedulePageInner() {
               </option>
             ))}
           </select>
-          {/* Legend (hidden on small screens) */}
+          {/* Legend (hidden on small screens) — hover shows the full description */}
           <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1">
             {Object.entries(APPT_TYPES).map(([k, v]) => (
-              <span key={k} className="flex items-center gap-1 text-xs text-gray-500">
+              <span
+                key={k}
+                className="flex items-center gap-1 text-xs text-gray-500 cursor-help"
+                title={`${v.label} — ${v.description}`}
+              >
                 <span className={`inline-block w-2 h-2 rounded-full ${v.dot}`} />
                 {v.label}
               </span>

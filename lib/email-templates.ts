@@ -245,3 +245,57 @@ export function quoteFollowup(params: {
 
   return { subject, html };
 }
+
+// ── 7. Trial Reminder (3 days left) ──────────────────────────
+
+export function trialReminder3Days(params: {
+  firstName: string;
+  trialEndsAt: string;
+  companyName: string;
+}) {
+  const subject = "3 days left in your ZeroRemake trial";
+  const billingUrl = `${APP_URL}/settings/billing`;
+
+  const html = emailLayout(`
+    <h1>3 days left, ${params.firstName} 👋</h1>
+    <p>Your free trial of ZeroRemake ends on <strong>${fmtDate(params.trialEndsAt)}</strong>.</p>
+
+    <p>Subscribe now to keep running ${params.companyName} out of ZeroRemake without interruption. All your customers, quotes, measure jobs, and photos will stay exactly where you left them.</p>
+
+    <p style="text-align: center;">
+      <a href="${billingUrl}" class="btn">Choose a Plan</a>
+    </p>
+
+    <p class="muted">Starter is $49/mo. Professional is $99/mo. Business is $199/mo. Cancel anytime — no contracts.</p>
+
+    <p class="muted">Questions? Just reply to this email.</p>
+  `, "ZeroRemake");
+
+  return { subject, html };
+}
+
+// ── 8. Trial Reminder (1 day left) ───────────────────────────
+
+export function trialReminder1Day(params: {
+  firstName: string;
+  trialEndsAt: string;
+  companyName: string;
+}) {
+  const subject = "Your ZeroRemake trial ends tomorrow";
+  const billingUrl = `${APP_URL}/settings/billing`;
+
+  const html = emailLayout(`
+    <h1>Tomorrow's the day, ${params.firstName}</h1>
+    <p>Heads up — your free trial ends <strong>tomorrow (${fmtDate(params.trialEndsAt)})</strong>.</p>
+
+    <p>To keep using ZeroRemake for ${params.companyName}, pick a plan now. Your data stays safe either way; without a subscription the app just locks until you upgrade.</p>
+
+    <p style="text-align: center;">
+      <a href="${billingUrl}" class="btn">Upgrade Now</a>
+    </p>
+
+    <p class="muted">Questions? Reply here and we'll help you figure out which plan fits.</p>
+  `, "ZeroRemake");
+
+  return { subject, html };
+}

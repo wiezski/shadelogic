@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../../lib/email";
-import { appointmentReminder } from "../../../../lib/email-templates";
+import { appointmentReminder, trialReminder3Days, trialReminder1Day } from "../../../../lib/email-templates";
 import { processAutomationRules, checkStuckLeads, processQueue, getServiceClient } from "../../../../lib/automation";
 
 export const dynamic = "force-dynamic";
@@ -167,8 +167,95 @@ export async function GET(req: NextRequest) {
     automationResults.queue = `error: ${err instanceof Error ? err.message : String(err)}`;
   }
 
+  // ── Trial reminders ──────────────────────────────────────────
+  // Email trialing companies at ~3 days and ~1 day before expiration so
+  // they have a chance to subscribe before being hard-gated.
+  const trialResults: Record<string, any> = { sent_3d: 0, sent_1d: 0, errors: [] as string[] };
+  try {
+    const svc = getServiceClient();
+    const now = new Date();
+    // 3-day window: trial_ends_at between 2.5 and 3.5 days from now, not yet sent
+    const in2_5d = new Date(now.getTime() + 2.5 * 86400000).toISOString();
+    const in3_5d = new Date(now.getTime() + 3.5 * 86400000).toISOString();
+    // 1-day window: trial_ends_at between 0.5 and 1.5 days from now, not yet sent
+    const in0_5d = new Date(now.getTime() + 0.5 * 86400000).toISOString();
+    const in1_5d = new Date(now.getTime() + 1.5 * 86400000).toISOString();
+
+    const baseCols = "id, name, trial_ends_at";
+
+    // 3-day reminder
+    const { data: threeDay } = await svc
+      .from("companies")
+      .select(baseCols)
+      .eq("subscription_status", "trialing")
+      .gte("trial_ends_at", in2_5d)
+      .lte("trial_ends_at", in3_5d)
+      .is("trial_reminder_3d_sent_at", null);
+
+    for (const co of threeDay || []) {
+      try {
+        // Find the company's owner (profile with role=owner) to email
+        const { data: owner } = await svc
+          .from("profiles")
+          .select("full_name, id")
+          .eq("company_id", co.id)
+          .eq("role", "owner")
+          .limit(1)
+          .maybeSingle();
+        if (!owner) continue;
+        const { data: authUser } = await svc.auth.admin.getUserById(owner.id);
+        const email = authUser?.user?.email;
+        if (!email) continue;
+
+        const first = (owner.full_name || "").split(" ")[0] || "there";
+        const tpl = trialReminder3Days({ firstName: first, trialEndsAt: co.trial_ends_at!, companyName: co.name });
+        await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+        await svc.from("companies").update({ trial_reminder_3d_sent_at: new Date().toISOString() }).eq("id", co.id);
+        trialResults.sent_3d++;
+      } catch (err) {
+        trialResults.errors.push(`3d ${co.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // 1-day reminder
+    const { data: oneDay } = await svc
+      .from("companies")
+      .select(baseCols)
+      .eq("subscription_status", "trialing")
+      .gte("trial_ends_at", in0_5d)
+      .lte("trial_ends_at", in1_5d)
+      .is("trial_reminder_1d_sent_at", null);
+
+    for (const co of oneDay || []) {
+      try {
+        const { data: owner } = await svc
+          .from("profiles")
+          .select("full_name, id")
+          .eq("company_id", co.id)
+          .eq("role", "owner")
+          .limit(1)
+          .maybeSingle();
+        if (!owner) continue;
+        const { data: authUser } = await svc.auth.admin.getUserById(owner.id);
+        const email = authUser?.user?.email;
+        if (!email) continue;
+
+        const first = (owner.full_name || "").split(" ")[0] || "there";
+        const tpl = trialReminder1Day({ firstName: first, trialEndsAt: co.trial_ends_at!, companyName: co.name });
+        await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+        await svc.from("companies").update({ trial_reminder_1d_sent_at: new Date().toISOString() }).eq("id", co.id);
+        trialResults.sent_1d++;
+      } catch (err) {
+        trialResults.errors.push(`1d ${co.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  } catch (err) {
+    trialResults.errors.push(`top-level: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   return NextResponse.json({
     reminders: { sent, skipped, errors: errors.length ? errors : undefined, total: needsReminder.length },
+    trial: trialResults,
     automation: automationResults,
   });
 }

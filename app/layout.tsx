@@ -3,6 +3,7 @@ import { AuthProvider } from "./auth-provider";
 import { NavBar } from "./nav-bar";
 import { FeedbackWidget } from "./feedback-widget";
 import { ToastProvider } from "./ui";
+import { TrialGate } from "./trial-gate";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://zeroremake.com";
@@ -113,6 +114,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--zr-font-body)" }}>
         <AuthProvider>
           <ToastProvider>
+            <TrialGate />
             <NavBar />
             {children}
             <FeedbackWidget />

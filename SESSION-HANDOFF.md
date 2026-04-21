@@ -222,15 +222,156 @@ DB migration: `phase24_business_type.sql` ✓ (adds business_type TEXT + hidden_
 - Facebook icon + link added to landing page footer.
 - FB Sharing Debugger confirms OG image + all og:* tags render correctly.
 
-### Next Up
-- **Bing Webmaster Tools**: register zeroremake.com at bing.com/webmasters, import from Google Search Console in one click. Covers Bing + DuckDuckGo + ChatGPT search.
+### Bing Webmaster Tools — Set Up ✓
+- zeroremake.com verified via Google Search Console import.
+- Sitemap submitted, 4 URLs discovered, status "Successfully processed".
+- Covers Bing + DuckDuckGo + ChatGPT web search.
+
+### Next Up (marketing / analytics quick wins)
 - **Google Analytics 4**: tag zeroremake.com (20 min setup). Drop GA4 measurement ID into an env var + `<Script>` tag in layout.
 - **Google Business Profile**: for local "blinds installer near me" discovery if doing local installs.
 - **Facebook Pixel**: 10 min install, required if running FB ads later.
 - **Facebook domain verification**: if doing FB Pixel/ads, add token in `metadata.other["facebook-domain-verification"]` in layout.tsx.
 - **NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION** Vercel env var — optional backup verification method.
-- Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
-- Future: Direct QuickBooks Online API integration (OAuth + real-time sync)
+
+---
+
+## Proposed Features (scoped, ready to build)
+
+### Feature A — Canvassing Tracker
+Biggest product differentiation; no competitor in window-treatment software has this.
+
+**Goal**: Let installers see where they've canvassed (door-to-door / flyer drops), track outcomes per house, and get AI-nudged next-best neighborhoods.
+
+**DB (new tables)**:
+- `canvas_territories` — id, company_id, name, geometry (GeoJSON or bounding box), created_by, created_at
+- `canvas_visits` — id, company_id, territory_id, address, lat, lng, outcome (`not_home|flyer|conversation|lead`), notes, visited_by, visited_at, customer_id (nullable, links to customers if lead created)
+- Both tables need RLS + auto-set `company_id` trigger, following existing Phase 5 pattern
+
+**Pages/components**:
+- `/canvas` — main page, split view: map left, visit log right
+- `/canvas/new-territory` — draw or address-list to define a territory
+- `CanvasMap` component — Mapbox GL JS (~$0 up to 50K loads/mo, free tier fine for a while)
+- `VisitLogSheet` — mobile-first, big "I'm here, log visit" button that GPS-stamps lat/lng
+- Dashboard widget: "Today's canvassing" summary
+
+**Integrations**:
+- Geocoding: Mapbox Geocoding API (free up to 100K/mo) for address → lat/lng
+- Address lookup for a drawn territory: OSM Overpass API (free) to get all houses in a polygon
+- If visit outcome = "conversation" or "lead" → auto-create customer row with address, link `customer_id` back to visit, prefill `lead_status = 'New'`, create a follow-up task
+
+**Automation**:
+- **Next-10 suggestion**: algorithm picks 10 un-visited houses nearest to converted customers (same/adjacent zip, within 500m of a won quote)
+- **SMS follow-up**: 1 hour after a "conversation" visit, prompt to send templated SMS ("Nice meeting you — here's my quote link if you're ready")
+- **Weekly digest**: Monday email with last week's visit counts + conversion rate by territory + 3 "hot zones" suggested
+- **Stuck territory alert**: if territory was 80%+ canvassed and < 2% converted, auto-flag it to be parked
+
+**Scope estimate**: 1-2 sessions for MVP (tables + map + visit log + outcome tracking + customer link). Auto-suggestions + SMS follow-up + digest are Phase 2.
+
+**Libraries to add**: `mapbox-gl` (~200kb), `@types/mapbox-gl`
+**Env vars needed**: `NEXT_PUBLIC_MAPBOX_TOKEN`
+
+---
+
+### Feature B — Shipping Stage Automation
+~80% already built in Phase 14/23. Tightens up what's there.
+
+**Current state** (works today):
+- `quote_materials.status`: ordered / shipped / received, manually flipped
+- `material_packages.status`: pending / received, manually checked in
+- "Check In All" button, "Stage for Install" workflow, batch receive
+
+**Gaps to close**:
+
+**1. Auto-status transitions** (pure DB logic, no external APIs):
+- TRIGGER on `material_packages` — when count(received) == expected_packages, auto-update parent `quote_materials.status = 'received'` + set `received_at`
+- TRIGGER on `quote_materials` — when all materials for a quote are `received`, auto-update quote to `ready_for_install` stage + notify
+- TRIGGER on tracking_number set → `status = 'shipped'` if status was `ordered`
+
+**2. Customer shipping notifications** (uses existing Resend + Twilio):
+- On `material_packages.status` → `shipped` with tracking_number: email + SMS customer "Your blinds shipped! Tracking: XYZ, ETA Wed"
+- On all materials `received` (ready for install): email customer "Your order is in — let's schedule your install"
+- Uses existing `useSMS()` hook + existing email template pattern
+
+**3. Carrier tracking auto-lookup**:
+- Nightly cron hits tracking APIs for each in-transit package, updates `eta` and transitions to `shipped`/`received` automatically
+- USPS: free API (https://www.usps.com/business/web-tools-apis/), register for USERID
+- UPS: OAuth app (https://developer.ups.com/), free tier
+- FedEx: OAuth app (https://developer.fedex.com/), free tier
+- Auto-detect carrier from tracking number format (regex)
+- New `lib/carrier-lookup.ts` with a unified `getShipmentStatus(trackingNumber)` function
+
+**4. "What's stuck" dashboard widget**:
+- Lists materials ordered > 14 days ago still not shipped
+- Quote → material → vendor with one-click "Email vendor for update" (templated)
+
+**Scope estimate**: 1 session for auto-transitions + notifications (no external APIs). +1 session for carrier lookups (requires you to register for USPS/UPS/FedEx dev accounts, provision OAuth credentials).
+
+**Env vars needed**: `USPS_USERID`, `UPS_CLIENT_ID`, `UPS_CLIENT_SECRET`, `FEDEX_CLIENT_ID`, `FEDEX_CLIENT_SECRET`
+**Migration needed**: `phase26_shipping_auto_transitions.sql` (triggers)
+
+---
+
+### Feature C — Stripe Connect Live Payments (finish)
+Scaffolded in Phase 21. Needs end-to-end testing.
+
+**What exists**:
+- `/api/stripe/connect/onboard` — creates Express Connect account, redirects to Stripe onboarding
+- `/api/stripe/connect/payment-intent` — creates PaymentIntent on connected account with 1% platform fee
+- Webhook handlers: `account.updated`, `payment_intent.succeeded`
+- Settings toggle: `live_payments_enabled`, `stripe_connect_account_id`, `stripe_connect_onboarded`
+- Public customer invoice view should be able to pay via Stripe
+
+**What needs doing**:
+1. Verify STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set in Vercel (they already are per handoff line 130)
+2. As Steve, go through Settings → Integrations → Stripe Connect → "Connect Stripe account" → complete onboarding flow on live Stripe
+3. Create a test invoice, open public view at `/i/[token]`, pay with a real card (use your own Stripe account so the fee lands in your account)
+4. Verify webhook fires and invoice `status` transitions to `paid` with `amount_paid` populated
+5. Test failure paths: card declined, 3DS challenge, partial refund
+6. Audit UI: does the "Pay Now" button appear only when `live_payments_enabled = true` AND `stripe_connect_onboarded = true`?
+
+**Likely bugs to find**: webhook signature verification, connected account ID not being passed to PaymentIntent creation, customer invoice view not detecting whether live payments are available.
+
+**Scope estimate**: 1 session (1-2 hours). Mostly testing + bug fixing, minimal new code.
+
+---
+
+### Feature D — QuickBooks Online Direct API Sync
+Replaces manual IIF export with real-time bi-directional sync.
+
+**Prerequisites (Steve does first)**:
+- Create QuickBooks Developer account at https://developer.intuit.com
+- Create a new app, get `CLIENT_ID` and `CLIENT_SECRET`
+- Add Vercel env vars: `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_REDIRECT_URI`
+
+**Build scope** (broken into 3 phases):
+
+**D1 — OAuth + company connection** (1 session)
+- `/api/qbo/connect` — kicks off OAuth 2.0 authorization code flow
+- `/api/qbo/callback` — handles redirect, stores access_token, refresh_token, realm_id per company
+- DB: add `qbo_access_token`, `qbo_refresh_token`, `qbo_realm_id`, `qbo_expires_at`, `qbo_connected_at` to `companies` table (migration)
+- Settings page: "Connect QuickBooks" button in Integrations tab, status indicator when connected, disconnect button
+- Token refresh helper in `lib/qbo.ts` with automatic refresh on 401
+
+**D2 — Invoice + payment sync** (1 session)
+- Map ZeroRemake `invoices` → QBO `Invoice` entity (line items, customer, tax)
+- Map ZeroRemake `customers` → QBO `Customer` entity (create if not exists, update if changed)
+- Map ZeroRemake `payments` → QBO `Payment` entity (apply to invoice)
+- Sync direction: ZeroRemake → QBO only (one-way initially, avoid conflict hell)
+- New `qbo_sync_log` table — tracks every sync attempt, success/failure, QBO entity ID
+- Sync triggers: immediately on invoice create/update/delete, payment record; retry queue for failures
+
+**D3 — Bi-directional + expense + payroll** (1 session)
+- Pull QBO invoices created outside ZeroRemake back in (check for updates every 4 hrs via cron)
+- Push `pay_entries` → QBO `JournalEntry` or `Bill` (for contractors)
+- Push vendor bills (material orders from Phase 14) → QBO `Bill`
+- Conflict resolution: "last edited wins" with user-facing conflict badge
+
+**Scope estimate**: 3 sessions total. D1 + D2 give ~80% of user value (auto-push invoices and payments). D3 is nice-to-have.
+
+**Libraries**: `intuit-oauth` for OAuth flow, `node-quickbooks` for API client.
+
+**DO NOT** start D2 until D1 is fully tested with your own QBO account, otherwise you'll have half-formed sync logic polluting real data.
 
 ---
 

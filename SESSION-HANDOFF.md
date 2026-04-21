@@ -205,10 +205,30 @@ DB migration: `phase24_business_type.sql` ✓ (adds business_type TEXT + hidden_
 - **JSON-LD structured data** on landing page: Organization + SoftwareApplication (with offers for all 3 plans) + FAQPage (from existing faqs array). Enables Google rich results for pricing and FAQ snippets.
 - **manifest.json enhanced**: added categories (business/productivity/utilities), scope, id, lang, longer description.
 
+### Phase 25 — order-documents storage bucket finalized — Complete ✓
+- Bucket `order-documents` existed but had no RLS policies (silent upload failures).
+- Added 4 policies for `authenticated` role: INSERT / SELECT / UPDATE / DELETE scoped to `bucket_id = 'order-documents'`.
+- Data-level tenancy still enforced by `quote_materials` / `quotes` company_id RLS.
+- Switched `app/quotes/[id]/page.tsx` order-PDF upload from `window-photos` fallback to the proper `order-documents` bucket, with path `{quoteId}/{materialId}/{ts}-{name}`.
+- Migration saved as `supabase/phase25_order_documents_storage.sql` ✓.
+
+### Google Search Console — Set Up ✓
+- zeroremake.com verified via DNS TXT (GoDaddy).
+- sitemap.xml submitted, 4 URLs discovered.
+- Homepage requested for priority indexing.
+
+### Facebook Page Linked ✓
+- `sameAs: ["https://www.facebook.com/zeroremake/"]` in Organization JSON-LD on landing page.
+- Facebook icon + link added to landing page footer.
+- FB Sharing Debugger confirms OG image + all og:* tags render correctly.
+
 ### Next Up
-- **After deploy**: register zeroremake.com in Google Search Console + Bing Webmaster Tools. Submit sitemap. Drop verification token into `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` Vercel env var (it wires up via metadata.verification.google).
+- **Bing Webmaster Tools**: register zeroremake.com at bing.com/webmasters, import from Google Search Console in one click. Covers Bing + DuckDuckGo + ChatGPT search.
+- **Google Analytics 4**: tag zeroremake.com (20 min setup). Drop GA4 measurement ID into an env var + `<Script>` tag in layout.
+- **Google Business Profile**: for local "blinds installer near me" discovery if doing local installs.
+- **Facebook Pixel**: 10 min install, required if running FB ads later.
 - **Facebook domain verification**: if doing FB Pixel/ads, add token in `metadata.other["facebook-domain-verification"]` in layout.tsx.
-- Still pending: create `order-documents` storage bucket in Supabase (pdf-parse is already installed per package.json)
+- **NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION** Vercel env var — optional backup verification method.
 - Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
 - Future: Direct QuickBooks Online API integration (OAuth + real-time sync)
 

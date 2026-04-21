@@ -1107,9 +1107,11 @@ export default function QuotePage() {
   async function handleOrderPdfUpload(materialId: string, file: File) {
     setUploadingPdf(materialId);
     try {
-      // Upload PDF to Supabase storage
-      const fileName = `orders/${quoteId}/${materialId}/${Date.now()}-${file.name}`;
-      await supabase.storage.from("window-photos").upload(fileName, file, { upsert: true });
+      // Upload PDF to the private order-documents bucket.
+      // Bucket has RLS limited to authenticated users; paths are namespaced
+      // per quote/material so the same file can't collide across orders.
+      const fileName = `${quoteId}/${materialId}/${Date.now()}-${file.name}`;
+      await supabase.storage.from("order-documents").upload(fileName, file, { upsert: true });
 
       // Read PDF text client-side for matching (basic approach: read as text)
       // For real PDF parsing, the API route with pdf-parse handles it.

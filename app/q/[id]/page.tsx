@@ -523,10 +523,8 @@ function CustomerQuoteInner() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-center text-xs py-2" style={{ color: "#d1d5db" }}>
-          Powered by ZeroRemake
-        </div>
+        {/* No "Powered by" footer — this is a document the installer's
+            homeowner sees, not a marketing surface for ZeroRemake. */}
 
       </div>
     </div>

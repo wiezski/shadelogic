@@ -353,10 +353,7 @@ function BuilderPortalInner() {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="text-center py-6 px-4" style={{ color: "var(--zr-text-secondary)" }}>
-        <div className="text-xs">Powered by ZeroRemake</div>
-      </div>
+      {/* No "Powered by" footer — builders view this, not our audience. */}
     </div>
   );
 }

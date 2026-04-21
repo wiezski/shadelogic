@@ -396,12 +396,13 @@ export default function PublicInvoicePage() {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="text-center py-4">
-          <p className="text-xs text-gray-400">
-            {company?.name ? `${company.name} • ` : ""}Powered by ZeroRemake
-          </p>
-        </div>
+        {/* Footer — show the installer's business name only. Customers who
+            see this are homeowners, not prospective ZeroRemake users. */}
+        {company?.name && (
+          <div className="text-center py-4">
+            <p className="text-xs text-gray-400">{company.name}</p>
+          </div>
+        )}
       </div>
     </main>
   );

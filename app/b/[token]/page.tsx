@@ -100,12 +100,12 @@ function BuilderPortalInner() {
 
     setBuilder(builderData as BuilderContact);
 
-    // Load company info, including plan — we only apply the installer's
-    // custom logo/color if their plan includes white-label (Business).
-    // Starter/Pro plans get the default neutral styling here, same as any
-    // other customer-facing page.
+    // Load company info via the public view (Phase 31). Regular `companies`
+    // has tenant-scoped RLS that blocks anon reads — the view exposes only
+    // safe branding fields and is anon-readable. We still apply the
+    // installer's custom logo/color only if their plan includes white-label.
     const { data: companyData } = await supabase
-      .from("companies")
+      .from("companies_public")
       .select("name, plan, brand_logo_url, brand_primary_color")
       .eq("id", builderData.company_id)
       .single();

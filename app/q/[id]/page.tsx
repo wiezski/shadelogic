@@ -48,6 +48,7 @@ type ProductInfo = {
 
 type Customer = { first_name: string | null; last_name: string | null };
 type Company  = { name: string; phone: string | null; email: string | null; tagline: string | null; default_deposit_pct: number };
+type CompanyBrand = { plan: string | null; brand_logo_url: string | null; brand_primary_color: string | null };
 
 function fmtMoney(n: number) {
   return "$" + (n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -144,6 +145,7 @@ function CustomerQuoteInner() {
   const [productInfo, setProductInfo] = useState<Record<string, ProductInfo>>({});
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [company,  setCompany]  = useState<Company | null>(null);
+  const [brand,    setBrand]    = useState<CompanyBrand | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -161,7 +163,7 @@ function CustomerQuoteInner() {
 
   async function load() {
     const [qRes, lRes, coRes] = await Promise.all([
-      supabase.from("quotes").select("id, customer_id, title, status, notes, created_at, expires_at, valid_days, subtotal, discount_amount, total, signed_at, signed_name").eq("id", quoteId).single(),
+      supabase.from("quotes").select("id, customer_id, company_id, title, status, notes, created_at, expires_at, valid_days, subtotal, discount_amount, total, signed_at, signed_name").eq("id", quoteId).single(),
       supabase.from("quote_line_items").select("id, room_name, window_label, product_name, product_id, width, height, mount_type, retail, is_motorized, motor_retail, notes").eq("quote_id", quoteId).order("sort_order").order("room_name"),
       supabase.from("company_settings").select("name, phone, email, tagline, default_deposit_pct").limit(1).single(),
     ]);
@@ -170,6 +172,18 @@ function CustomerQuoteInner() {
     const lineItems = (lRes.data || []) as LineItem[];
     setLines(lineItems);
     if (coRes.data) setCompany(coRes.data as Company);
+
+    // Pull brand info from the anon-safe public view so we can render the
+    // installer's logo + accent color IF their plan supports white-label.
+    const quoteCompanyId = (qRes.data as { company_id?: string }).company_id;
+    if (quoteCompanyId) {
+      const { data: brandData } = await supabase
+        .from("companies_public")
+        .select("plan, brand_logo_url, brand_primary_color")
+        .eq("id", quoteCompanyId)
+        .single();
+      if (brandData) setBrand(brandData as CompanyBrand);
+    }
 
     // Fetch product catalog info for richer display (category, color, manufacturer)
     const productIds = lineItems.map(l => l.product_id).filter(Boolean) as string[];
@@ -287,8 +301,17 @@ function CustomerQuoteInner() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
-      {/* Header — clean white, professional */}
+      {/* Header — clean white, professional. Business plan shows the
+          installer's logo above the business name; lower plans show just
+          the business name in default styling. */}
       <div className="px-4 py-5 text-center" style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e5e7eb" }}>
+        {brand?.brand_logo_url && (brand.plan === "business" || brand.plan === "trial") && (
+          <img
+            src={brand.brand_logo_url}
+            alt={company?.name ?? "Logo"}
+            className="mx-auto mb-3 max-h-16 object-contain"
+          />
+        )}
         <div className="font-bold text-xl" style={{ color: "#111827" }}>{company?.name ?? "Your Quote"}</div>
         {company?.tagline && <div className="text-xs mt-0.5" style={{ color: "#9ca3af" }}>{company.tagline}</div>}
         {company?.phone && (

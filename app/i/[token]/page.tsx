@@ -99,6 +99,7 @@ export default function PublicInvoicePage() {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [company, setCompany] = useState<CompanyInfo | null>(null);
+  const [brand, setBrand] = useState<{ plan: string | null; brand_logo_url: string | null; brand_primary_color: string | null } | null>(null);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
   const [integrations, setIntegrations] = useState<PaymentIntegration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +128,7 @@ export default function PublicInvoicePage() {
     setInvoice(inv);
 
     // Load line items, customer, company info, payment config in parallel
-    const [itemsRes, custRes, compRes, settingsRes, intRes] = await Promise.all([
+    const [itemsRes, custRes, compRes, settingsRes, intRes, brandRes] = await Promise.all([
       supabase
         .from("invoice_line_items")
         .select("id, description, quantity, unit_price, total, sort_order")
@@ -154,6 +155,13 @@ export default function PublicInvoicePage() {
         .eq("company_id", inv.company_id)
         .eq("status", "connected")
         .eq("category", "payments"),
+      // Brand info from the anon-safe public view — logo shows only for
+      // Business plan; otherwise default styling.
+      supabase
+        .from("companies_public")
+        .select("plan, brand_logo_url, brand_primary_color")
+        .eq("id", inv.company_id)
+        .single(),
     ]);
 
     setLineItems(itemsRes.data || []);
@@ -161,6 +169,7 @@ export default function PublicInvoicePage() {
     setCompany(compRes.data);
     setPaymentConfig(settingsRes.data);
     setIntegrations(intRes.data || []);
+    setBrand(brandRes.data as { plan: string | null; brand_logo_url: string | null; brand_primary_color: string | null } | null);
     setLoading(false);
   }
 
@@ -200,9 +209,17 @@ export default function PublicInvoicePage() {
   return (
     <main className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto max-w-xl space-y-4">
-        {/* Company header */}
+        {/* Company header — Business plan tenants get their custom logo
+            above the business name; lower plans show just the name. */}
         {company && (
           <div className="text-center pt-4">
+            {brand?.brand_logo_url && (brand.plan === "business" || brand.plan === "trial") && (
+              <img
+                src={brand.brand_logo_url}
+                alt={company.name}
+                className="mx-auto mb-2 max-h-14 object-contain"
+              />
+            )}
             <h1 className="text-lg font-bold text-gray-900">{company.name}</h1>
             <div className="flex items-center justify-center gap-3 mt-1 text-xs text-gray-500">
               {company.phone && <span>{company.phone}</span>}

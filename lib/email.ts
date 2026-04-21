@@ -72,6 +72,31 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
   const from = `${displayName} <${platformDomain.includes("@") ? platformDomain.split("<").pop()?.replace(">", "").trim() || platformDomain : platformDomain}>`;
   const replyTo = params.replyTo || params.fromEmail || undefined;
 
+  // White-label logo injection: if this is a customer-facing email (anything
+  // other than system types) and the sending company has a Business plan
+  // with a logo set, inject their logo at the top of the email body before
+  // sending. No-op for system emails or lower-plan tenants.
+  let finalHtml = params.html;
+  const isCustomerFacing = params.type !== "password_reset" && params.type !== "trial_reminder" && params.type !== "custom";
+  if (isCustomerFacing && params.companyId) {
+    try {
+      const admin = getAdminClient();
+      const { data: brand } = await admin
+        .from("companies")
+        .select("plan, brand_logo_url")
+        .eq("id", params.companyId)
+        .single();
+      if (brand?.brand_logo_url && (brand.plan === "business" || brand.plan === "trial")) {
+        const logoBlock = `<div style="text-align:center;margin-bottom:24px;"><img src="${brand.brand_logo_url}" alt="Logo" style="max-height:60px;max-width:240px;object-fit:contain;" /></div>`;
+        // Inject inside the card, right after <div class="card">
+        finalHtml = finalHtml.replace('<div class="card">', `<div class="card">${logoBlock}`);
+      }
+    } catch (err) {
+      // Non-fatal — just log and send without logo
+      console.warn("[email] brand lookup failed, sending without logo:", err);
+    }
+  }
+
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -83,7 +108,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
         from,
         to: [params.to],
         subject: params.subject,
-        html: params.html,
+        html: finalHtml,
         reply_to: replyTo,
       }),
     });

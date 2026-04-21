@@ -112,8 +112,68 @@ export function LandingPage() {
     },
   ];
 
+  // ── JSON-LD structured data (SoftwareApplication + Organization + FAQPage) ──
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://zeroremake.com/#organization",
+        name: "ZeroRemake",
+        url: "https://zeroremake.com",
+        logo: "https://zeroremake.com/icon-512.png",
+        email: "support@zeroremake.com",
+        description:
+          "Business management software for window treatment professionals — CRM, measuring, quoting, scheduling, order tracking, and invoicing.",
+        sameAs: [] as string[],
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://zeroremake.com/#software",
+        name: "ZeroRemake",
+        applicationCategory: "BusinessApplication",
+        applicationSubCategory: "CRM & Field Service Management",
+        operatingSystem: "Web, iOS, Android",
+        url: "https://zeroremake.com",
+        description:
+          "All-in-one software for blinds, shades, and shutter installers: CRM, quoting, scheduling, inventory tracking, and invoicing — all mobile-first.",
+        offers: PLANS.map((p) => ({
+          "@type": "Offer",
+          name: `${p.name} plan`,
+          price: p.price,
+          priceCurrency: "USD",
+          priceSpecification: {
+            "@type": "UnitPriceSpecification",
+            price: p.price,
+            priceCurrency: "USD",
+            unitText: "MONTH",
+          },
+          description: `${p.desc} (${p.users})`,
+          category: "subscription",
+          availability: "https://schema.org/InStock",
+        })),
+        featureList: FEATURES.map((f) => f.title).join(", "),
+        publisher: { "@id": "https://zeroremake.com/#organization" },
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://zeroremake.com/#faq",
+        mainEntity: faqs.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      },
+    ],
+  };
+
   return (
     <div style={{ background: "#ffffff", color: "#111827" }}>
+      {/* JSON-LD for Google rich results */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ── Sticky Nav ── */}
       <nav
         className="sticky top-0 z-50 border-b"

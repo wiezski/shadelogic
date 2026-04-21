@@ -172,13 +172,43 @@ PDF parsing, manufacturer library, product change detection. See details below.
 - **Purchase Order generation** (`/quotes/[id]`): "Generate PO" button on approved quotes, opens print-ready HTML PO with line-by-line products, dimensions, costs, vendor blank. Auto-prints.
 - **Job Costing dashboard** (`/analytics`): Per-job profitability analysis — sale price vs material cost + labor + commissions = gross profit/margin. Visual cost breakdown bar, summary cards, exportable CSV.
 
+### Phase 24 — Business Type Presets + Focus Mode Dashboard — Complete ✓
+
+**Business Type Questionnaire** (`/onboarding`):
+- 6 presets: Solo Installer, Install Crew, Solopreneur, Sales Only, Small Team, Full-Service Shop
+- Each preset configures: hidden nav items, feature overrides, dashboard widget defaults, suggested roles
+- Two-step flow: card selection → confirmation screen showing what gets enabled/disabled
+- "Skip for now" option, accessible from Settings → Company tab
+- Saves `business_type` and `hidden_nav` to companies table
+
+**Focus Mode Dashboard Filtering:**
+- Shared config in `lib/focus-modes.ts` — mode labels, icons, nav filters, widget defaults
+- Dashboard (`/`) filters visible widgets based on active task mode
+- Cross-component sync via 500ms localStorage polling
+- Mode widget defaults: Measuring (appointments/queue/ready/actions), Quoting (actions/pipeline/KPIs/queue/revenue), Scheduling (appointments/operations/tasks/queue), Warehouse (ready/shipments/operations)
+
+**Focus Mode Widget Customization** (Settings → My Dashboard):
+- `FocusModeWidgetsSection` — tabs for each mode (Measuring/Quoting/Scheduling/Warehouse)
+- Toggle switches to show/hide widgets per mode
+- "Reset to Default" button per mode
+- Overrides saved to localStorage (`zr-mode-widgets` key)
+
+**Nav item filtering** stays hardcoded per mode (not customizable per user request).
+
+DB migration: `phase24_business_type.sql` ✓ (adds business_type TEXT + hidden_nav JSONB to companies)
+
+### Phase 25 — SEO Foundation — Complete ✓
+- **Expanded root metadata** (`app/layout.tsx`): title template, keywords, metadataBase (NEXT_PUBLIC_SITE_URL or zeroremake.com), openGraph, twitter card, robots directives, canonical, Google verification slot (NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION env var), category, authors/publisher. Moved themeColor into `viewport` export per Next 15+ convention.
+- **Sitemap** (`app/sitemap.ts`): auto-generates `/sitemap.xml` with / (priority 1), /signup (0.9), /login (0.5), /forgot-password (0.3).
+- **Robots** (`app/robots.ts`): `/robots.txt` allows public marketing pages, disallows /api/, /customers, /quotes, /measure-jobs, /invoices, /payments, /payroll, /analytics, /schedule, /settings, /onboarding, /builders, /manufacturers, /products, /calculator, /intake, /jobs, /setup-guide, and token routes /b/ /i/ /q/. Points to sitemap.
+- **Open Graph image** (`app/opengraph-image.tsx`): Next.js edge-rendered 1200×630 branded social card used automatically by Facebook, LinkedIn, iMessage, Twitter (via summary_large_image fallback).
+- **JSON-LD structured data** on landing page: Organization + SoftwareApplication (with offers for all 3 plans) + FAQPage (from existing faqs array). Enables Google rich results for pricing and FAQ snippets.
+- **manifest.json enhanced**: added categories (business/productivity/utilities), scope, id, lang, longer description.
+
 ### Next Up
-- **User needs to `git push`** to deploy latest changes (5 commits pending)
-- SMS cost strategy (built-in vs. add-on, Twilio)
-- Manufacturer spec library (top 5 brands with curated product data)
-- Still pending: `npm install pdf-parse`, create `order-documents` storage bucket in Supabase
-- Still pending: Set up Postmark inbound email for order tracking
-- Password reset flow (pages exist, need email wiring)
+- **After deploy**: register zeroremake.com in Google Search Console + Bing Webmaster Tools. Submit sitemap. Drop verification token into `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` Vercel env var (it wires up via metadata.verification.google).
+- **Facebook domain verification**: if doing FB Pixel/ads, add token in `metadata.other["facebook-domain-verification"]` in layout.tsx.
+- Still pending: create `order-documents` storage bucket in Supabase (pdf-parse is already installed per package.json)
 - Future: Wire up actual Stripe Connect / PayPal / QuickBooks OAuth flows for live payments
 - Future: Direct QuickBooks Online API integration (OAuth + real-time sync)
 

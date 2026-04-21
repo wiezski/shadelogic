@@ -1,12 +1,16 @@
 {
-  "name": "ZeroRemake",
+  "name": "ZeroRemake — Window Treatment Business Software",
   "short_name": "ZeroRemake",
-  "description": "Window treatment software — sale to install, done right",
+  "description": "All-in-one software for window treatment pros: CRM, measuring, quoting, scheduling, order tracking, and invoicing.",
   "start_url": "/",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#e63000",
   "orientation": "portrait-primary",
+  "lang": "en-US",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "/icon-192.png",

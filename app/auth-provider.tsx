@@ -129,15 +129,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setHiddenNav(Array.isArray(company?.hidden_nav) ? company.hidden_nav : []);
       setBusinessType(company?.business_type ?? null);
 
-      const b: TenantBranding = {
-        slug:         company?.brand_slug ?? null,
-        primaryColor: company?.brand_primary_color ?? null,
-        primaryHover: company?.brand_primary_hover ?? null,
-        darkColor:    company?.brand_dark_color ?? null,
-        font:         company?.brand_font ?? null,
-        logoUrl:      company?.brand_logo_url ?? null,
-        logoMark:     company?.brand_logo_mark ?? null,
-      };
+      // Only apply custom branding if the plan has the white_label feature.
+      // A former-Business downgrader with brand_* columns still in their row
+      // should NOT keep seeing their custom colors on a Starter/Pro plan.
+      const resolvedFeatures = resolveFeatures(company?.plan ?? "trial", company?.features ?? {});
+      const b: TenantBranding = resolvedFeatures.white_label
+        ? {
+            slug:         company?.brand_slug ?? null,
+            primaryColor: company?.brand_primary_color ?? null,
+            primaryHover: company?.brand_primary_hover ?? null,
+            darkColor:    company?.brand_dark_color ?? null,
+            font:         company?.brand_font ?? null,
+            logoUrl:      company?.brand_logo_url ?? null,
+            logoMark:     company?.brand_logo_mark ?? null,
+          }
+        : DEFAULT_BRANDING;
       setBranding(b);
       applyBranding(b);
 

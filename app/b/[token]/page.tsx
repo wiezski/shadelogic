@@ -100,15 +100,24 @@ function BuilderPortalInner() {
 
     setBuilder(builderData as BuilderContact);
 
-    // Load company info
+    // Load company info, including plan — we only apply the installer's
+    // custom logo/color if their plan includes white-label (Business).
+    // Starter/Pro plans get the default neutral styling here, same as any
+    // other customer-facing page.
     const { data: companyData } = await supabase
       .from("companies")
-      .select("name, brand_logo_url, brand_primary_color")
+      .select("name, plan, brand_logo_url, brand_primary_color")
       .eq("id", builderData.company_id)
       .single();
 
     if (companyData) {
-      setCompany(companyData as CompanyInfo);
+      const c = companyData as { name: string; plan: string | null; brand_logo_url: string | null; brand_primary_color: string | null };
+      const planSupportsWhiteLabel = c.plan === "business" || c.plan === "trial";
+      setCompany({
+        name: c.name,
+        brand_logo_url: planSupportsWhiteLabel ? c.brand_logo_url : null,
+        brand_primary_color: planSupportsWhiteLabel ? c.brand_primary_color : null,
+      } as CompanyInfo);
     }
 
     // Load projects for this builder

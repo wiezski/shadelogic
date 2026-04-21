@@ -138,7 +138,12 @@ async function logEmail(
 // Wraps content in a clean, branded email layout.
 
 export function emailLayout(body: string, companyName?: string): string {
+  // Footer note: show the installer's business name for customer-facing
+  // emails. For system emails sent TO an installer (no companyName passed
+  // in) — trial reminders, password reset — we fall back to "ZeroRemake"
+  // since those genuinely come from us.
   const brand = companyName || "ZeroRemake";
+  const isSystemEmail = !companyName;
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -165,7 +170,7 @@ export function emailLayout(body: string, companyName?: string): string {
       ${body}
     </div>
     <div class="footer">
-      Sent by ${brand} &middot; Powered by ZeroRemake
+      ${isSystemEmail ? "ZeroRemake" : `Sent by ${brand}`}
     </div>
   </div>
 </body>

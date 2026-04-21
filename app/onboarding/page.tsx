@@ -83,6 +83,14 @@ export default function OnboardingPage() {
         document.cookie = `zr_layout=${encodeURIComponent(layout)};path=/;max-age=${365 * 24 * 60 * 60}`;
       }
 
+      // Hard reload so the AuthProvider re-fetches the updated company row
+      // (hidden_nav + features) instead of using the stale context from before
+      // onboarding saved the preset. router.replace() is client-side only and
+      // leaves the nav showing all items until a manual refresh.
+      if (typeof window !== "undefined") {
+        window.location.replace("/");
+        return;
+      }
       router.replace("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
@@ -180,11 +188,15 @@ export default function OnboardingPage() {
                   if (selected) setStep("confirm");
                 }}
                 disabled={!selected}
-                className="px-8 py-3 font-bold text-white disabled:opacity-40 cursor-pointer"
+                className="px-8 py-3 font-bold cursor-pointer transition-colors"
                 style={{
-                  background: "var(--zr-orange)",
+                  // Clearer disabled contrast: gray background + muted text when
+                  // nothing is selected, orange + white once the user picks a card.
+                  background: selected ? "var(--zr-orange)" : "var(--zr-surface-2)",
+                  color: selected ? "#fff" : "var(--zr-text-muted)",
                   borderRadius: "var(--zr-radius-md)",
-                  border: "none",
+                  border: selected ? "none" : "1px solid var(--zr-border)",
+                  cursor: selected ? "pointer" : "not-allowed",
                 }}
               >
                 Continue

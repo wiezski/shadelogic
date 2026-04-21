@@ -727,6 +727,45 @@ export default function HomePage() {
 
         {tab === "dashboard" && (
           <>
+            {/* First-run welcome banner — visible only for brand-new tenants
+                with zero customers. Dismisses automatically once the first
+                customer is added, so existing tenants never see it. */}
+            {customers.length === 0 && !statsLoading && (
+              <div
+                className="mb-4 rounded-xl p-4 flex items-start gap-3"
+                style={{
+                  background: "linear-gradient(135deg, rgba(230,48,0,0.08) 0%, rgba(230,48,0,0.02) 100%)",
+                  border: "1px solid rgba(230,48,0,0.25)",
+                }}
+              >
+                <div className="text-2xl leading-none pt-0.5">👋</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold mb-0.5" style={{ color: "var(--zr-text-primary)" }}>
+                    Welcome to ZeroRemake!
+                  </div>
+                  <div className="text-xs mb-2" style={{ color: "var(--zr-text-secondary)" }}>
+                    Add your first customer to start tracking leads, quotes, and installs — everything on the dashboard will populate as you go.
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => { setTab("customers"); setShowForm(true); }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded cursor-pointer"
+                      style={{ background: "var(--zr-orange)", color: "#fff" }}
+                    >
+                      + Add your first customer
+                    </button>
+                    <Link
+                      href="/setup-guide"
+                      className="text-xs font-medium px-3 py-1.5 rounded cursor-pointer"
+                      style={{ color: "var(--zr-orange)", border: "1px solid rgba(230,48,0,0.35)", background: "#fff" }}
+                    >
+                      Setup guide
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Visible widgets in user's order */}
             {widgetOrder.filter(id => {
               if (hiddenWidgets.includes(id)) return false;

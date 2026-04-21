@@ -2050,6 +2050,15 @@ function BusinessTypeSection() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Keep `current` in sync with the AuthProvider's businessType as it loads —
+  // fixes a race where the page mounted before the company profile finished
+  // loading, leaving all cards un-highlighted until a manual refresh.
+  useEffect(() => {
+    if (businessType && businessType !== current) {
+      setCurrent(businessType as BusinessType);
+    }
+  }, [businessType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function applyType(type: BusinessType) {
     if (!companyId) return;
     setSaving(true);

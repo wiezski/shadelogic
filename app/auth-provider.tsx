@@ -9,7 +9,7 @@ import { registerDeviceSession, heartbeatSession, removeDeviceSession } from "..
 import type { User } from "@supabase/supabase-js";
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/signup", "/q/", "/intake", "/forgot-password", "/reset-password", "/i/", "/b/"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/onboarding", "/q/", "/intake", "/forgot-password", "/reset-password", "/i/", "/b/"];
 
 export type TenantBranding = {
   slug: string | null;
@@ -34,6 +34,8 @@ type AuthContextType = {
   features: Features;
   plan: string;
   branding: TenantBranding;
+  hiddenNav: string[];
+  businessType: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -44,6 +46,7 @@ const DEFAULT_FEATURES = resolveFeatures("trial");
 const AuthContext = createContext<AuthContextType>({
   user: null, companyId: null, role: "owner", permissions: DEFAULT_PERMS,
   features: DEFAULT_FEATURES, plan: "trial", branding: DEFAULT_BRANDING,
+  hiddenNav: [], businessType: null,
   loading: true, signOut: async () => {},
 });
 
@@ -97,6 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [features,    setFeatures]    = useState<Features>(DEFAULT_FEATURES);
   const [plan,        setPlan]        = useState<string>("trial");
   const [branding,    setBranding]    = useState<TenantBranding>(DEFAULT_BRANDING);
+  const [hiddenNav,   setHiddenNav]   = useState<string[]>([]);
+  const [businessType, setBusinessType] = useState<string | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [profileStatus, setProfileStatus] = useState<string>("active");
   const router   = useRouter();
@@ -117,10 +122,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data?.company_id) {
       const { data: company } = await supabase
         .from("companies")
-        .select("plan, features, brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark")
+        .select("plan, features, business_type, hidden_nav, brand_slug, brand_primary_color, brand_primary_hover, brand_dark_color, brand_font, brand_logo_url, brand_logo_mark")
         .eq("id", data.company_id).single();
       setPlan(company?.plan ?? "trial");
       setFeatures(resolveFeatures(company?.plan ?? "trial", company?.features ?? {}));
+      setHiddenNav(Array.isArray(company?.hidden_nav) ? company.hidden_nav : []);
+      setBusinessType(company?.business_type ?? null);
 
       const b: TenantBranding = {
         slug:         company?.brand_slug ?? null,
@@ -140,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Default to trial if no company
       setPlan("trial");
       setFeatures(resolveFeatures("trial"));
+      setHiddenNav([]);
+      setBusinessType(null);
       setBranding(DEFAULT_BRANDING);
       applyBranding(DEFAULT_BRANDING);
     }
@@ -244,7 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, companyId, role, permissions, features, plan, branding, loading, signOut }}>
+    <AuthContext.Provider value={{ user, companyId, role, permissions, features, plan, branding, hiddenNav, businessType, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

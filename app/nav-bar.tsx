@@ -52,7 +52,7 @@ const MODE_NAV_FILTER: Record<TaskMode, string[] | null> = {
 };
 
 export function NavBar() {
-  const { user, signOut, permissions, features } = useAuth();
+  const { user, signOut, permissions, features, hiddenNav } = useAuth();
   const pathname = usePathname();
   const [reminderCount, setReminderCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -224,6 +224,9 @@ export function NavBar() {
             { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
             { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
           ].filter(i => i.show).filter(i => {
+            // Company-level hidden nav (from business type preset)
+            if (hiddenNav.length > 0 && hiddenNav.includes(i.href)) return false;
+            // Task-mode filtering
             const allowed = MODE_NAV_FILTER[taskMode];
             if (!allowed) return true; // "all" mode shows everything
             // Always show Settings

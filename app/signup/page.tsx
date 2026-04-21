@@ -142,7 +142,8 @@ function SignupInner() {
     }
 
     setLoading(false);
-    router.replace("/");
+    // New company signups → onboarding questionnaire; invite joins → dashboard
+    router.replace(isInvite ? "/" : "/onboarding");
   }
 
   const inputStyle = { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", color: "var(--zr-text-primary)" };

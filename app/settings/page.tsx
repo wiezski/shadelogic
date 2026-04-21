@@ -9,6 +9,7 @@ import { PermissionGate } from "../permission-gate";
 import { PLAN_LABELS, PLAN_FEATURES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan, type FeatureKey } from "../../lib/features";
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 import { WIDGET_IDS, WIDGET_LABELS, ROLE_LAYOUTS, type WidgetId } from "../dashboard-widgets";
+import { BUSINESS_PRESETS, BUSINESS_TYPE_LIST, type BusinessType } from "../../lib/business-presets";
 
 type WarehouseLocation = { name: string; notes: string };
 
@@ -1948,6 +1949,86 @@ function DashboardWidgetsSection() {
   );
 }
 
+// ── Business Type Selector (in Settings) ──────────────────
+function BusinessTypeSection() {
+  const { companyId, businessType } = useAuth();
+  const [current, setCurrent] = useState<BusinessType | null>((businessType as BusinessType) ?? null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function applyType(type: BusinessType) {
+    if (!companyId) return;
+    setSaving(true);
+    const preset = BUSINESS_PRESETS[type];
+
+    // Get current features to merge
+    const { data: company } = await supabase
+      .from("companies")
+      .select("features")
+      .eq("id", companyId)
+      .single();
+
+    const currentFeatures = company?.features ?? {};
+    const mergedFeatures = { ...currentFeatures, ...preset.featureOverrides };
+
+    await supabase
+      .from("companies")
+      .update({
+        business_type: type,
+        hidden_nav: preset.hiddenNav,
+        features: mergedFeatures,
+      })
+      .eq("id", companyId);
+
+    // Update dashboard layout cookie
+    if (typeof document !== "undefined" && preset.dashboardWidgets.length > 0) {
+      const layout = JSON.stringify({ order: preset.dashboardWidgets, hidden: [] });
+      document.cookie = `zr_layout=${encodeURIComponent(layout)};path=/;max-age=${365 * 24 * 60 * 60}`;
+    }
+
+    setCurrent(type);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    // Reload to pick up new features/nav
+    setTimeout(() => window.location.reload(), 500);
+  }
+
+  return (
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Business Type</h2>
+        {saved && <span className="text-xs" style={{ color: "#22c55e" }}>Saved! Reloading...</span>}
+      </div>
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+        This configures which features and nav sections are shown. Change anytime.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {BUSINESS_TYPE_LIST.map((type) => {
+          const p = BUSINESS_PRESETS[type];
+          const isSelected = current === type;
+          return (
+            <button
+              key={type}
+              onClick={() => applyType(type)}
+              disabled={saving}
+              className="text-left p-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+              style={{
+                background: isSelected ? "rgba(230, 48, 0, 0.08)" : "var(--zr-surface-2)",
+                border: isSelected ? "2px solid var(--zr-orange)" : "2px solid transparent",
+              }}
+            >
+              <div className="text-lg mb-0.5">{p.emoji}</div>
+              <div className="text-xs font-semibold" style={{ color: "var(--zr-text-primary)" }}>{p.label}</div>
+              <div className="text-xs mt-0.5 leading-snug" style={{ color: "var(--zr-text-muted)" }}>{p.tagline}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { permissions: myPerms } = useAuth();
   const searchParams = useSearchParams();
@@ -2082,6 +2163,9 @@ export default function SettingsPage() {
         {activeTab === "company" && (
           <div className="space-y-5">
             <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>This information appears on your PDF quotes and customer-facing documents.</p>
+
+            {/* Business Type Preset */}
+            <BusinessTypeSection />
 
             {/* Company info */}
             <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>

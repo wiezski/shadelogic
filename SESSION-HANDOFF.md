@@ -205,6 +205,41 @@ DB migration: `phase24_business_type.sql` ✓ (adds business_type TEXT + hidden_
 - **JSON-LD structured data** on landing page: Organization + SoftwareApplication (with offers for all 3 plans) + FAQPage (from existing faqs array). Enables Google rich results for pricing and FAQ snippets.
 - **manifest.json enhanced**: added categories (business/productivity/utilities), scope, id, lang, longer description.
 
+### Phase 28 — Companies RLS lockdown — Complete ✓
+Before: RLS was DISABLED on `companies` — anyone with an authenticated JWT could read/update/delete any tenant's row, including live secrets (`twilio_auth_token`, `stripe_customer_id`, `stripe_subscription_id`, `stripe_connect_account_id`).
+
+After:
+- RLS enabled.
+- INSERT allowed for any authenticated user (so signup can create their own row).
+- SELECT scoped to `id = profile.company_id` for `auth.uid()`.
+- UPDATE scoped to own company AND role = 'owner'.
+- No DELETE policy (locked).
+- Signup flow in `app/signup/page.tsx` refactored to generate the company UUID client-side via `crypto.randomUUID()` so it doesn't need a SELECT-back round-trip. No functional change for users; just avoids a policy conflict on INSERT+SELECT.
+- Verified ShadeLogic owner (wiezski@gmail.com) has role='owner' and can still update company settings; staff (office/sales/installer roles) correctly cannot.
+
+`product_changes.product_changes_select` (previously flagged) was audited and left alone — it's a global product-catalog table shared across tenants by design (no `company_id` column).
+
+`company_settings.anon_co` (anon SELECT qual=true) was flagged but deferred. Public quote / invoice / builder pages rely on the anon key to read branding info for rendering. Proper fix: a token-gated RPC or a column-scoped view that exposes only safe branding fields, not the raw `phone`/`email` columns. Tracked as Phase 29 candidate.
+
+Migration: `supabase/phase28_companies_rls_lockdown.sql` ✓ (applied live).
+
+### Phase 27 — EMERGENCY tenant-isolation leak fix — Complete ✓
+Caught during live end-to-end signup test. A brand-new signup (Claude Test Co) could read ShadeLogic's customers, measure jobs, rooms, windows, and window_photos. Direct PostgREST call from the new user's JWT returned Johnny Lawrence, Steve Wiezbowski, etc.
+
+Root cause: 5 tables had parallel permissive policies named `"allow all <table>"` with `USING (true) WITH CHECK (true)` granted to `public`. Postgres ORs permissive policies, so the "allow all" silently negated the proper `co` policy that scoped by `company_id = get_company_id()`.
+
+Fix: dropped the 5 offending policies. The `co` policies already existed on each table and now enforce isolation cleanly. Verified: same JWT query now returns `[]`.
+
+Migration: `supabase/phase27_critical_rls_fix.sql` ✓ (applied live).
+
+### Onboarding silent-bail fix — Complete ✓
+The onboarding "Set Up My Workspace" button silently did nothing because `applyPreset` early-returned if the AuthProvider's context hadn't finished loading the profile. Fix: resolve `company_id` directly from `supabase.auth.getUser()` → `profiles` lookup inside the handler, wrap in try/catch, show a visible error banner. Commit `bcbb517`.
+
+### Remaining RLS risks (Phase 28 candidates)
+- **`companies` table RLS disabled** (flagged earlier). Any authenticated user can UPDATE/DELETE any company row. Needs tenant-scoped policies.
+- **`company_settings.anon_co` permits anon SELECT on all rows** including `phone` and `email` columns. Narrow to safe branding columns only, or require a token match.
+- **`product_changes.product_changes_select`** lets any authenticated user read product change history across tenants. Scope to `company_id`.
+
 ### Phase 26 — Signup flow bugs fix — Complete ✓
 Post-launch audit surfaced two bugs that would have bitten real signups:
 - Companies got `plan='trial'` but `trial_ends_at=null`. Added column DEFAULT of `now() + 14 days`. Billing-page countdown and trial enforcement now work.

@@ -111,17 +111,24 @@ function SignupInner() {
         }]);
       }
     } else {
-      // Create new company
+      // Create new company.
+      // Generate the company UUID client-side so we don't need a .select() round-trip
+      // after INSERT — that's what allows the `companies` table to have strict RLS
+      // (SELECT scoped to your own company) without breaking signup.
       const planToSet = promoValid ? promoValid.plan : "trial";
-      const { data: company } = await supabase.from("companies")
-        .insert([{ name: companyName.trim(), plan: planToSet }]).select("id").single();
-      if (!company) { setError("Error creating company."); setLoading(false); return; }
+      const newCompanyId = crypto.randomUUID();
+      const { error: companyErr } = await supabase.from("companies").insert([{
+        id: newCompanyId,
+        name: companyName.trim(),
+        plan: planToSet,
+      }]);
+      if (companyErr) { setError("Error creating company: " + companyErr.message); setLoading(false); return; }
       await supabase.from("profiles").insert([{
-        id: userId, company_id: company.id,
+        id: userId, company_id: newCompanyId,
         full_name: fullName.trim() || null, role: "owner",
         status: "active",
       }]);
-      await supabase.from("company_settings").insert([{ name: companyName.trim(), company_id: company.id }]);
+      await supabase.from("company_settings").insert([{ name: companyName.trim(), company_id: newCompanyId }]);
 
       // Redeem promo code if provided
       if (promoValid && promoCode.trim()) {
@@ -134,7 +141,7 @@ function SignupInner() {
           expiresAt = exp.toISOString();
         }
         await supabase.from("promo_codes").update({
-          used_by_company: company.id,
+          used_by_company: newCompanyId,
           used_at: new Date().toISOString(),
           expires_at: expiresAt,
         }).eq("code", code);

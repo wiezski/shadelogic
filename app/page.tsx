@@ -28,6 +28,7 @@ import {
   type WorkItem,
   type ShipmentItem,
 } from "./dashboard-widgets";
+import { getCurrentMode, getModeWidgets, type TaskMode } from "../lib/focus-modes";
 
 type Customer = {
   id: string;
@@ -117,6 +118,23 @@ export default function HomePage() {
   const [hiddenWidgets, setHiddenWidgets] = useState<WidgetId[]>([]);
   const [editingLayout, setEditingLayout] = useState(false);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
+
+  // Focus mode — filter dashboard widgets when a mode is active
+  const [taskMode, setTaskMode] = useState<TaskMode>("all");
+  useEffect(() => {
+    setTaskMode(getCurrentMode());
+    // Listen for mode changes from nav-bar (uses storage event for cross-component sync)
+    function onStorage(e: StorageEvent) {
+      if (e.key === "zr-task-mode") setTaskMode((e.newValue as TaskMode) || "all");
+    }
+    window.addEventListener("storage", onStorage);
+    // Also poll for same-tab changes (storage event doesn't fire in same tab)
+    const interval = setInterval(() => {
+      const current = getCurrentMode();
+      setTaskMode(prev => prev !== current ? current : prev);
+    }, 500);
+    return () => { window.removeEventListener("storage", onStorage); clearInterval(interval); };
+  }, []);
 
   // Load saved layout from profile
   useEffect(() => {
@@ -710,7 +728,13 @@ export default function HomePage() {
         {tab === "dashboard" && (
           <>
             {/* Visible widgets in user's order */}
-            {widgetOrder.filter(id => !hiddenWidgets.includes(id)).map((id, idx, visibleArr) => (
+            {widgetOrder.filter(id => {
+              if (hiddenWidgets.includes(id)) return false;
+              // In a focus mode, only show mode-relevant widgets
+              const modeWidgets = getModeWidgets(taskMode);
+              if (modeWidgets.length > 0 && !modeWidgets.includes(id)) return false;
+              return true;
+            }).map((id, idx, visibleArr) => (
               <div key={id} className="mb-4">
                 {editingLayout && (
                   <div className="flex items-center justify-between mb-1 px-1">

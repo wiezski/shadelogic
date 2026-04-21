@@ -10,6 +10,7 @@ import { PLAN_LABELS, PLAN_FEATURES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 import { WIDGET_IDS, WIDGET_LABELS, ROLE_LAYOUTS, type WidgetId } from "../dashboard-widgets";
 import { BUSINESS_PRESETS, BUSINESS_TYPE_LIST, type BusinessType } from "../../lib/business-presets";
+import { MODE_LABELS, MODE_ICONS, MODE_WIDGETS, getModeWidgets, saveModeWidgets, resetModeWidgets, type TaskMode } from "../../lib/focus-modes";
 
 type WarehouseLocation = { name: string; notes: string };
 
@@ -1949,6 +1950,99 @@ function DashboardWidgetsSection() {
   );
 }
 
+// ── Focus Mode Widget Config (per-user) ──────────────────
+function FocusModeWidgetsSection() {
+  const modes: TaskMode[] = ["measuring", "quoting", "scheduling", "warehouse"];
+  const [activeMode, setActiveMode] = useState<TaskMode>("measuring");
+  const [modeWidgets, setModeWidgets] = useState<Record<string, WidgetId[]>>({});
+  const [saved, setSaved] = useState(false);
+
+  // Load saved overrides on mount
+  useEffect(() => {
+    const overrides: Record<string, WidgetId[]> = {};
+    for (const m of modes) {
+      overrides[m] = getModeWidgets(m);
+    }
+    setModeWidgets(overrides);
+  }, []); // eslint-disable-line
+
+  function toggleWidget(mode: TaskMode, widgetId: WidgetId) {
+    setModeWidgets(prev => {
+      const current = prev[mode] || MODE_WIDGETS[mode];
+      const next = current.includes(widgetId)
+        ? current.filter(w => w !== widgetId)
+        : [...current, widgetId];
+      const updated = { ...prev, [mode]: next };
+      saveModeWidgets(mode, next);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+      return updated;
+    });
+  }
+
+  function resetMode(mode: TaskMode) {
+    resetModeWidgets(mode);
+    setModeWidgets(prev => ({ ...prev, [mode]: MODE_WIDGETS[mode] }));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  }
+
+  const currentWidgets = modeWidgets[activeMode] || MODE_WIDGETS[activeMode];
+
+  return (
+    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Focus Mode Widgets</h2>
+        {saved && <span className="text-xs" style={{ color: "#22c55e" }}>Saved!</span>}
+      </div>
+      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+        Choose which dashboard widgets appear in each focus mode. When you switch modes from the nav bar, the dashboard shows only these widgets.
+      </p>
+
+      {/* Mode tabs */}
+      <div className="flex gap-1">
+        {modes.map(mode => (
+          <button key={mode} onClick={() => setActiveMode(mode)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
+            style={{
+              background: activeMode === mode ? "var(--zr-orange)" : "var(--zr-surface-2)",
+              color: activeMode === mode ? "#fff" : "var(--zr-text-secondary)",
+              border: "1px solid " + (activeMode === mode ? "var(--zr-orange)" : "var(--zr-border)"),
+            }}>
+            <span>{MODE_ICONS[mode]}</span>
+            <span>{MODE_LABELS[mode]}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Widget toggles for selected mode */}
+      <div className="space-y-1">
+        {(WIDGET_IDS as readonly WidgetId[]).map(id => {
+          const isOn = currentWidgets.includes(id);
+          return (
+            <div key={id} className="flex items-center gap-2.5 py-1.5 px-2 rounded"
+              style={{ background: isOn ? "var(--zr-surface-2)" : "transparent", border: "1px solid var(--zr-border)", opacity: isOn ? 1 : 0.5 }}>
+              <button onClick={() => toggleWidget(activeMode, id)} className="relative w-8 h-[18px] rounded-full transition-colors"
+                style={{ background: isOn ? "var(--zr-orange)" : "var(--zr-border)" }}>
+                <span className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all"
+                  style={{ left: isOn ? "14px" : "2px" }} />
+              </button>
+              <span className="text-xs font-medium" style={{ color: isOn ? "var(--zr-text-primary)" : "var(--zr-text-muted)" }}>
+                {WIDGET_LABELS[id]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <button onClick={() => resetMode(activeMode)} className="text-xs px-2 py-1 rounded"
+        style={{ color: "var(--zr-text-muted)", border: "1px solid var(--zr-border)" }}>
+        Reset {MODE_LABELS[activeMode]} to Default
+      </button>
+    </div>
+  );
+}
+
 // ── Business Type Selector (in Settings) ──────────────────
 function BusinessTypeSection() {
   const { companyId, businessType } = useAuth();
@@ -2290,6 +2384,7 @@ export default function SettingsPage() {
           <div className="space-y-5">
             <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Customize which widgets you see on your dashboard and their order. These settings are per-user — each team member can have their own layout.</p>
             <DashboardWidgetsSection />
+            <FocusModeWidgetsSection />
           </div>
         )}
 

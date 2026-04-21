@@ -22,34 +22,13 @@ type Notification = {
 // Routes where the nav bar should never appear (public-facing portals)
 const HIDE_NAV_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/forgot-password", "/reset-password"];
 
-// ── Task Modes ──────────────────────────────────────────────
-// Each mode shows only relevant nav items to reduce UI clutter.
-export type TaskMode = "all" | "measuring" | "quoting" | "scheduling" | "warehouse";
-
-const MODE_LABELS: Record<TaskMode, string> = {
-  all: "All",
-  measuring: "Measuring",
-  quoting: "Quoting",
-  scheduling: "Scheduling",
-  warehouse: "Warehouse",
-};
-
-const MODE_ICONS: Record<TaskMode, string> = {
-  all: "⚡",
-  measuring: "📐",
-  quoting: "💰",
-  scheduling: "📅",
-  warehouse: "📦",
-};
-
-// Which nav hrefs are visible in each mode (empty = show all)
-const MODE_NAV_FILTER: Record<TaskMode, string[] | null> = {
-  all: null, // show everything
-  measuring: ["/schedule", "/warehouse"],
-  quoting: ["/calculator", "/products", "/manufacturers", "/payments"],
-  scheduling: ["/schedule", "/warehouse", "/payroll"],
-  warehouse: ["/warehouse"],
-};
+// ── Task Modes (imported from shared config) ──────────────────
+import {
+  type TaskMode,
+  MODE_LABELS,
+  MODE_ICONS,
+  MODE_NAV_FILTER,
+} from "../lib/focus-modes";
 
 export function NavBar() {
   const { user, signOut, permissions, features, hiddenNav } = useAuth();

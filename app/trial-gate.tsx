@@ -69,25 +69,31 @@ export function TrialGate() {
   // AuthProvider handles those branches itself.
   if (loading || !user || !companyId || !billing) return null;
 
-  const isTrialing = billing.plan === "trial" || billing.subscription_status === "trialing";
-  const isActive = billing.subscription_status === "active";
+  // If the user has upgraded to any paid plan, they're fine regardless of
+  // subscription_status (which may be 'trialing' while Stripe runs its own
+  // subscription trial with the card on file). Only gate paid users if their
+  // billing has actually failed (past_due / canceled).
+  const paidPlan = billing.plan && billing.plan !== "trial";
+  if (paidPlan && billing.subscription_status !== "past_due" && billing.subscription_status !== "canceled") {
+    return null;
+  }
+
+  // From here down we're only dealing with users on the free app trial
+  // (plan === 'trial').
   const daysLeft = daysUntil(billing.trial_ends_at);
+  const isFreeTrial = billing.plan === "trial";
 
-  // If they've upgraded, nothing to show.
-  if (isActive) return null;
-
-  // If trial has expired (any non-active status with a past trial_ends_at)
-  // show the blocking overlay — but NOT on pages where the user needs to
-  // be able to recover (e.g. the billing page itself, or auth flows).
-  const expired = isTrialing && daysLeft !== null && daysLeft <= 0;
+  // If trial has expired show the blocking overlay — but NOT on pages where
+  // the user needs to be able to recover (e.g. the billing page itself, or
+  // auth flows).
+  const expired = isFreeTrial && daysLeft !== null && daysLeft <= 0;
   const overlaySuppressed = OVERLAY_ALLOW_PATHS.some(p => pathname.startsWith(p));
 
   if (expired && !overlaySuppressed) {
     return <TrialExpiredOverlay companyId={companyId} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} />;
   }
 
-  // On the billing page when expired, still render the countdown banner so
-  // they see the context while they subscribe.
+  // On the billing page when expired, still render a compact warning banner.
   if (expired && overlaySuppressed) {
     return (
       <div
@@ -99,8 +105,8 @@ export function TrialGate() {
     );
   }
 
-  // Otherwise, we're still in trial — show the countdown banner.
-  if (isTrialing && daysLeft !== null && daysLeft > 0) {
+  // Otherwise, still in free trial — show the countdown banner.
+  if (isFreeTrial && daysLeft !== null && daysLeft > 0) {
     const urgent = daysLeft <= 3;
     return (
       <div

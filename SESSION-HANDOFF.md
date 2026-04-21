@@ -375,6 +375,34 @@ Replaces manual IIF export with real-time bi-directional sync.
 
 ---
 
+### Feature E — UX Improvements Pack (~0.5 session)
+
+Small-but-high-impact polish pulled from user feedback.
+
+**E1 — In-app back/forward navigation**
+- Problem: when ZeroRemake is "installed" to a phone home screen as a PWA, there's no browser chrome, so no back button. Users get stuck deep in a flow (e.g. inside a quote → material → package detail).
+- Fix: add a persistent back arrow in the top-left of `NavBar` that uses `router.back()` (Next.js App Router). Forward arrow optional — `router.forward()` works but most mobile apps skip it.
+- Hide on top-level pages (`/`, `/schedule`, `/warehouse`, `/settings`) since there's nowhere to go back to.
+- Consider also: breadcrumb trail on deep pages (Quote #123 → Material → Package 2/4).
+
+**E2 — Warehouse "Set Location" one-tap fix**
+- Problem: `/warehouse` requires picking location from dropdown THEN clicking Set Location (two taps for one action). Confusing UX — button is visually disabled until dropdown changes.
+- Fix: remove the Set Location button. On dropdown change, auto-save via the existing `updateLocation(materialId, location)` function. Show a brief toast ("Saved to Shelf A") for confirmation.
+- File: `app/warehouse/page.tsx` lines ~370-380.
+
+**E3 — Stage-for-Install confirmation**
+- Today: clicking "Stage for Install" flips the material silently. Easy to misclick on mobile.
+- Fix: wrap in a confirm() modal: "Stage [product] for install?" with Cancel / Confirm.
+- Optional: add an "undo" toast for 10s after staging (revert `status` back to `received`, clear `staged_at`).
+
+**E4 — Empty location label**
+- Today: "No location" is shown even when the dropdown is the picker. Makes the Set Location button look like it's doing nothing.
+- Fix: change dropdown placeholder to "— Select a location —" and make the selected value visible inline after pick.
+
+Scope: all four are small. Would ship together in a half session.
+
+---
+
 ## What's Built
 
 ### Dashboard (`/`)

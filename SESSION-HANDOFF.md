@@ -205,6 +205,16 @@ DB migration: `phase24_business_type.sql` ✓ (adds business_type TEXT + hidden_
 - **JSON-LD structured data** on landing page: Organization + SoftwareApplication (with offers for all 3 plans) + FAQPage (from existing faqs array). Enables Google rich results for pricing and FAQ snippets.
 - **manifest.json enhanced**: added categories (business/productivity/utilities), scope, id, lang, longer description.
 
+### Phase 26 — Signup flow bugs fix — Complete ✓
+Post-launch audit surfaced two bugs that would have bitten real signups:
+- Companies got `plan='trial'` but `trial_ends_at=null`. Added column DEFAULT of `now() + 14 days`. Billing-page countdown and trial enforcement now work.
+- `promo_codes` had RLS on with only a SELECT policy — the redeem UPDATE in signup was silently blocked. Added `promo_codes_redeem` policy: authenticated users can UPDATE only unused codes, and only when tying them to their own company.
+Migration: `supabase/phase26_signup_trial_and_promo_fix.sql` ✓.
+
+### Open Security Risks (flag for next session)
+- **`companies` table RLS is DISABLED.** Any authenticated user can UPDATE / DELETE any company's row. OK at 1 tenant, not OK at 10. Needs policies for SELECT (own company only), UPDATE (own + owner role), DELETE (owner role). Tricky to enable without breaking signup — the INSERT at signup happens before the profile row exists.
+- **Turnstile captcha could silently block signups** if `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set in Vercel but the widget fails to render. Confirm it's either off (delete env var) or tested working.
+
 ### Phase 25 — order-documents storage bucket finalized — Complete ✓
 - Bucket `order-documents` existed but had no RLS policies (silent upload failures).
 - Added 4 policies for `authenticated` role: INSERT / SELECT / UPDATE / DELETE scoped to `bucket_id = 'order-documents'`.

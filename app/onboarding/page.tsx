@@ -13,47 +13,85 @@ import {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { companyId } = useAuth();
+  const { companyId: ctxCompanyId } = useAuth();
   const [selected, setSelected] = useState<BusinessType | null>(null);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState<"select" | "confirm">("select");
+  const [error, setError] = useState<string>("");
 
   const preset = selected ? BUSINESS_PRESETS[selected] : null;
 
   async function applyPreset() {
-    if (!selected || !companyId || !preset) return;
+    if (!selected || !preset) {
+      setError("Pick a business type first.");
+      return;
+    }
+    setError("");
     setSaving(true);
 
-    // Update company with business type, hidden nav, and feature overrides
-    const { data: company } = await supabase
-      .from("companies")
-      .select("features")
-      .eq("id", companyId)
-      .single();
+    try {
+      // Resolve companyId directly from the current session, bypassing any
+      // stale/unloaded useAuth() context. This fixes the silent bail that
+      // happened when the AuthProvider hadn't finished loading the profile.
+      let resolvedCompanyId = ctxCompanyId;
+      if (!resolvedCompanyId) {
+        const { data: authData } = await supabase.auth.getUser();
+        const uid = authData?.user?.id;
+        if (!uid) {
+          throw new Error("You're not signed in. Please log in and try again.");
+        }
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", uid)
+          .single();
+        if (profileErr || !profile?.company_id) {
+          throw new Error(
+            "Couldn't find your workspace. Try refreshing the page, or contact support@zeroremake.com."
+          );
+        }
+        resolvedCompanyId = profile.company_id;
+      }
 
-    const currentFeatures = company?.features ?? {};
-    const mergedFeatures = { ...currentFeatures, ...preset.featureOverrides };
+      // Update company with business type, hidden nav, and feature overrides
+      const { data: company, error: selectErr } = await supabase
+        .from("companies")
+        .select("features")
+        .eq("id", resolvedCompanyId)
+        .single();
+      if (selectErr) throw selectErr;
 
-    await supabase
-      .from("companies")
-      .update({
-        business_type: selected,
-        hidden_nav: preset.hiddenNav,
-        features: mergedFeatures,
-      })
-      .eq("id", companyId);
+      const currentFeatures = company?.features ?? {};
+      const mergedFeatures = { ...currentFeatures, ...preset.featureOverrides };
 
-    // Set dashboard layout cookie for the owner
-    if (typeof document !== "undefined" && preset.dashboardWidgets.length > 0) {
-      const layout = JSON.stringify({
-        order: preset.dashboardWidgets,
-        hidden: [],
-      });
-      document.cookie = `zr_layout=${encodeURIComponent(layout)};path=/;max-age=${365 * 24 * 60 * 60}`;
+      const { error: updateErr } = await supabase
+        .from("companies")
+        .update({
+          business_type: selected,
+          hidden_nav: preset.hiddenNav,
+          features: mergedFeatures,
+        })
+        .eq("id", resolvedCompanyId);
+      if (updateErr) throw updateErr;
+
+      // Set dashboard layout cookie for the owner
+      if (typeof document !== "undefined" && preset.dashboardWidgets.length > 0) {
+        const layout = JSON.stringify({
+          order: preset.dashboardWidgets,
+          hidden: [],
+        });
+        document.cookie = `zr_layout=${encodeURIComponent(layout)};path=/;max-age=${365 * 24 * 60 * 60}`;
+      }
+
+      router.replace("/");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(msg);
+      // eslint-disable-next-line no-console
+      console.error("[onboarding applyPreset]", err);
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
-    router.replace("/");
   }
 
   return (
@@ -282,6 +320,18 @@ export default function OnboardingPage() {
             </div>
 
             {/* Actions */}
+            {error && (
+              <div
+                className="mb-3 rounded px-3 py-2 text-sm"
+                style={{
+                  background: "rgba(239,68,68,0.15)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  color: "var(--zr-error)",
+                }}
+              >
+                {error}
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={applyPreset}

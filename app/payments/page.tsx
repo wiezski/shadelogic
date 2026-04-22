@@ -783,42 +783,36 @@ export default function PaymentsPage() {
   const sendableCount = invoices.filter(inv => !["paid", "void"].includes(inv.status) && inv.amount_due > 0).length;
 
   function InvoiceRow({ inv }: { inv: Invoice }) {
-    const badge = getStatusBadge(inv.status);
     const isSendable = !["paid", "void"].includes(inv.status) && inv.amount_due > 0;
     const isSelected = selectedIds.has(inv.id);
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3" style={{ padding: "12px 0" }}>
         {isSendable && (
           <input type="checkbox" checked={isSelected}
             onChange={() => toggleSelect(inv.id)}
             className="h-4 w-4 shrink-0 rounded cursor-pointer" />
         )}
         {!isSendable && <div className="w-4 shrink-0" />}
-        <Link
-          href={`/invoices/${inv.id}`}
-          className="flex-1 flex items-start justify-between rounded border p-3 hover:opacity-80 gap-3"
-          style={{
-            background: isSelected ? "rgba(249,115,22,0.06)" : "var(--zr-surface-2)",
-            border: isSelected ? "1px solid var(--zr-orange)" : "1px solid var(--zr-border)",
-          }}
-        >
+        <Link href={`/invoices/${inv.id}`}
+          className="flex-1 flex items-start justify-between gap-3 transition-opacity active:opacity-60"
+          style={{ textDecoration: "none", color: "inherit" }}>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="font-medium truncate">{inv.customer_name}</div>
-              <span className={`text-xs rounded px-1.5 py-0.5 ${badge.bg} ${badge.text}`}>
+            <div className="flex items-baseline gap-2">
+              <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.018em", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {inv.customer_name}
+              </span>
+              <span style={{ fontSize: "12.5px", fontWeight: 500, color: inv.status === "overdue" ? "#c6443a" : inv.status === "paid" ? "var(--zr-success)" : "rgba(60,60,67,0.5)", letterSpacing: "-0.003em", flexShrink: 0 }}>
                 {inv.status}
               </span>
             </div>
-            <div className="text-xs text-gray-500 truncate">{inv.invoice_number}</div>
-            {inv.due_date && (
-              <div className="text-xs text-gray-500 mt-0.5">
-                Due {new Date(inv.due_date).toLocaleDateString()}
-              </div>
-            )}
+            <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 2, letterSpacing: "-0.005em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {inv.invoice_number}
+              {inv.due_date && ` · Due ${new Date(inv.due_date).toLocaleDateString()}`}
+            </div>
           </div>
           <div className="shrink-0 text-right">
-            <div className="font-bold text-sm">{fmtMoney(inv.amount_due)}</div>
-            <div className="text-xs text-gray-500">of {fmtMoney(inv.total)}</div>
+            <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--zr-text-primary)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.015em" }}>{fmtMoney(inv.amount_due)}</div>
+            <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", fontVariantNumeric: "tabular-nums", marginTop: 2 }}>of {fmtMoney(inv.total)}</div>
           </div>
         </Link>
       </div>
@@ -828,38 +822,42 @@ export default function PaymentsPage() {
   function QuoteRow({ q, section }: { q: PaymentQuote; section: "deposit" | "balance" | "paid" }) {
     const amountDue = section === "deposit" ? q.total : section === "balance" ? Math.max(0, q.total - q.deposit_amount) : 0;
     const days = daysSince(q.created_at);
+    const ageColor = days > 14 ? "#c6443a" : days > 7 ? "var(--zr-warning)" : "rgba(60,60,67,0.5)";
+    // Amounts due: muted neutral text + a small muted-red dot for overdue, instead of aggressive red.
+    const amountColor = "var(--zr-text-primary)";
     return (
-      <Link
-        href={`/quotes/${q.id}`}
-        className="flex items-start justify-between rounded border p-3 hover:bg-gray-50 gap-3"
-      >
-        <div className="min-w-0">
-          <div className="font-medium text-blue-600 truncate">{q.customer_name}</div>
-          <div className="text-xs text-gray-500 truncate">{q.title ?? "Untitled Quote"}</div>
+      <Link href={`/quotes/${q.id}`}
+        className="flex items-start justify-between gap-3 transition-opacity active:opacity-60"
+        style={{ padding: "12px 0", textDecoration: "none", color: "inherit" }}>
+        <div className="min-w-0 flex-1">
+          <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.018em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {q.customer_name}
+          </div>
+          <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 2, letterSpacing: "-0.005em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {q.title ?? "Untitled quote"}
+          </div>
           {section !== "paid" && (
-            <div className={`text-xs mt-0.5 font-medium ${days > 14 ? "text-red-500" : days > 7 ? "text-amber-600" : "text-gray-400"}`}>
+            <div style={{ fontSize: "12.5px", color: ageColor, marginTop: 3, fontWeight: 500, letterSpacing: "-0.003em" }}>
               Approved {days}d ago
             </div>
           )}
           {section === "balance" && q.deposit_paid_at && (
-            <div className="text-xs text-gray-400">Deposit paid {daysSince(q.deposit_paid_at)}d ago</div>
+            <div style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.45)", marginTop: 3 }}>Deposit paid {daysSince(q.deposit_paid_at)}d ago</div>
           )}
           {section === "paid" && q.balance_paid_at && (
-            <div className="text-xs text-green-600">Paid in full {daysSince(q.balance_paid_at)}d ago</div>
+            <div style={{ fontSize: "12.5px", color: "var(--zr-success)", marginTop: 3 }}>Paid in full {daysSince(q.balance_paid_at)}d ago</div>
           )}
         </div>
         <div className="shrink-0 text-right">
           {section !== "paid" ? (
             <>
-              <div className={`font-bold text-sm ${section === "deposit" ? "text-red-600" : "text-amber-600"}`}>
-                {fmtMoney(amountDue)}
-              </div>
-              <div className="text-xs text-gray-400">of {fmtMoney(q.total)}</div>
+              <div style={{ fontSize: "16px", fontWeight: 600, color: amountColor, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.015em" }}>{fmtMoney(amountDue)}</div>
+              <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", fontVariantNumeric: "tabular-nums", marginTop: 2 }}>of {fmtMoney(q.total)}</div>
             </>
           ) : (
             <>
-              <div className="font-bold text-sm text-green-600">{fmtMoney(q.total)}</div>
-              {q.payment_method && <div className="text-xs text-gray-400">{q.payment_method}</div>}
+              <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--zr-success)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.015em" }}>{fmtMoney(q.total)}</div>
+              {q.payment_method && <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", marginTop: 2 }}>{q.payment_method}</div>}
             </>
           )}
         </div>
@@ -870,72 +868,79 @@ export default function PaymentsPage() {
   return (
     <FeatureGate require="quoting">
       <PermissionGate require="view_financials">
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
-          <div className="mx-auto max-w-2xl space-y-5">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">Payments & Invoices</h1>
+        <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24 text-sm">
+          <div className="mx-auto max-w-2xl px-4 sm:px-6">
+            {/* iOS back row */}
+            <div className="mb-3 flex items-center justify-between">
+              <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+                className="transition-opacity active:opacity-60">
+                <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+                  <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Home
+              </Link>
               <InvoiceExportDropdown invoices={invoices} />
             </div>
 
-            {/* Summary */}
+            <div className="mb-4 px-1">
+              <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)" }}>Payments</h1>
+            </div>
+
+            {/* Summary — canvas stat row, no cards. Amount + small label
+                beneath. Overdue kept as a muted red, not an alarm. */}
             {activeTab === "invoices" && (
-              <div className="grid grid-cols-3 gap-3">
-                <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
-                  <div className="text-2xl font-bold text-red-500">{fmtMoney(totalOutstanding)}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Outstanding</div>
-                </div>
-                <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
-                  <div className="text-2xl font-bold text-green-600">{fmtMoney(totalCollected)}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Collected</div>
-                </div>
-                <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
-                  <div className="text-2xl font-bold text-red-600">{overdueCount}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Overdue</div>
-                </div>
+              <div className="grid grid-cols-3 mb-5"
+                style={{ borderTop: "0.5px solid rgba(60,60,67,0.08)", borderBottom: "0.5px solid rgba(60,60,67,0.08)" }}>
+                {[
+                  { label: "Outstanding", value: fmtMoney(totalOutstanding), color: "var(--zr-text-primary)" },
+                  { label: "Collected",   value: fmtMoney(totalCollected),   color: "var(--zr-success)" },
+                  { label: "Overdue",     value: String(overdueCount),       color: overdueCount > 0 ? "#c6443a" : "var(--zr-text-primary)" },
+                ].map((c, i) => (
+                  <div key={i} style={{
+                    padding: "14px 16px",
+                    borderRight: i < 2 ? "0.5px solid rgba(60,60,67,0.08)" : "none",
+                    textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
+                    <div style={{ fontSize: "11.5px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.01em", textTransform: "uppercase", marginTop: 6 }}>{c.label}</div>
+                  </div>
+                ))}
               </div>
             )}
 
             {activeTab === "quotes" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
-                  <div className="text-2xl font-bold text-red-500">{fmtMoney(legacyTotalOutstanding)}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Outstanding</div>
-                </div>
-                <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded p-3 text-center">
-                  <div className="text-2xl font-bold text-green-600">{fmtMoney(legacyTotalCollected)}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Collected</div>
-                </div>
+              <div className="grid grid-cols-2 mb-5"
+                style={{ borderTop: "0.5px solid rgba(60,60,67,0.08)", borderBottom: "0.5px solid rgba(60,60,67,0.08)" }}>
+                {[
+                  { label: "Outstanding", value: fmtMoney(legacyTotalOutstanding), color: "var(--zr-text-primary)" },
+                  { label: "Collected",   value: fmtMoney(legacyTotalCollected),   color: "var(--zr-success)" },
+                ].map((c, i) => (
+                  <div key={i} style={{
+                    padding: "14px 16px",
+                    borderRight: i < 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none",
+                    textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
+                    <div style={{ fontSize: "11.5px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.01em", textTransform: "uppercase", marginTop: 6 }}>{c.label}</div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Tabs */}
-            <div className="flex gap-2 border-b" style={{ borderColor: "var(--zr-border)" }}>
-              <button
-                onClick={() => setActiveTab("invoices")}
-                className={`px-3 py-2 text-sm font-medium border-b-2 ${
-                  activeTab === "invoices"
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-                style={{
-                  borderBottomColor: activeTab === "invoices" ? "var(--zr-orange)" : "transparent",
-                  color: activeTab === "invoices" ? "var(--zr-orange)" : "var(--zr-text-secondary)",
-                }}
-              >
+            {/* Pill segmented tabs matching the rest of the app */}
+            <div className="grid grid-cols-2 p-1 rounded-full mb-4" style={{ background: "var(--zr-surface-3)" }}>
+              <button onClick={() => setActiveTab("invoices")}
+                className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+                style={activeTab === "invoices"
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
                 Invoices
               </button>
-              <button
-                onClick={() => setActiveTab("quotes")}
-                className={`px-3 py-2 text-sm font-medium border-b-2 ${
-                  activeTab === "quotes"
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-                style={{
-                  borderBottomColor: activeTab === "quotes" ? "var(--zr-orange)" : "transparent",
-                  color: activeTab === "quotes" ? "var(--zr-orange)" : "var(--zr-text-secondary)",
-                }}
-              >
+              <button onClick={() => setActiveTab("quotes")}
+                className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+                style={activeTab === "quotes"
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
                 Quotes (Legacy)
               </button>
             </div>
@@ -974,21 +979,31 @@ export default function PaymentsPage() {
                   )}
                 </div>
 
-                {/* Bulk action bar */}
+                {/* Bulk action bar — translucent brand pill, no hard border */}
                 {selectedIds.size > 0 && (
-                  <div className="flex items-center justify-between rounded-lg px-4 py-2.5" style={{ background: "rgba(249,115,22,0.1)", border: "1px solid var(--zr-orange)" }}>
-                    <div className="text-sm font-medium" style={{ color: "var(--zr-orange)" }}>
-                      {selectedIds.size} invoice{selectedIds.size !== 1 ? "s" : ""} selected — {fmtMoney(selectedInvoices.reduce((s, i) => s + i.amount_due, 0))} total
+                  <div className="flex items-center justify-between mb-3"
+                    style={{ background: "rgba(214,90,49,0.08)", borderRadius: 14, padding: "10px 14px" }}>
+                    <div style={{ color: "var(--zr-orange)", fontSize: "13.5px", fontWeight: 600, letterSpacing: "-0.012em" }}>
+                      {selectedIds.size} selected · {fmtMoney(selectedInvoices.reduce((s, i) => s + i.amount_due, 0))}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-3">
                       <button onClick={() => setSelectedIds(new Set())}
-                        className="text-xs px-2 py-1 rounded" style={{ color: "var(--zr-text-secondary)" }}>
+                        style={{ color: "rgba(60,60,67,0.6)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                        className="transition-opacity active:opacity-60">
                         Clear
                       </button>
                       <button onClick={() => setBulkSendOpen(true)}
-                        style={{ background: "var(--zr-orange)" }}
-                        className="rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
-                        Send Selected
+                        className="transition-all active:scale-[0.97]"
+                        style={{
+                          background: "var(--zr-orange)",
+                          color: "#fff",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          padding: "5px 12px",
+                          borderRadius: 999,
+                          letterSpacing: "-0.012em",
+                        }}>
+                        Send selected
                       </button>
                     </div>
                   </div>
@@ -997,9 +1012,9 @@ export default function PaymentsPage() {
                 {invoices.length === 0 ? (
                   <EmptyState type="invoices" title="No invoices yet" subtitle="Create your first invoice from an approved quote." />
                 ) : (
-                  <ul className="space-y-2">
-                    {invoices.map(inv => (
-                      <li key={inv.id}>
+                  <ul>
+                    {invoices.map((inv, i, arr) => (
+                      <li key={inv.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none" }}>
                         <InvoiceRow inv={inv} />
                       </li>
                     ))}
@@ -1008,46 +1023,54 @@ export default function PaymentsPage() {
               </>
             ) : (
               <>
-                {/* Deposit Pending */}
-                <section>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h2 className="font-semibold text-red-600">Deposit Pending</h2>
-                    <span className="text-xs rounded bg-red-100 text-red-700 px-1.5 py-0.5">{depositPending.length}</span>
+                {/* Deposit Pending — calm section label with muted red accent */}
+                <section className="mb-5">
+                  <div className="flex items-baseline gap-2 mb-1 px-5">
+                    <span className="zr-v2-section-label" style={{ padding: 0, color: "#b86060" }}>
+                      Deposit pending · {depositPending.length}
+                    </span>
                     {depositPending.length > 0 && (
-                      <span className="text-xs text-gray-400 ml-1">{fmtMoney(depositPending.reduce((s, q) => s + q.total, 0))} total</span>
+                      <span style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", fontVariantNumeric: "tabular-nums", marginLeft: "auto", paddingBottom: 10 }}>
+                        {fmtMoney(depositPending.reduce((s, q) => s + q.total, 0))}
+                      </span>
                     )}
                   </div>
                   {depositPending.length === 0 ? (
-                    <p className="text-xs text-gray-400">No pending deposits.</p>
+                    <p className="px-5" style={{ fontSize: "13px", color: "rgba(60,60,67,0.45)" }}>No pending deposits.</p>
                   ) : (
-                    <ul className="space-y-2">
-                      {depositPending.map(q => (
-                        <li key={q.id}>
-                          <QuoteRow q={q} section="deposit" />
+                    <ul>
+                      {depositPending.map((q, i, arr) => (
+                        <li key={q.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none", paddingLeft: 0, paddingRight: 0 }}>
+                          <div style={{ padding: "0 20px" }}>
+                            <QuoteRow q={q} section="deposit" />
+                          </div>
                         </li>
                       ))}
                     </ul>
                   )}
                 </section>
 
-                {/* Balance Due */}
-                <section>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h2 className="font-semibold text-amber-600">Balance Due</h2>
-                    <span className="text-xs rounded bg-amber-100 text-amber-700 px-1.5 py-0.5">{balanceDue.length}</span>
+                {/* Balance Due — calm section label with muted amber */}
+                <section className="mb-5">
+                  <div className="flex items-baseline gap-2 mb-1 px-5">
+                    <span className="zr-v2-section-label" style={{ padding: 0, color: "#a87008" }}>
+                      Balance due · {balanceDue.length}
+                    </span>
                     {balanceDue.length > 0 && (
-                      <span className="text-xs text-gray-400 ml-1">
-                        {fmtMoney(balanceDue.reduce((s, q) => s + Math.max(0, q.total - q.deposit_amount), 0))} due
+                      <span style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", fontVariantNumeric: "tabular-nums", marginLeft: "auto", paddingBottom: 10 }}>
+                        {fmtMoney(balanceDue.reduce((s, q) => s + Math.max(0, q.total - q.deposit_amount), 0))}
                       </span>
                     )}
                   </div>
                   {balanceDue.length === 0 ? (
-                    <p className="text-xs text-gray-400">No balances due.</p>
+                    <p className="px-5" style={{ fontSize: "13px", color: "rgba(60,60,67,0.45)" }}>No balances due.</p>
                   ) : (
-                    <ul className="space-y-2">
-                      {balanceDue.map(q => (
-                        <li key={q.id}>
-                          <QuoteRow q={q} section="balance" />
+                    <ul>
+                      {balanceDue.map((q, i, arr) => (
+                        <li key={q.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none", paddingLeft: 0, paddingRight: 0 }}>
+                          <div style={{ padding: "0 20px" }}>
+                            <QuoteRow q={q} section="balance" />
+                          </div>
                         </li>
                       ))}
                     </ul>

@@ -206,146 +206,259 @@ export default function WarehousePage() {
   const inputStyle = { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", borderRadius: "var(--zr-radius-md)", color: "var(--zr-text-primary)" };
 
   return (
-    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4">
-      <div className="mx-auto max-w-3xl">
+    <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
 
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>📦 Warehouse</h1>
-          <button onClick={loadMaterials} className="text-xs px-2.5 py-1.5 rounded"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}>
-            ↻ Refresh
+        {/* iOS back + minimal header */}
+        <div className="mb-3 flex items-center justify-between">
+          <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Home
+          </Link>
+          <button onClick={loadMaterials}
+            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            Refresh
           </button>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex rounded border overflow-hidden mb-4" style={{ borderColor: "var(--zr-border)" }}>
+        {/* Page title — matches Analytics pattern (no emoji, just bold) */}
+        <div className="mb-4 px-1">
+          <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)" }}>Warehouse</h1>
+        </div>
+
+        {/* Segmented tab control matching Dashboard/Customers */}
+        <div className="mb-5 grid grid-cols-3 p-1 rounded-full" style={{ background: "var(--zr-surface-3)" }}>
           {[
-            { key: "active" as const, label: `In Transit / Ordered (${activeCount})` },
-            { key: "received" as const, label: `Received (${receivedCount})` },
+            { key: "active" as const, label: `In transit · ${activeCount}` },
+            { key: "received" as const, label: `Received · ${receivedCount}` },
             { key: "all" as const, label: "All" },
           ].map(t => (
             <button key={t.key} onClick={() => setFilter(t.key)}
-              className="flex-1 py-2 text-xs font-medium"
-              style={{ background: filter === t.key ? "var(--zr-orange)" : "var(--zr-surface-1)", color: filter === t.key ? "#fff" : "var(--zr-text-primary)" }}>
+              className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+              style={filter === t.key
+                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                : { background: "transparent", color: "var(--zr-text-secondary)" }}>
               {t.label}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-20 rounded animate-pulse" style={{ background: "var(--zr-surface-1)" }} />)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ padding: "18px 20px", borderBottom: i < 3 ? "0.5px solid rgba(60,60,67,0.08)" : "none" }}>
+                <div className="zr-skeleton" style={{ height: 18, width: "45%", borderRadius: 4 }} />
+                <div className="zr-skeleton" style={{ height: 13, width: "30%", borderRadius: 4, marginTop: 8 }} />
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 rounded" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-            <div className="text-3xl mb-2">📦</div>
-            <p className="text-sm" style={{ color: "var(--zr-text-muted)" }}>No materials in this category</p>
+          <div className="text-center" style={{ padding: "48px 20px", color: "rgba(60,60,67,0.5)" }}>
+            <p style={{ fontSize: "14px", letterSpacing: "-0.005em" }}>No materials in this category</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filtered.map(mat => (
-              <div key={mat.id} className="rounded overflow-hidden"
-                style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <div>
+            {filtered.map((mat, matIdx) => (
+              <div key={mat.id}
+                style={{
+                  borderBottom: matIdx < filtered.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none",
+                }}>
 
-                {/* Material row */}
-                <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => toggleExpand(mat.id)}>
-                  <span className="text-xl shrink-0">{statusIcon[mat.status] || "📦"}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{mat.description}</span>
-                      <span className="rounded px-1.5 py-0.5 text-xs font-medium"
-                        style={{ background: `${statusColor[mat.status]}20`, color: statusColor[mat.status] }}>
-                        {statusLabel[mat.status] || mat.status}
-                      </span>
-                    </div>
-                    <div className="text-xs mt-0.5 flex items-center gap-2 flex-wrap" style={{ color: "var(--zr-text-muted)" }}>
-                      <Link href={`/customers/${mat.customer_id}`} onClick={e => e.stopPropagation()} className="hover:underline" style={{ color: "var(--zr-orange)" }}>
-                        {mat.customer_name}
-                      </Link>
-                      {mat.vendor && <span>· {mat.vendor}</span>}
-                      {mat.order_number && <span>· #{mat.order_number}</span>}
-                      {mat.expected_packages && <span>· {mat.received_packages}/{mat.expected_packages} pkgs</span>}
-                      {mat.eta && <span>· ETA: {mat.eta}</span>}
-                      {mat.storage_location && <span>· 📍 {mat.storage_location}</span>}
-                    </div>
-                  </div>
-                  {/* Progress circle for shipped items */}
-                  {mat.status === "shipped" && mat.expected_packages && mat.expected_packages > 0 && (
-                    <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{ background: "rgba(234,179,8,0.15)", color: "var(--zr-warning)" }}>
-                      {mat.received_packages}/{mat.expected_packages}
-                    </div>
-                  )}
-                  <span className="text-xs shrink-0" style={{ color: "var(--zr-text-muted)" }}>
-                    {expandedId === mat.id ? "▲" : "▼"}
-                  </span>
-                </div>
+                {/* ─────────────────────────────────────────────────────────
+                    Shipment row — canvas level, no card. Line 1: customer
+                    (bold) · status + pkg count (muted right). Line 2:
+                    product. Line 3: ETA / shelf / vendor (lightest).
+                    Reads the same as the Dashboard Shipments list.
+                    ───────────────────────────────────────────────────────── */}
+                <div className="cursor-pointer zr-ios-row"
+                  onClick={() => toggleExpand(mat.id)}
+                  style={{
+                    padding: "16px 20px 14px",
+                    transition: "background-color 120ms ease",
+                  }}>
 
-                {/* Expanded: packages + actions */}
-                {expandedId === mat.id && (
-                  <div style={{ borderTop: "1px solid var(--zr-border)" }}>
-                    {/* Quick info bar */}
-                    <div className="px-3 py-2 flex items-center gap-3 flex-wrap text-xs" style={{ background: "var(--zr-surface-2)" }}>
-                      {mat.tracking_number && (
-                        <span style={{ color: "var(--zr-text-secondary)" }}>
-                          Tracking: <span className="font-mono">{mat.tracking_number}</span>
+                  {/* Line 1: Customer · Status + pkg count */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 3 }}>
+                    <Link href={`/customers/${mat.customer_id}`} onClick={e => e.stopPropagation()}
+                      style={{
+                        flex: 1, minWidth: 0,
+                        color: "var(--zr-text-primary)",
+                        fontSize: "17px",
+                        fontWeight: 600,
+                        letterSpacing: "-0.022em",
+                        lineHeight: 1.25,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        textDecoration: "none",
+                      }}>
+                      {mat.customer_name}
+                    </Link>
+                    <span style={{
+                      flexShrink: 0,
+                      color: statusColor[mat.status] || "rgba(60,60,67,0.42)",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      letterSpacing: "-0.003em",
+                      lineHeight: 1.25,
+                    }}>
+                      {statusLabel[mat.status] || mat.status}
+                      {mat.expected_packages && mat.expected_packages > 0 && (
+                        <span style={{ marginLeft: 8, color: "rgba(60,60,67,0.42)", fontVariantNumeric: "tabular-nums", fontWeight: 400 }}>
+                          {mat.received_packages}/{mat.expected_packages}
                         </span>
                       )}
-                      {mat.ordered_at && <span style={{ color: "var(--zr-text-muted)" }}>Ordered: {new Date(mat.ordered_at).toLocaleDateString()}</span>}
-                      {mat.shipped_at && <span style={{ color: "var(--zr-text-muted)" }}>Shipped: {new Date(mat.shipped_at).toLocaleDateString()}</span>}
-                      {mat.received_at && <span style={{ color: "var(--zr-text-muted)" }}>Received: {new Date(mat.received_at).toLocaleDateString()}</span>}
+                    </span>
+                  </div>
+
+                  {/* Line 2: Product description */}
+                  <div style={{
+                    color: "rgba(60,60,67,0.62)",
+                    fontSize: "14px",
+                    fontWeight: 400,
+                    letterSpacing: "-0.006em",
+                    lineHeight: 1.3,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}>
+                    {mat.description}
+                  </div>
+
+                  {/* Line 3: ETA / shelf / vendor / order# — lightest */}
+                  {(mat.eta || mat.storage_location || mat.vendor || mat.order_number) && (
+                    <div style={{
+                      color: "rgba(60,60,67,0.42)",
+                      fontSize: "13px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.003em",
+                      lineHeight: 1.3,
+                      marginTop: 2,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
+                      {[
+                        mat.eta && `ETA ${mat.eta}`,
+                        mat.storage_location && mat.storage_location,
+                        mat.vendor,
+                        mat.order_number && `#${mat.order_number}`,
+                      ].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded: packages + actions — all on canvas with hairlines, no nested boxes */}
+                {expandedId === mat.id && (
+                  <div style={{ borderTop: "0.5px solid rgba(60,60,67,0.08)" }}>
+                    {/* Quick info strip — calm, no colored background */}
+                    <div className="flex items-center gap-3 flex-wrap"
+                      style={{ padding: "10px 20px", fontSize: "12.5px" }}>
+                      {mat.tracking_number && (
+                        <span style={{ color: "rgba(60,60,67,0.6)" }}>
+                          Tracking <span style={{ fontFamily: "ui-monospace, Menlo, monospace", color: "var(--zr-text-primary)" }}>{mat.tracking_number}</span>
+                        </span>
+                      )}
+                      {mat.ordered_at && <span style={{ color: "rgba(60,60,67,0.5)" }}>Ordered {new Date(mat.ordered_at).toLocaleDateString()}</span>}
+                      {mat.shipped_at && <span style={{ color: "rgba(60,60,67,0.5)" }}>Shipped {new Date(mat.shipped_at).toLocaleDateString()}</span>}
+                      {mat.received_at && <span style={{ color: "rgba(60,60,67,0.5)" }}>Received {new Date(mat.received_at).toLocaleDateString()}</span>}
                       <Link href={`/quotes/${mat.quote_id}`} onClick={e => e.stopPropagation()}
-                        className="hover:underline ml-auto" style={{ color: "var(--zr-orange)" }}>
-                        View Quote →
+                        style={{ color: "var(--zr-orange)", marginLeft: "auto", fontWeight: 500 }}
+                        className="transition-opacity active:opacity-60">
+                        View quote
                       </Link>
                     </div>
 
-                    {/* Packages list */}
+                    {/* Packages — canvas rows, hairlines, no nested boxes */}
                     {(packages[mat.id] || []).length > 0 && (
-                      <div className="px-3 py-2">
-                        <div className="text-xs font-semibold mb-1.5" style={{ color: "var(--zr-text-secondary)" }}>Packages</div>
-                        <div className="space-y-1.5">
-                          {(packages[mat.id] || []).map(pkg => (
-                            <div key={pkg.id} className="flex items-center gap-2 rounded p-2"
-                              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
-                              <span className="text-sm">{pkg.status === "received" ? "✅" : pkg.status === "shipped" ? "🚚" : "⏳"}</span>
-                              <div className="min-w-0 flex-1">
-                                <span className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>
-                                  {pkg.description || "Package"}
+                      <div>
+                        <div style={{
+                          padding: "10px 20px 4px",
+                          fontSize: "12px",
+                          color: "rgba(60,60,67,0.55)",
+                          fontWeight: 500,
+                          letterSpacing: "-0.005em",
+                          textTransform: "uppercase",
+                        }}>Packages</div>
+                        {(packages[mat.id] || []).map((pkg, pkgIdx, pkgArr) => (
+                          <div key={pkg.id} className="flex items-center gap-3"
+                            style={{
+                              padding: "10px 20px",
+                              borderTop: "0.5px solid rgba(60,60,67,0.06)",
+                              background: "transparent",
+                            }}>
+                            {/* Leading status dot instead of emoji */}
+                            <span style={{
+                              flexShrink: 0,
+                              width: 7,
+                              height: 7,
+                              borderRadius: "50%",
+                              background: pkg.status === "received"
+                                ? "var(--zr-success)"
+                                : pkg.status === "shipped"
+                                ? "var(--zr-warning)"
+                                : "rgba(60,60,67,0.3)",
+                            }} />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <span style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-text-primary)", letterSpacing: "-0.012em" }}>
+                                {pkg.description || "Package"}
+                              </span>
+                              {pkg.tracking_number && (
+                                <span style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.5)", marginLeft: 8, fontFamily: "ui-monospace, Menlo, monospace" }}>
+                                  #{pkg.tracking_number.slice(-8)}
                                 </span>
-                                {pkg.tracking_number && (
-                                  <span className="text-xs ml-2 font-mono" style={{ color: "var(--zr-text-muted)" }}>
-                                    #{pkg.tracking_number.slice(-8)}
-                                  </span>
-                                )}
-                                {pkg.storage_location && (
-                                  <span className="text-xs ml-2" style={{ color: "var(--zr-text-muted)" }}>📍 {pkg.storage_location}</span>
-                                )}
-                              </div>
-                              {pkg.status !== "received" && (
-                                <button onClick={() => checkInPackage(mat.id, pkg.id, checkInLocation)}
-                                  className="text-xs px-2 py-1 rounded font-medium"
-                                  style={{ background: "var(--zr-success)", color: "#fff" }}>
-                                  Check In
-                                </button>
                               )}
-                              {pkg.status === "received" && pkg.received_at && (
-                                <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
-                                  {new Date(pkg.received_at).toLocaleDateString()}
+                              {pkg.storage_location && (
+                                <span style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.5)", marginLeft: 8 }}>
+                                  · {pkg.storage_location}
                                 </span>
                               )}
                             </div>
-                          ))}
-                        </div>
+                            {pkg.status !== "received" && (
+                              <button onClick={() => checkInPackage(mat.id, pkg.id, checkInLocation)}
+                                className="transition-opacity active:opacity-60"
+                                style={{
+                                  color: "var(--zr-success)",
+                                  fontSize: "13px",
+                                  fontWeight: 600,
+                                  letterSpacing: "-0.012em",
+                                }}>
+                                Check in
+                              </button>
+                            )}
+                            {pkg.status === "received" && pkg.received_at && (
+                              <span style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", fontVariantNumeric: "tabular-nums" }}>
+                                {new Date(pkg.received_at).toLocaleDateString()}
+                              </span>
+                            )}
+                            {pkgIdx === pkgArr.length - 1 && null}
+                          </div>
+                        ))}
                       </div>
                     )}
 
-                    {/* Action bar */}
-                    <div className="px-3 py-2 flex items-center gap-2 flex-wrap" style={{ borderTop: "1px solid var(--zr-border)" }}>
-                      {/* Location picker */}
+                    {/* Action bar — hairline top, calm row, no alarm colors */}
+                    <div className="flex items-center gap-2 flex-wrap"
+                      style={{ padding: "10px 20px", borderTop: "0.5px solid rgba(60,60,67,0.08)" }}>
+                      {/* Location picker — pill-style like the Everyone chip */}
                       <select value={checkInLocation} onChange={e => setCheckInLocation(e.target.value)}
-                        className="text-xs px-2 py-1.5 rounded outline-none" style={inputStyle}>
+                        style={{
+                          background: "rgba(60,60,67,0.06)",
+                          color: "var(--zr-text-primary)",
+                          fontSize: "12.5px",
+                          fontWeight: 500,
+                          letterSpacing: "-0.012em",
+                          padding: "5px 26px 5px 10px",
+                          borderRadius: 999,
+                          border: "none",
+                          appearance: "none",
+                          WebkitAppearance: "none",
+                          cursor: "pointer",
+                        }}>
                         <option value="">No location</option>
                         {STORAGE_LOCATIONS.map(loc => {
                           const note = getLocationNote(warehouseLocs, loc);
@@ -355,17 +468,33 @@ export default function WarehousePage() {
 
                       {(mat.status === "shipped" || mat.status === "ordered") && (
                         <button onClick={() => checkInAll(mat.id, checkInLocation)}
-                          className="text-xs px-3 py-1.5 rounded font-medium"
-                          style={{ background: "var(--zr-success)", color: "#fff" }}>
-                          ✅ Check In All Packages
+                          className="transition-all active:scale-[0.97]"
+                          style={{
+                            background: "var(--zr-success)",
+                            color: "#fff",
+                            fontSize: "12.5px",
+                            fontWeight: 600,
+                            padding: "5px 12px",
+                            borderRadius: 999,
+                            letterSpacing: "-0.012em",
+                          }}>
+                          Check in all
                         </button>
                       )}
 
                       {mat.status === "received" && (
                         <button onClick={() => stageForInstall(mat.id)}
-                          className="text-xs px-3 py-1.5 rounded font-medium"
-                          style={{ background: "#8b5cf6", color: "#fff" }}>
-                          📦 Stage for Install
+                          className="transition-all active:scale-[0.97]"
+                          style={{
+                            background: "rgba(139,92,246,0.12)",
+                            color: "#7c3aed",
+                            fontSize: "12.5px",
+                            fontWeight: 600,
+                            padding: "5px 12px",
+                            borderRadius: 999,
+                            letterSpacing: "-0.012em",
+                          }}>
+                          Stage for install
                         </button>
                       )}
 

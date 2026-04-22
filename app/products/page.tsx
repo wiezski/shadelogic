@@ -388,33 +388,52 @@ export default function ProductsPage() {
   return (
     <FeatureGate require="inventory">
       <PermissionGate require="access_settings">
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
-          <div className="mx-auto max-w-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-bold">Product Catalog</h1>
-            <p style={{ color: "var(--zr-text-secondary)" }} className="text-xs mt-0.5">
-              Manage products, costs, and specs. Import from CSV, PDF, or browse the manufacturer library.
-            </p>
-          </div>
-          <div className="flex gap-1.5">
-            <Link href="/products/library"
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-              className="rounded px-2.5 py-1.5 text-xs hover:opacity-80 inline-flex items-center gap-1">
-              🏭 Library
-            </Link>
-            <button onClick={() => { setShowImport(!showImport); setImportResult(null); setCsvPreview([]); }}
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-              className="rounded px-2.5 py-1.5 text-xs hover:opacity-80">
-              📥 Import
-            </button>
-            <button onClick={openNew}
-              style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
-              className="rounded px-3 py-1.5 text-xs">
-              + Add Product
-            </button>
-          </div>
+        <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24 text-sm">
+          <div className="mx-auto max-w-2xl px-4 sm:px-6">
+        {/* iOS back row */}
+        <div className="mb-3 flex items-center justify-between">
+          <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Home
+          </Link>
+        </div>
+
+        {/* Page title */}
+        <div className="mb-3 px-1">
+          <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)" }}>Products</h1>
+          <p style={{ color: "rgba(60,60,67,0.6)", fontSize: "13.5px", marginTop: 2, letterSpacing: "-0.005em", lineHeight: 1.35 }}>
+            Manage products, costs, and specs. Import from CSV, PDF, or browse the library.
+          </p>
+        </div>
+
+        {/* Action row — secondary text buttons + primary pill */}
+        <div className="flex items-center justify-end gap-4 mb-4 px-1">
+          <Link href="/products/library"
+            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            Library
+          </Link>
+          <button onClick={() => { setShowImport(!showImport); setImportResult(null); setCsvPreview([]); }}
+            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            Import
+          </button>
+          <button onClick={openNew}
+            className="transition-all active:scale-[0.97]"
+            style={{
+              background: "var(--zr-orange)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 600,
+              padding: "7px 14px",
+              borderRadius: 999,
+              letterSpacing: "-0.012em",
+            }}>
+            + Add
+          </button>
         </div>
 
         {/* Import Panel */}
@@ -599,24 +618,55 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Search + Filter bar */}
-        <div className="flex gap-2 mb-3">
+        {/* Search + category filter — pill inputs, no harsh borders */}
+        <div className="flex gap-2 mb-3 px-1">
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search products, manufacturers, SKUs…"
-            className="flex-1 border rounded px-2.5 py-1.5 text-xs" />
-          <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="border rounded px-2 py-1.5 text-xs">
-            <option value="all">All Categories</option>
-            {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+            placeholder="Search products, manufacturers, SKUs"
+            style={{
+              flex: 1,
+              background: "rgba(60,60,67,0.06)",
+              color: "var(--zr-text-primary)",
+              fontSize: "14px",
+              letterSpacing: "-0.012em",
+              padding: "8px 14px",
+              borderRadius: 999,
+              border: "none",
+              outline: "none",
+            }} />
+          <div className="relative shrink-0">
+            <select value={filter} onChange={e => setFilter(e.target.value)}
+              style={{
+                background: "rgba(60,60,67,0.06)",
+                color: "var(--zr-text-primary)",
+                fontSize: "13px",
+                fontWeight: 500,
+                letterSpacing: "-0.012em",
+                padding: "8px 28px 8px 12px",
+                borderRadius: 999,
+                border: "none",
+                appearance: "none",
+                WebkitAppearance: "none",
+                cursor: "pointer",
+                maxWidth: 140,
+              }}>
+              <option value="all">All categories</option>
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
         </div>
 
-        {/* Stats bar */}
+        {/* Muted count line — matches the Shipments section-label feel */}
         {!loading && (
-          <div className="flex items-center gap-3 mb-3 text-xs text-gray-400">
-            <span>{active.length} active products</span>
-            {manufacturers.length > 0 && <span>· {manufacturers.length} manufacturers</span>}
-            {inactive.length > 0 && <span>· {inactive.length} archived</span>}
+          <div className="mb-1 px-5">
+            <span className="zr-v2-section-label" style={{ padding: 0 }}>
+              {active.length} active
+              {manufacturers.length > 0 && ` · ${manufacturers.length} manufacturers`}
+              {inactive.length > 0 && ` · ${inactive.length} archived`}
+            </span>
           </div>
         )}
 
@@ -643,108 +693,121 @@ export default function ProductsPage() {
               )
             )}
 
-            <ul className="space-y-2">
-              {filtered.map(p => {
+            {/* Canvas-level product list. No card borders, no inner price boxes.
+                Pricing is a single horizontal row of text columns beneath the
+                product name. Hairline 0.5px dividers separate rows. */}
+            <ul>
+              {filtered.map((p, idx) => {
                 const r = retail(p.default_cost, p.default_multiplier);
                 const m = margin(p.default_cost, p.default_multiplier);
+                const marginColor = m >= 55 ? "var(--zr-success)" : m >= 40 ? "var(--zr-warning)" : "#c6443a";
+                const isLast = idx === filtered.length - 1;
                 return (
-                  <li key={p.id} className="rounded border p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                  <li key={p.id}
+                    style={{ borderBottom: isLast ? "none" : "0.5px solid rgba(60,60,67,0.08)", padding: "16px 20px 14px" }}>
+                    {/* Top row: name + Edit / Archive on the right */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{p.name}</span>
-                          <span className={`text-xs rounded px-1.5 py-0.5 ${CAT_BADGE[p.category] ?? CAT_BADGE.other}`}>
+                          <span style={{ fontSize: "17px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.022em", lineHeight: 1.25 }}>{p.name}</span>
+                          <span className={`text-[11px] rounded-full px-2 py-0.5 ${CAT_BADGE[p.category] ?? CAT_BADGE.other}`} style={{ fontWeight: 500 }}>
                             {CATEGORIES.find(c => c.value === p.category)?.label ?? p.category}
                           </span>
                           {p.imported_from && (
-                            <span className="text-xs rounded px-1.5 py-0.5 bg-blue-50 text-blue-500">{p.imported_from.toUpperCase()}</span>
+                            <span className="text-[11px] rounded-full px-2 py-0.5" style={{ background: "rgba(10,132,255,0.10)", color: "var(--zr-info)", fontWeight: 500 }}>{p.imported_from.toUpperCase()}</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {p.manufacturer && <span className="text-xs text-gray-500">{p.manufacturer}</span>}
-                          {p.sku && <span className="text-xs text-gray-400">SKU: {p.sku}</span>}
-                          {p.lead_time_days && <span className="text-xs text-gray-400">{p.lead_time_days}d lead</span>}
-                        </div>
-                        {p.notes && <div className="text-xs text-gray-400 mt-0.5">{p.notes}</div>}
+                        {p.notes && (
+                          <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13.5px", marginTop: 3, letterSpacing: "-0.005em", lineHeight: 1.3 }}>
+                            {p.notes}
+                          </div>
+                        )}
+                        {(p.manufacturer || p.sku || p.lead_time_days) && (
+                          <div style={{ color: "rgba(60,60,67,0.45)", fontSize: "12.5px", marginTop: 2, letterSpacing: "-0.003em" }}>
+                            {[p.manufacturer, p.sku && `SKU ${p.sku}`, p.lead_time_days && `${p.lead_time_days}d lead`].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
                       </div>
-                      <div className="shrink-0 flex items-center gap-2">
+                      <div className="shrink-0 flex items-center gap-3">
                         {(p.min_width || p.max_width || p.color_options || p.lead_time_days) && (
                           <button onClick={() => setSpecProductId(specProductId === p.id ? null : p.id)}
-                            className={`text-xs rounded px-1.5 py-0.5 border transition-colors ${specProductId === p.id ? "bg-gray-800 text-white border-gray-800" : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"}`}>
-                            Specs {specProductId === p.id ? "▲" : "▼"}
+                            style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                            className="transition-opacity active:opacity-60">
+                            Specs
                           </button>
                         )}
                         <button onClick={() => openEdit(p)}
-                          className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>Edit</button>
+                          style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                          className="transition-opacity active:opacity-60">Edit</button>
                         <button onClick={() => toggleActive(p)}
-                          className="text-xs text-gray-400 hover:text-red-500">Archive</button>
+                          style={{ color: "rgba(60,60,67,0.45)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                          className="transition-opacity active:opacity-60">Archive</button>
                       </div>
                     </div>
 
-                    {/* Expandable Spec Card */}
+                    {/* Pricing row — horizontal text columns, no nested boxes */}
+                    <div style={{ display: "flex", gap: 20, marginTop: 10, alignItems: "baseline", fontVariantNumeric: "tabular-nums" }}>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.5)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>Cost</div>
+                        <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.012em", marginTop: 2 }}>${p.default_cost.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.5)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>Retail · {p.default_multiplier}×</div>
+                        <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-success)", letterSpacing: "-0.012em", marginTop: 2 }}>${r}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.5)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>Margin</div>
+                        <div style={{ fontSize: "15px", fontWeight: 600, color: marginColor, letterSpacing: "-0.012em", marginTop: 2 }}>{m}%</div>
+                      </div>
+                    </div>
+
+                    {/* Expandable Spec Card — canvas rows, no nested white boxes */}
                     {specProductId === p.id && (
-                      <div className="mt-2 rounded-lg p-3 text-xs space-y-2" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
-                        <div className="font-semibold text-sm" style={{ color: "var(--zr-text-primary)" }}>
-                          Product Specifications
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
+                      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px solid rgba(60,60,67,0.08)" }}>
+                        <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.5)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 6 }}>Specifications</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px 16px" }}>
                           {(p.min_width || p.max_width) && (
-                            <div className="rounded bg-white p-2 border">
-                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Width Range</div>
-                              <div className="font-semibold">{p.min_width || "?"}" – {p.max_width || "?"}"</div>
+                            <div>
+                              <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)" }}>Width</div>
+                              <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-text-primary)" }}>{p.min_width || "?"}" – {p.max_width || "?"}"</div>
                             </div>
                           )}
                           {(p.min_height || p.max_height) && (
-                            <div className="rounded bg-white p-2 border">
-                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Height Range</div>
-                              <div className="font-semibold">{p.min_height || "?"}" – {p.max_height || "?"}"</div>
+                            <div>
+                              <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)" }}>Height</div>
+                              <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-text-primary)" }}>{p.min_height || "?"}" – {p.max_height || "?"}"</div>
                             </div>
                           )}
                           {p.lead_time_days && (
-                            <div className="rounded bg-white p-2 border">
-                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Lead Time</div>
-                              <div className="font-semibold">{p.lead_time_days} days</div>
+                            <div>
+                              <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)" }}>Lead time</div>
+                              <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-text-primary)" }}>{p.lead_time_days} days</div>
                             </div>
                           )}
                           {p.manufacturer && (
-                            <div className="rounded bg-white p-2 border">
-                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Manufacturer</div>
-                              <div className="font-semibold">{p.manufacturer}</div>
+                            <div>
+                              <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)" }}>Manufacturer</div>
+                              <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-text-primary)" }}>{p.manufacturer}</div>
                             </div>
                           )}
                         </div>
                         {p.color_options && (
-                          <div className="rounded bg-white p-2 border">
-                            <div className="text-gray-400 text-[10px] uppercase tracking-wide mb-1">Available Colors</div>
-                            <div className="flex flex-wrap gap-1">
+                          <div style={{ marginTop: 10 }}>
+                            <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)", marginBottom: 4 }}>Colors</div>
+                            <div className="flex flex-wrap gap-1.5">
                               {p.color_options.split(/[|,]/).map((c, i) => (
-                                <span key={i} className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">{c.trim()}</span>
+                                <span key={i} style={{ background: "rgba(60,60,67,0.06)", color: "var(--zr-text-primary)", fontSize: "12px", padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>{c.trim()}</span>
                               ))}
                             </div>
                           </div>
                         )}
                         {p.sku && (
-                          <div className="text-gray-400">SKU: <span className="text-gray-600">{p.sku}</span></div>
+                          <div style={{ color: "rgba(60,60,67,0.5)", fontSize: "12px", marginTop: 8 }}>
+                            SKU <span style={{ color: "var(--zr-text-primary)", fontFamily: "ui-monospace, Menlo, monospace" }}>{p.sku}</span>
+                          </div>
                         )}
                       </div>
                     )}
-
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                      <div className="rounded bg-gray-50 p-2">
-                        <div className="text-gray-400">Cost</div>
-                        <div className="font-semibold">${p.default_cost.toFixed(2)}</div>
-                      </div>
-                      <div className="rounded bg-gray-50 p-2">
-                        <div className="text-gray-400">Retail ({p.default_multiplier}x)</div>
-                        <div className="font-semibold text-green-600">${r}</div>
-                      </div>
-                      <div className="rounded bg-gray-50 p-2">
-                        <div className="text-gray-400">Margin</div>
-                        <div className={`font-semibold ${m >= 55 ? "text-green-600" : m >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {m}%
-                        </div>
-                      </div>
-                    </div>
                   </li>
                 );
               })}

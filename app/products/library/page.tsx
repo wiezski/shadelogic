@@ -187,31 +187,56 @@ export default function ManufacturerLibraryPage() {
   return (
     <FeatureGate require="inventory">
       <PermissionGate require="access_settings">
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 text-sm">
-          <div className="mx-auto max-w-2xl">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Link href="/products" style={{ color: "var(--zr-orange)" }} className="hover:underline text-sm">← Products</Link>
-                </div>
-                <h1 className="text-xl font-bold mt-1">Manufacturer Library</h1>
-                <p style={{ color: "var(--zr-text-secondary)" }} className="text-xs mt-0.5">
-                  Browse manufacturer product lines and add them to your catalog. Subscribe to get notified of changes.
-                </p>
-              </div>
+        <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24 text-sm">
+          <div className="mx-auto max-w-2xl px-4 sm:px-6">
+            {/* iOS back row */}
+            <div className="mb-3 flex items-center justify-between">
+              <Link href="/products" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+                className="transition-opacity active:opacity-60">
+                <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+                  <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Products
+              </Link>
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 mb-3 rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+            <div className="mb-4 px-1">
+              <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)" }}>Library</h1>
+              <p style={{ color: "rgba(60,60,67,0.6)", fontSize: "13.5px", marginTop: 2, letterSpacing: "-0.005em", lineHeight: 1.35 }}>
+                Browse manufacturer product lines and add them to your catalog. Subscribe to get notified of changes.
+              </p>
+            </div>
+
+            {/* Pill segmented tabs */}
+            <div className="grid grid-cols-2 p-1 rounded-full mb-5" style={{ background: "var(--zr-surface-3)" }}>
               <button onClick={() => setTab("browse")}
-                style={tab === "browse" ? { background: "var(--zr-orange)", color: "#fff" } : { background: "var(--zr-surface-2)", color: "var(--zr-text-primary)" }}
-                className="flex-1 px-3 py-1.5 text-sm">Browse</button>
+                className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+                style={tab === "browse"
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+                Browse
+              </button>
               <button onClick={() => setTab("alerts")}
-                style={tab === "alerts" ? { background: "var(--zr-orange)", color: "#fff" } : { background: "var(--zr-surface-2)", color: "var(--zr-text-primary)" }}
-                className="flex-1 px-3 py-1.5 text-sm relative">
+                className="py-1.5 text-[13px] font-semibold rounded-full transition-all relative"
+                style={tab === "alerts"
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
                 Alerts
                 {unreadAlerts > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">{unreadAlerts}</span>
+                  <span style={{
+                    position: "absolute",
+                    top: 2, right: 12,
+                    background: "#d64545",
+                    color: "#fff",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    minWidth: 16, height: 16,
+                    padding: "0 4px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>{unreadAlerts}</span>
                 )}
               </button>
             </div>
@@ -230,42 +255,57 @@ export default function ManufacturerLibraryPage() {
               </div>
             ) : tab === "browse" ? (
               <>
-                {/* Manufacturer cards */}
+                {/* Flat manufacturer list — tap the whole row to browse,
+                    Subscribe is a subtle secondary action, chevron signals
+                    navigation. No card borders, hairlines between rows. */}
                 {!selectedMfg && (
-                  <div className="space-y-2">
-                    {brands.map(b => (
-                      <div key={b.id} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
-                        className="rounded-lg p-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <button onClick={() => loadProducts(b.name)} className="font-semibold hover:underline text-left" style={{ color: "var(--zr-orange)" }}>
-                            {b.name}
-                          </button>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {b.product_count} products
-                            {b.website_url && (
-                              <> · <a href={b.website_url} target="_blank" rel="noopener" className="text-blue-500 hover:underline">Website</a></>
-                            )}
+                  <div>
+                    {brands.map((b, i, arr) => {
+                      const subscribed = isSubscribed(b.name);
+                      const isLast = i === arr.length - 1;
+                      return (
+                        <div key={b.id}
+                          style={{ borderBottom: isLast ? "none" : "0.5px solid rgba(60,60,67,0.08)", padding: "14px 20px" }}
+                          className="flex items-center gap-3 zr-ios-row cursor-pointer"
+                          onClick={() => loadProducts(b.name)}>
+                          <div className="min-w-0 flex-1">
+                            <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.018em", lineHeight: 1.25 }}>
+                              {b.name}
+                            </div>
+                            <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.5)", marginTop: 2, letterSpacing: "-0.005em" }}>
+                              {b.product_count} product{b.product_count === 1 ? "" : "s"}
+                              {b.website_url && (
+                                <>
+                                  {" · "}
+                                  <a href={b.website_url} target="_blank" rel="noopener"
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ color: "var(--zr-orange)", fontWeight: 500 }}
+                                    className="transition-opacity active:opacity-60">
+                                    Website
+                                  </a>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {isSubscribed(b.name) ? (
-                            <button onClick={() => unsubscribe(b.name)}
-                              className="text-xs rounded px-2 py-1 bg-green-100 text-green-700 border border-green-200">
-                              Subscribed ✓
-                            </button>
-                          ) : (
-                            <button onClick={() => subscribe(b.name)}
-                              className="text-xs rounded px-2 py-1 border hover:bg-gray-50">
-                              Subscribe
-                            </button>
-                          )}
-                          <button onClick={() => loadProducts(b.name)}
-                            className="text-xs rounded px-2 py-1 border hover:bg-gray-50">
-                            Browse →
+                          {/* Subscribe — subtle text action */}
+                          <button onClick={e => { e.stopPropagation(); subscribed ? unsubscribe(b.name) : subscribe(b.name); }}
+                            style={{
+                              color: subscribed ? "var(--zr-success)" : "rgba(60,60,67,0.6)",
+                              fontSize: "13px",
+                              fontWeight: 500,
+                              letterSpacing: "-0.012em",
+                              flexShrink: 0,
+                            }}
+                            className="transition-opacity active:opacity-60">
+                            {subscribed ? "Subscribed" : "Subscribe"}
                           </button>
+                          {/* iOS chevron for navigation */}
+                          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style={{ flexShrink: 0, color: "rgba(60,60,67,0.35)" }}>
+                            <path d="M1 1L7 7L1 13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

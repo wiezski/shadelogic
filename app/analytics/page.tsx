@@ -665,29 +665,24 @@ export default function AnalyticsPage() {
       <PermissionGate require="view_reports">
         <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        {/* iOS-style back row — chevron + plain "Back" text, no pill, no underline */}
-        <div className="mb-3 flex items-center justify-between">
+        {/* iOS-style back row */}
+        <div className="mb-3">
           <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
             className="transition-opacity active:opacity-60">
             <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 2 }}>
               <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Back
+            Home
           </Link>
-          <button onClick={exportCSV}
-            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
-            className="transition-opacity active:opacity-60">
-            Export CSV
-          </button>
         </div>
 
-        {/* Page title + segmented control matching the Dashboard pattern */}
+        {/* Title */}
+        <div className="mb-3 px-1">
+          <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)" }}>Analytics</h1>
+        </div>
+
+        {/* Combined filter row — segmented control + Export on the same line */}
         <div className="mb-5 flex items-center gap-3">
-          <h1 style={{
-            fontSize: "22px", fontWeight: 700, letterSpacing: "-0.022em",
-            color: "var(--zr-text-primary)",
-            flexShrink: 0,
-          }}>Analytics</h1>
           <div className="flex-1 grid grid-cols-3 p-1 rounded-full"
             style={{ background: "var(--zr-surface-3)" }}>
             {(["week", "month", "all"] as const).map((r) => (
@@ -696,10 +691,15 @@ export default function AnalyticsPage() {
                 style={range === r
                   ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
                   : { background: "transparent", color: "var(--zr-text-secondary)" }}>
-                {r === "week" ? "7 days" : r === "month" ? "30 days" : "All time"}
+                {r === "week" ? "7d" : r === "month" ? "30d" : "All"}
               </button>
             ))}
           </div>
+          <button onClick={exportCSV}
+            style={{ color: "var(--zr-orange)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em", flexShrink: 0 }}
+            className="transition-opacity active:opacity-60">
+            Export
+          </button>
         </div>
 
         {loading ? (

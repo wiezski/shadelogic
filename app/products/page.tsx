@@ -438,19 +438,20 @@ export default function ProductsPage() {
 
         {/* Import Panel */}
         {showImport && (
-          <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)" }}>
-            <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold">Import Products from CSV</div>
-            <p style={{ color: "var(--zr-info)" }} className="text-xs">
-              Upload a CSV with columns like: name, cost, multiplier, category, manufacturer, sku, notes.
-              Column names are flexible — we'll do our best to map them automatically.
-            </p>
-            <div className="flex items-center gap-2">
-              <input ref={csvInputRef} type="file" accept=".csv,.tsv,.txt"
-                onChange={handleCSVFile}
-                style={{ color: "var(--zr-text-primary)" }}
-                className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:text-xs file:cursor-pointer"
-                />
-            </div>
+          <div className="mb-5 px-5" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* ─── CSV section — section label + calm description + file picker ─── */}
+            <div>
+              <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 6 }}>Import from CSV</div>
+              <p style={{ color: "rgba(60,60,67,0.62)", fontSize: "13.5px", lineHeight: 1.4, letterSpacing: "-0.005em", marginBottom: 10 }}>
+                Upload a CSV with columns like name, cost, multiplier, category, manufacturer, sku, notes. Column names are flexible — we&apos;ll map them automatically.
+              </p>
+              <div className="flex items-center gap-2">
+                <input ref={csvInputRef} type="file" accept=".csv,.tsv,.txt"
+                  onChange={handleCSVFile}
+                  style={{ color: "var(--zr-text-primary)", fontSize: "13px" }}
+                  className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[12px] file:font-medium file:cursor-pointer file:bg-[rgba(60,60,67,0.06)] file:text-[color:var(--zr-text-primary)]"
+                  />
+              </div>
 
             {/* CSV Preview */}
             {csvPreview.length > 0 && (
@@ -504,7 +505,7 @@ export default function ProductsPage() {
               </div>
             )}
 
-            {/* Download template */}
+            {/* Download template — small secondary link */}
             <button onClick={() => {
               const tpl = "name,category,manufacturer,sku,cost,multiplier,notes,min_width,max_width,min_height,max_height,lead_time_days,colors\nRoller Shade - Blackout,roller,Hunter Douglas,RS-BLK-001,85.00,2.50,Full blackout liner,12,96,12,120,14,White|Cream|Gray\n";
               const blob = new Blob([tpl], { type: "text/csv" });
@@ -512,23 +513,26 @@ export default function ProductsPage() {
               a.href = URL.createObjectURL(blob);
               a.download = "product-import-template.csv";
               a.click();
-            }} className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>
-              📄 Download CSV template
+            }}
+              style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em", marginTop: 10, textAlign: "left" }}
+              className="transition-opacity active:opacity-60 block">
+              Download CSV template
             </button>
+            </div>{/* end CSV section */}
 
-            {/* PDF Import Section */}
-            <div className="border-t pt-2 mt-2" style={{ borderColor: "rgba(59,130,246,0.3)" }}>
-              <div style={{ color: "var(--zr-info)" }} className="text-xs font-semibold mb-1">Import from PDF — Bulk Catalog Upload</div>
-              <p style={{ color: "var(--zr-info)" }} className="text-xs mb-1.5">
-                Upload a manufacturer price sheet or product list (PDF). We'll extract product names, prices, sizes, and specs. You can set a default markup and category for the whole batch.
+            {/* ─── PDF section — separate, no blue container ─── */}
+            <div style={{ borderTop: "0.5px solid rgba(60,60,67,0.08)", paddingTop: 16 }}>
+              <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 6 }}>Import from PDF</div>
+              <p style={{ color: "rgba(60,60,67,0.62)", fontSize: "13.5px", lineHeight: 1.4, letterSpacing: "-0.005em", marginBottom: 10 }}>
+                Upload a manufacturer price sheet or product list. We&apos;ll extract names, prices, sizes, and specs. Set a default markup and category for the whole batch.
               </p>
               <div className="flex items-center gap-2">
                 <input ref={pdfInputRef} type="file" accept=".pdf,image/*"
                   onChange={handlePDFFile}
-                  style={{ color: "var(--zr-text-primary)" }}
-                  className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:text-xs file:cursor-pointer"
+                  style={{ color: "var(--zr-text-primary)", fontSize: "13px" }}
+                  className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[12px] file:font-medium file:cursor-pointer file:bg-[rgba(60,60,67,0.06)] file:text-[color:var(--zr-text-primary)]"
                 />
-                {pdfParsing && <span className="text-xs text-blue-500 animate-pulse">Extracting products…</span>}
+                {pdfParsing && <span style={{ color: "var(--zr-info)", fontSize: "12.5px" }} className="animate-pulse">Extracting products…</span>}
               </div>
 
               {/* PDF Preview */}

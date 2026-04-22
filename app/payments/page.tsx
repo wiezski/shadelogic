@@ -228,60 +228,115 @@ function CreateInvoiceModal({ open, onClose, onCreated }: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="rounded-lg max-w-md w-full p-4 space-y-4">
-        <h2 className="font-bold text-lg">Create Invoice</h2>
+    // iOS-sheet-style modal: soft dimmed backdrop, rounded white card with
+    // generous padding and breathing room. No borders, subtle shadow only.
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}>
+      <div style={{
+        background: "var(--zr-surface-1)",
+        borderRadius: 20,
+        width: "100%",
+        maxWidth: 380,
+        padding: "22px 22px 18px",
+        boxShadow: "0 20px 50px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.06)",
+      }}>
+        <h2 style={{
+          fontSize: "19px",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          color: "var(--zr-text-primary)",
+          marginBottom: 20,
+        }}>Create invoice</h2>
 
-        <div>
-          <label className="text-xs font-medium block mb-1">Select Quote</label>
-          <select
-            value={selectedQuote}
-            onChange={(e) => setSelectedQuote(e.target.value)}
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
-            className="w-full rounded p-2 text-sm"
-          >
-            <option value="">-- Choose a quote --</option>
-            {quotes.map(q => (
-              <option key={q.id} value={q.id}>
-                {q.customer_name} - {q.title || "Untitled"} ({fmtMoney(q.total)})
-              </option>
-            ))}
-          </select>
+        {/* Select Quote — pill-style select matching the rest of the app */}
+        <div className="mb-5">
+          <label style={{ fontSize: "12px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.01em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+            Quote
+          </label>
+          <div className="relative">
+            <select
+              value={selectedQuote}
+              onChange={(e) => setSelectedQuote(e.target.value)}
+              style={{
+                width: "100%",
+                background: "rgba(60,60,67,0.06)",
+                color: "var(--zr-text-primary)",
+                fontSize: "14px",
+                letterSpacing: "-0.012em",
+                padding: "10px 34px 10px 14px",
+                borderRadius: 12,
+                border: "none",
+                appearance: "none",
+                WebkitAppearance: "none",
+                cursor: "pointer",
+              }}
+            >
+              <option value="">Choose a quote</option>
+              {quotes.map(q => (
+                <option key={q.id} value={q.id}>
+                  {q.customer_name} — {q.title || "Untitled"} ({fmtMoney(q.total)})
+                </option>
+              ))}
+            </select>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
         </div>
 
-        <div>
-          <label className="text-xs font-medium block mb-1">Invoice Type</label>
-          <div className="space-y-1">
-            {["deposit", "balance", "full"].map(type => (
-              <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="radio"
-                  name="type"
-                  value={type}
-                  checked={invoiceType === type}
-                  onChange={(e) => setInvoiceType(e.target.value as any)}
-                />
+        {/* Type — segmented pill control replacing radio buttons */}
+        <div className="mb-6">
+          <label style={{ fontSize: "12px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.01em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+            Type
+          </label>
+          <div className="grid grid-cols-3 p-1 rounded-full" style={{ background: "var(--zr-surface-3)" }}>
+            {(["deposit", "balance", "full"] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => setInvoiceType(type)}
+                className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+                style={invoiceType === type
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </label>
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        {/* Actions — Cancel as plain text, Create as brand primary pill */}
+        <div className="flex items-center justify-end gap-5">
           <button
             onClick={onClose}
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
-            className="flex-1 rounded p-2 text-sm font-medium hover:opacity-80"
+            style={{
+              color: "rgba(60,60,67,0.7)",
+              fontSize: "14px",
+              fontWeight: 500,
+              letterSpacing: "-0.012em",
+              padding: "8px 4px",
+            }}
+            className="transition-opacity active:opacity-60"
           >
             Cancel
           </button>
           <button
             onClick={createInvoice}
             disabled={!selectedQuote || creating}
-            style={{ background: "var(--zr-orange)" }}
-            className="flex-1 rounded p-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="transition-all active:scale-[0.97]"
+            style={{
+              background: "var(--zr-orange)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 600,
+              padding: "9px 22px",
+              borderRadius: 999,
+              letterSpacing: "-0.012em",
+              opacity: !selectedQuote || creating ? 0.5 : 1,
+              cursor: !selectedQuote || creating ? "not-allowed" : "pointer",
+            }}
           >
-            {creating ? "Creating..." : "Create"}
+            {creating ? "Creating…" : "Create"}
           </button>
         </div>
       </div>

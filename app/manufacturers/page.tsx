@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../auth-provider";
@@ -176,57 +177,66 @@ export default function ManufacturersPage() {
 
   return (
     <PermissionGate require={["create_quotes"]}>
-      <main className="min-h-screen p-4" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
-        <div className="mx-auto max-w-4xl space-y-4">
+      <main className="min-h-screen pt-2 pb-24" style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }}>
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
 
-          {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-xl font-bold">Manufacturer Specs</h1>
-              <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
-                {specs.length} products from {manufacturers.length} manufacturers
+          {/* iOS back */}
+          <div className="mb-3">
+            <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+              className="transition-opacity active:opacity-60">
+              <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+                <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Home
+            </Link>
+          </div>
+
+          {/* Title + quiet subtitle, "My accounts" toggle as text link on the right */}
+          <div className="mb-4 flex items-end justify-between gap-3 px-1">
+            <div className="min-w-0">
+              <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)" }}>Specs</h1>
+              <p style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 2, letterSpacing: "-0.005em" }}>
+                {specs.length} products · {manufacturers.length} manufacturers
               </p>
             </div>
             {isOwnerOrAdmin && (
-              <button
-                onClick={() => setShowMyMfgs(!showMyMfgs)}
-                className="rounded px-3 py-2 text-xs font-medium"
-                style={{
-                  background: showMyMfgs ? "var(--zr-orange)" : "var(--zr-surface-1)",
-                  color: showMyMfgs ? "#fff" : "var(--zr-text-primary)",
-                  border: showMyMfgs ? "none" : "1px solid var(--zr-border)",
-                }}>
-                {showMyMfgs ? "Hide My Accounts" : "My Manufacturer Accounts"}
+              <button onClick={() => setShowMyMfgs(!showMyMfgs)}
+                style={{ color: "var(--zr-orange)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em", paddingBottom: 4 }}
+                className="transition-opacity active:opacity-60 flex-shrink-0">
+                {showMyMfgs ? "Hide accounts" : "My accounts"}
               </button>
             )}
           </div>
 
-          {/* My Manufacturer Accounts */}
+          {/* My Manufacturer Accounts — subtle section, no bordered orange box */}
           {showMyMfgs && isOwnerOrAdmin && (
-            <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-orange)" }}>
-              <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-orange)" }}>
-                Your Manufacturer Accounts
-              </h2>
-              <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
-                Save your account numbers, rep contacts, and discount rates for quick reference.
-              </p>
+            <div className="mb-5">
+              <div className="mb-1 px-5 flex items-baseline justify-between">
+                <span className="zr-v2-section-label" style={{ padding: 0 }}>Your accounts</span>
+              </div>
               {companyMfgs.filter(m => m.is_active).length === 0 ? (
-                <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
-                  No accounts set up yet. Click "Add Account" on any manufacturer below.
+                <p className="px-5" style={{ fontSize: "13px", color: "rgba(60,60,67,0.5)" }}>
+                  No accounts yet. Add one from any manufacturer below.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {companyMfgs.filter(m => m.is_active).map(m => (
-                    <div key={m.id} className="rounded p-3 flex items-center justify-between" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}>
-                      <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{m.manufacturer}</div>
-                        <div className="text-xs space-x-3" style={{ color: "var(--zr-text-secondary)" }}>
-                          {m.account_number && <span>Acct: {m.account_number}</span>}
-                          {m.rep_name && <span>Rep: {m.rep_name}</span>}
-                          {m.discount_pct > 0 && <span>Discount: {m.discount_pct}%</span>}
+                <div>
+                  {companyMfgs.filter(m => m.is_active).map((m, i, arr) => (
+                    <div key={m.id}
+                      className="flex items-center justify-between"
+                      style={{ padding: "12px 20px", borderBottom: i < arr.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none" }}>
+                      <div className="min-w-0 flex-1">
+                        <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.015em" }}>{m.manufacturer}</div>
+                        <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 2 }}>
+                          {[
+                            m.account_number && `Acct ${m.account_number}`,
+                            m.rep_name && `Rep ${m.rep_name}`,
+                            m.discount_pct > 0 && `${m.discount_pct}% off`,
+                          ].filter(Boolean).join(" · ")}
                         </div>
                       </div>
-                      <button onClick={() => openEditMfg(m.manufacturer)} className="text-xs" style={{ color: "var(--zr-orange)" }}>Edit</button>
+                      <button onClick={() => openEditMfg(m.manufacturer)}
+                        style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                        className="transition-opacity active:opacity-60">Edit</button>
                     </div>
                   ))}
                 </div>
@@ -234,58 +244,104 @@ export default function ManufacturersPage() {
             </div>
           )}
 
-          {/* Filters */}
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Filters — pill inputs matching Products, no bordered boxes */}
+          <div className="flex items-center gap-2 flex-wrap mb-4 px-1">
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search products, features, materials..."
-              className="flex-1 min-w-[200px] rounded px-3 py-2 text-sm"
-              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+              placeholder="Search products, features, materials"
+              style={{
+                flex: 1,
+                minWidth: 180,
+                background: "rgba(60,60,67,0.06)",
+                color: "var(--zr-text-primary)",
+                fontSize: "14px",
+                letterSpacing: "-0.012em",
+                padding: "8px 14px",
+                borderRadius: 999,
+                border: "none",
+                outline: "none",
+              }}
             />
-            <select
-              value={filterMfg}
-              onChange={e => setFilterMfg(e.target.value)}
-              className="rounded px-2 py-2 text-sm"
-              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
-              <option value="all">All Manufacturers</option>
-              {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <select
-              value={filterCat}
-              onChange={e => setFilterCat(e.target.value)}
-              className="rounded px-2 py-2 text-sm"
-              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
-              <option value="all">All Categories</option>
-              {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <div className="relative shrink-0">
+              <select value={filterMfg} onChange={e => setFilterMfg(e.target.value)}
+                style={{
+                  background: "rgba(60,60,67,0.06)",
+                  color: "var(--zr-text-primary)",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  letterSpacing: "-0.012em",
+                  padding: "8px 28px 8px 12px",
+                  borderRadius: 999,
+                  border: "none",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  cursor: "pointer",
+                  maxWidth: 140,
+                }}>
+                <option value="all">All mfgs</option>
+                {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+            <div className="relative shrink-0">
+              <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
+                style={{
+                  background: "rgba(60,60,67,0.06)",
+                  color: "var(--zr-text-primary)",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  letterSpacing: "-0.012em",
+                  padding: "8px 28px 8px 12px",
+                  borderRadius: 999,
+                  border: "none",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  cursor: "pointer",
+                  maxWidth: 140,
+                }}>
+                <option value="all">All cats</option>
+                {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
           </div>
 
-          {/* Results count */}
-          <div className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
-            Showing {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+          {/* Count — muted section label style */}
+          <div className="mb-1 px-5">
+            <span className="zr-v2-section-label" style={{ padding: 0 }}>
+              {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+            </span>
           </div>
 
           {/* Grouped product list */}
           {Object.entries(grouped).map(([manufacturer, products]) => {
             const myAcct = companyMfgs.find(m => m.manufacturer === manufacturer && m.is_active);
             return (
-              <div key={manufacturer} className="space-y-2">
-                {/* Manufacturer header */}
-                <div className="flex items-center justify-between py-2 border-b" style={{ borderBottomColor: "var(--zr-border)" }}>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-bold" style={{ color: "var(--zr-text-primary)" }}>{manufacturer}</h2>
-                    <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>{products.length} product{products.length !== 1 ? "s" : ""}</span>
+              <div key={manufacturer} className="mb-5">
+                {/* Manufacturer header — hairline-bottom, calm type */}
+                <div className="flex items-end justify-between px-5 pb-1"
+                  style={{ borderBottom: "0.5px solid rgba(60,60,67,0.1)" }}>
+                  <div className="flex items-baseline gap-3 min-w-0 flex-1">
+                    <h2 style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.018em", color: "var(--zr-text-primary)" }}>{manufacturer}</h2>
+                    <span style={{ fontSize: "13px", color: "rgba(60,60,67,0.5)" }}>{products.length} product{products.length !== 1 ? "s" : ""}</span>
                     {myAcct && (
-                      <span className="text-xs rounded px-2 py-0.5" style={{ background: "rgba(34,197,94,0.15)", color: "var(--zr-success)" }}>
-                        Active Account
+                      <span style={{ fontSize: "12px", color: "var(--zr-success)", fontWeight: 500 }}>
+                        Active
                       </span>
                     )}
                   </div>
                   {isOwnerOrAdmin && (
                     <button onClick={() => openEditMfg(manufacturer)}
-                      className="text-xs font-medium" style={{ color: "var(--zr-orange)" }}>
-                      {myAcct ? "Edit Account" : "+ Add Account"}
+                      style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em", paddingBottom: 4 }}
+                      className="transition-opacity active:opacity-60 shrink-0">
+                      {myAcct ? "Edit" : "+ Add account"}
                     </button>
                   )}
                 </div>
@@ -349,57 +405,60 @@ export default function ManufacturersPage() {
                   </div>
                 )}
 
-                {/* Product cards */}
-                {products.map(spec => {
+                {/* Product specs — canvas rows with hairlines, no cards */}
+                {products.map((spec, i) => {
                   const isExpanded = expandedId === spec.id;
+                  const isLast = i === products.length - 1;
                   return (
-                    <div key={spec.id} className="rounded transition-colors"
-                      style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                    <div key={spec.id}
+                      style={{ borderBottom: isLast ? "none" : "0.5px solid rgba(60,60,67,0.08)" }}>
                       {/* Product header row */}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : spec.id)}
-                        className="w-full px-4 py-3 flex items-center gap-3 text-left">
+                        className="w-full flex items-center gap-3 text-left transition-opacity active:opacity-70"
+                        style={{ padding: "14px 20px", WebkitTapHighlightColor: "transparent" }}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>
+                            <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.015em" }}>
                               {spec.product_name}
                             </span>
                             {spec.product_line && (
-                              <span className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                              <span style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.5)" }}>
                                 ({spec.product_line})
                               </span>
                             )}
-                            <span className="text-xs rounded px-1.5 py-0.5" style={{
-                              background: CATEGORY_COLORS[spec.category] || "var(--zr-surface-2)",
-                              color: CATEGORY_TEXT[spec.category] || "var(--zr-text-secondary)",
+                            <span className="rounded-full" style={{
+                              background: CATEGORY_COLORS[spec.category] || "rgba(60,60,67,0.06)",
+                              color: CATEGORY_TEXT[spec.category] || "rgba(60,60,67,0.7)",
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              padding: "2px 8px",
                             }}>
                               {CATEGORIES[spec.category] || spec.category}
                             </span>
                             {spec.motorization_available && (
-                              <span className="text-xs rounded px-1.5 py-0.5" style={{ background: "rgba(245,158,11,0.15)", color: "var(--zr-warning)" }}>
+                              <span className="rounded-full" style={{ background: "rgba(224,138,0,0.10)", color: "var(--zr-warning)", fontSize: "11px", fontWeight: 500, padding: "2px 8px" }}>
                                 Motorized
                               </span>
                             )}
                           </div>
-                          <div className="text-xs mt-1 flex items-center gap-3" style={{ color: "var(--zr-text-muted)" }}>
-                            {spec.lead_time_days && <span>{spec.lead_time_days} day lead</span>}
-                            {spec.warranty_years && <span>{spec.warranty_years}yr warranty</span>}
-                            {spec.min_width && spec.max_width && (
-                              <span>W: {spec.min_width}–{spec.max_width}&quot;</span>
-                            )}
-                            {spec.min_height && spec.max_height && (
-                              <span>H: {spec.min_height}–{spec.max_height}&quot;</span>
-                            )}
+                          <div style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.5)", marginTop: 3, letterSpacing: "-0.003em" }}>
+                            {[
+                              spec.lead_time_days && `${spec.lead_time_days}d lead`,
+                              spec.warranty_years && `${spec.warranty_years}yr warranty`,
+                              spec.min_width && spec.max_width && `W ${spec.min_width}–${spec.max_width}"`,
+                              spec.min_height && spec.max_height && `H ${spec.min_height}–${spec.max_height}"`,
+                            ].filter(Boolean).join(" · ")}
                           </div>
                         </div>
-                        <span className="text-xs shrink-0" style={{ color: "var(--zr-text-muted)" }}>
-                          {isExpanded ? "▾" : "▸"}
-                        </span>
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ color: "rgba(60,60,67,0.4)", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 150ms ease", flexShrink: 0 }}>
+                          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                       </button>
 
                       {/* Expanded details */}
                       {isExpanded && (
-                        <div className="px-4 pb-4 space-y-3 border-t" style={{ borderTopColor: "var(--zr-border)" }}>
+                        <div className="space-y-3" style={{ padding: "8px 20px 16px", borderTop: "0.5px solid rgba(60,60,67,0.06)" }}>
                           {/* Quick specs grid */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3">
                             <div>

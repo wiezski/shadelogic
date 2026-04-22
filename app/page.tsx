@@ -697,60 +697,54 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-5 pb-24">
+    <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        {/* ── Large iOS-style page title + action row ──────────────── */}
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <h1 style={{ color: "var(--zr-text-primary)", letterSpacing: "-0.03em" }} className="text-[34px] font-bold leading-[1.1]">
+        {/* ──────────────────────────────────────────────────────────
+            Native iOS-style compact header.
+            - No page title (redundant with top nav + segmented control)
+            - Segmented control IS the context indicator
+            - Edit / Done / Reset render as plain-text iOS nav-bar buttons
+              anchored to the right, not pills
+            - Single row, minimal vertical footprint
+           ────────────────────────────────────────────────────────── */}
+        <div className="mb-5 flex items-center gap-3">
+          {/* Segmented control takes the primary space */}
+          <div className="flex-1 grid grid-cols-2 p-1 rounded-full"
+            style={{ background: "var(--zr-surface-3)" }}>
+            <button onClick={() => setTab("dashboard")}
+              className="py-2 text-[14px] font-semibold rounded-full transition-all"
+              style={tab === "dashboard"
+                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                : { background: "transparent", color: "var(--zr-text-secondary)" }}>
               Dashboard
-            </h1>
-            <Link href="/analytics"
-              style={{ color: "var(--zr-orange)" }}
-              className="text-[15px] font-medium mt-1.5 inline-flex items-center gap-1">
-              Analytics
-              <svg width="7" height="12" viewBox="0 0 8 14" fill="none" style={{ marginLeft: "2px" }}>
-                <path d="M1 1L7 7L1 13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
+            </button>
+            <button onClick={() => setTab("customers")}
+              className="py-2 text-[14px] font-semibold rounded-full transition-all"
+              style={tab === "customers"
+                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+              Customers
+            </button>
           </div>
+
+          {/* iOS-style plain text action buttons (no pill, no shadow).
+              "Edit" becomes "Done" in edit mode. "Reset" appears in edit mode. */}
           {tab === "dashboard" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 shrink-0">
               {editingLayout && (
                 <button onClick={resetLayout}
-                  className="text-[13px] px-3 py-2 rounded-full"
-                  style={{ color: "var(--zr-text-secondary)", background: "var(--zr-surface-2)" }}>
+                  className="text-[15px] font-normal"
+                  style={{ color: "var(--zr-text-secondary)" }}>
                   Reset
                 </button>
               )}
               <button onClick={() => setEditingLayout(!editingLayout)}
-                className="text-[13px] px-3.5 py-2 rounded-full font-medium transition-colors"
-                style={editingLayout
-                  ? { background: "var(--zr-orange)", color: "#fff", boxShadow: "0 1px 2px rgba(214,90,49,0.25)" }
-                  : { background: "var(--zr-surface-1)", color: "var(--zr-text-secondary)", boxShadow: "var(--zr-shadow-sm)" }}>
-                {editingLayout ? "Done" : "Customize"}
+                className="text-[15px] font-medium"
+                style={{ color: "var(--zr-orange)" }}>
+                {editingLayout ? "Done" : "Edit"}
               </button>
             </div>
           )}
-        </div>
-
-        {/* ── iOS-style segmented control ──────────────────────────── */}
-        <div className="mb-6 grid grid-cols-2 p-1 rounded-full"
-          style={{ background: "var(--zr-surface-3)" }}>
-          <button onClick={() => setTab("dashboard")}
-            className="py-2 text-[14px] font-semibold rounded-full transition-all"
-            style={tab === "dashboard"
-              ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
-              : { background: "transparent", color: "var(--zr-text-secondary)" }}>
-            Dashboard
-          </button>
-          <button onClick={() => setTab("customers")}
-            className="py-2 text-[14px] font-semibold rounded-full transition-all"
-            style={tab === "customers"
-              ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
-              : { background: "transparent", color: "var(--zr-text-secondary)" }}>
-            Customers
-          </button>
         </div>
 
         {tab === "dashboard" && (

@@ -301,6 +301,16 @@ function CustomerQuoteInner() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
+      {/* Print-specific styles + hide interactive chrome when printing. */}
+      <style jsx global>{`
+        @media print {
+          body { background: #ffffff !important; }
+          .print\\:hidden { display: none !important; }
+          /* Keep backgrounds/colors in the printed version */
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
+
       {/* Header — clean white, professional. Business plan shows the
           installer's logo above the business name; lower plans show just
           the business name in default styling. */}
@@ -317,6 +327,15 @@ function CustomerQuoteInner() {
         {company?.phone && (
           <a href={`tel:${company.phone.replace(/\D/g,"")}`} className="text-xs mt-1 inline-block font-medium" style={{ color: "#2563eb" }}>{company.phone}</a>
         )}
+        {/* Customer-accessible print / save-as-PDF button */}
+        <button
+          onClick={() => window.print()}
+          className="print:hidden mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors"
+          style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
+          title="Print or save as PDF"
+        >
+          🖨 Print / Save as PDF
+        </button>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-5">

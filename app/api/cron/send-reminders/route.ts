@@ -294,6 +294,17 @@ export async function GET(req: NextRequest) {
           to: customer.email, subject: tpl.subject, html: tpl.html,
           type: "custom", companyId: mat.company_id,
         });
+        // Also drop a bell notification so the team sees it in the app
+        await svc.from("notifications").insert([{
+          company_id: mat.company_id,
+          type: "shipment_shipped",
+          title: `🚚 Shipped — ${customer.first_name || "Customer"}`,
+          message: `${mat.description || "Materials"} in transit${mat.tracking_number ? ` · ${mat.tracking_number}` : ""}`,
+          icon: "🚚",
+          link: `/quotes/${mat.quote_id}`,
+          quote_id: mat.quote_id,
+          customer_id: quote.customer_id,
+        }]);
         await svc.from("quote_materials").update({ customer_ship_notified_at: new Date().toISOString() }).eq("id", mat.id);
         shipResults.shipped++;
       } catch (err) {
@@ -333,6 +344,16 @@ export async function GET(req: NextRequest) {
           to: customer.email, subject: tpl.subject, html: tpl.html,
           type: "custom", companyId: q.company_id,
         });
+        await svc.from("notifications").insert([{
+          company_id: q.company_id,
+          type: "order_ready_install",
+          title: `🎉 Ready for install — ${customer.first_name || "Customer"}`,
+          message: `All materials in. Time to schedule.`,
+          icon: "🎉",
+          link: `/quotes/${q.id}`,
+          quote_id: q.id,
+          customer_id: q.customer_id,
+        }]);
         await svc.from("quotes").update({ customer_arrival_notified_at: new Date().toISOString() }).eq("id", q.id);
         shipResults.arrived++;
       } catch (err) {

@@ -47,7 +47,7 @@ const PLANS = [
   {
     name: "Starter",
     price: 49,
-    users: "1 user",
+    users: "1 user",     // phrasing for "Includes {plan.users}"
     desc: "Perfect for solo installers",
     features: ["CRM & Lead Management", "Scheduling & Calendar", "Quoting & E-Signatures", "Invoicing & Payments", "Mobile-Ready (works on iPhone)"],
     cta: "Start Free Trial",
@@ -56,7 +56,7 @@ const PLANS = [
   {
     name: "Professional",
     price: 99,
-    users: "Up to 3 users",
+    users: "up to 3 users",
     desc: "For growing teams",
     features: ["Everything in Starter", "Inventory & Order Tracking", "Analytics Dashboard", "Warehouse Location Tracking", "Job Materials Checklist", "Email Parsing for Shipments"],
     cta: "Start Free Trial",
@@ -65,7 +65,7 @@ const PLANS = [
   {
     name: "Business",
     price: 199,
-    users: "Up to 5 users",
+    users: "up to 5 users",
     desc: "For established operations",
     features: ["Everything in Professional", "Builder/Contractor Portal", "Workflow Automation", "White-Label Branding", "Team Payroll Tracking", "Priority Support"],
     cta: "Start Free Trial",
@@ -438,8 +438,11 @@ export function LandingPage() {
                   <span className="text-4xl font-black">${plan.price}</span>
                   <span className="text-sm" style={{ color: plan.highlight ? "#9ca3af" : "#6b7280" }}>/mo</span>
                 </div>
-                <p className="mt-1 text-xs" style={{ color: plan.highlight ? "#9ca3af" : "#9ca3af" }}>
-                  {plan.users} included &middot; $25/mo per extra user
+                <p className="mt-1 text-xs whitespace-nowrap" style={{ color: plan.highlight ? "#9ca3af" : "#9ca3af" }}>
+                  Includes {plan.users}
+                </p>
+                <p className="text-xs" style={{ color: plan.highlight ? "#9ca3af" : "#9ca3af" }}>
+                  +$25/mo per additional user
                 </p>
                 <ul className="mt-5 flex-1 space-y-2.5">
                   {plan.features.map((f, j) => (

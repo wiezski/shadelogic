@@ -33,13 +33,13 @@ type TeamMember = { id: string; full_name: string | null };
 
 type VisitAgg = {
   territory_id: string;
-  visits: number;
+  visits: number;      // individual visit rows
+  sweeps: number;      // sweep rows
   leads: number;
   conversations: number;
   last_visited_at: string | null;
-  // rolled up from both canvas_visits (outcome='flyer') + canvas_sweeps.hangers_dropped
-  hangers: number;
-  homes_covered: number; // total from sweeps (hangers + knocks + no-answers) + individual visits
+  hangers: number;     // rolled up from visits (outcome=flyer) + sweeps.hangers_dropped
+  homes_covered: number; // total from sweeps + individual visits
 };
 
 const OUTCOME_LABELS: Record<string, string> = {
@@ -57,6 +57,7 @@ export default function CanvasPage() {
   const [aggs, setAggs] = useState<Record<string, VisitAgg>>({});
   const [teamMap, setTeamMap] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<"all" | "mine">("all");
+  const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -68,12 +69,13 @@ export default function CanvasPage() {
     if (authLoading) return;
     if (!companyId || !allowed) { setLoading(false); return; }
     load();
-  }, [companyId, allowed, authLoading]);
+  }, [companyId, allowed, authLoading, showArchived]);
 
   async function load() {
     setLoading(true);
+    const tQuery = supabase.from("canvas_territories").select("*").order("created_at", { ascending: false });
     const [tRes, vRes, sRes, pRes] = await Promise.all([
-      supabase.from("canvas_territories").select("*").is("archived_at", null).order("created_at", { ascending: false }),
+      showArchived ? tQuery : tQuery.is("archived_at", null),
       supabase.from("canvas_visits").select("territory_id, outcome, visited_at"),
       supabase.from("canvas_sweeps").select("territory_id, hangers_dropped, knocked_count, no_answer_count, walked_at"),
       supabase.from("profiles").select("id, full_name"),
@@ -88,7 +90,7 @@ export default function CanvasPage() {
     const byTerritory: Record<string, VisitAgg> = {};
     const ensure = (tid: string) => {
       if (!byTerritory[tid]) {
-        byTerritory[tid] = { territory_id: tid, visits: 0, leads: 0, conversations: 0, hangers: 0, homes_covered: 0, last_visited_at: null };
+        byTerritory[tid] = { territory_id: tid, visits: 0, sweeps: 0, leads: 0, conversations: 0, hangers: 0, homes_covered: 0, last_visited_at: null };
       }
       return byTerritory[tid];
     };
@@ -109,6 +111,7 @@ export default function CanvasPage() {
     (sRes.data || []).forEach((s: { territory_id: string | null; hangers_dropped: number | null; knocked_count: number | null; no_answer_count: number | null; walked_at: string }) => {
       const tid = s.territory_id || "__unfiled__";
       const a = ensure(tid);
+      a.sweeps++;
       a.hangers += s.hangers_dropped || 0;
       a.homes_covered += (s.hangers_dropped || 0) + (s.knocked_count || 0) + (s.no_answer_count || 0);
       if (!a.last_visited_at || s.walked_at > a.last_visited_at) a.last_visited_at = s.walked_at;
@@ -215,22 +218,32 @@ export default function CanvasPage() {
           </div>
         ) : (
           <>
-            {/* Filter tabs — Mine vs All */}
-            <div className="mb-3 inline-flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
-              <button
-                onClick={() => setFilter("all")}
-                className="px-3 py-1.5 text-xs font-medium transition-colors"
-                style={{ background: filter === "all" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: filter === "all" ? "#fff" : "var(--zr-text-secondary)" }}
-              >
-                All ({territories.length})
-              </button>
-              <button
-                onClick={() => setFilter("mine")}
-                className="px-3 py-1.5 text-xs font-medium transition-colors"
-                style={{ background: filter === "mine" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: filter === "mine" ? "#fff" : "var(--zr-text-secondary)" }}
-              >
-                Mine ({territories.filter(t => t.assigned_to === user?.id).length})
-              </button>
+            {/* Filter tabs + archive toggle */}
+            <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+              <div className="inline-flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+                <button
+                  onClick={() => setFilter("all")}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{ background: filter === "all" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: filter === "all" ? "#fff" : "var(--zr-text-secondary)" }}
+                >
+                  All ({territories.filter(t => !t.archived_at).length})
+                </button>
+                <button
+                  onClick={() => setFilter("mine")}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{ background: filter === "mine" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: filter === "mine" ? "#fff" : "var(--zr-text-secondary)" }}
+                >
+                  Mine ({territories.filter(t => t.assigned_to === user?.id && !t.archived_at).length})
+                </button>
+              </div>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--zr-text-muted)" }}>
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={e => setShowArchived(e.target.checked)}
+                />
+                Show archived
+              </label>
             </div>
 
             <div className="space-y-2">
@@ -245,23 +258,33 @@ export default function CanvasPage() {
                   // Never visited but on a recanvass cadence → due now
                   dueForRecanvass = true;
                 }
+                const isArchived = !!t.archived_at;
                 return (
                   <Link
                     key={t.id}
                     href={`/canvas/${t.id}`}
                     className="block rounded-lg p-4 transition-colors hover:brightness-110"
-                    style={{ background: "var(--zr-surface-1)", border: `1px solid ${dueForRecanvass ? "rgba(239,68,68,0.5)" : "var(--zr-border)"}` }}
+                    style={{
+                      background: "var(--zr-surface-1)",
+                      border: `1px solid ${isArchived ? "var(--zr-border)" : dueForRecanvass ? "rgba(239,68,68,0.5)" : "var(--zr-border)"}`,
+                      opacity: isArchived ? 0.6 : 1,
+                    }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <div className="font-semibold truncate" style={{ color: "var(--zr-text-primary)" }}>{t.name}</div>
-                          {t.assigned_to && teamMap[t.assigned_to] && (
+                          {isArchived && (
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-muted)", border: "1px solid var(--zr-border)" }}>
+                              Archived
+                            </span>
+                          )}
+                          {!isArchived && t.assigned_to && teamMap[t.assigned_to] && (
                             <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(59,130,246,0.15)", color: "#2563eb" }}>
                               {t.assigned_to === user?.id ? "You" : teamMap[t.assigned_to]}
                             </span>
                           )}
-                          {dueForRecanvass && (
+                          {!isArchived && dueForRecanvass && (
                             <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
                               🔄 Due for re-canvass
                             </span>
@@ -282,10 +305,14 @@ export default function CanvasPage() {
                           <div className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>{t.description}</div>
                         )}
                       </div>
-                      {a && a.homes_covered > 0 && (
+                      {a && (a.homes_covered > 0 || a.sweeps > 0 || a.visits > 0) && (
                         <div className="shrink-0 text-right text-xs" style={{ color: "var(--zr-text-muted)" }}>
                           <div><strong style={{ color: "var(--zr-text-primary)" }}>{a.homes_covered}</strong> homes</div>
-                          {a.hangers > 0 && <div>{a.hangers} hangers</div>}
+                          <div className="flex gap-2 justify-end mt-0.5">
+                            {a.sweeps > 0 && <span>🚶 {a.sweeps} sweep{a.sweeps === 1 ? "" : "s"}</span>}
+                            {a.visits > 0 && <span>📍 {a.visits} visit{a.visits === 1 ? "" : "s"}</span>}
+                          </div>
+                          {a.hangers > 0 && <div className="mt-0.5">{a.hangers} hangers</div>}
                           {a.leads > 0 && <div style={{ color: "#16a34a" }}>{a.leads} lead{a.leads === 1 ? "" : "s"}</div>}
                           {a.last_visited_at && (
                             <div className="text-[10px] mt-0.5">

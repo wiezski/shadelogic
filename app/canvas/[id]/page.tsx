@@ -25,6 +25,7 @@ type Territory = {
   materials_used: string | null;
   recanvass_interval_days: number | null;
   map_image_url: string | null;
+  archived_at: string | null;
 };
 
 type Visit = {
@@ -184,6 +185,21 @@ export default function TerritoryDetailPage() {
               currentUrl={territory.map_image_url}
               onUploaded={(url) => setTerritory({ ...territory, map_image_url: url })}
             />
+            <ArchiveButton
+              territoryId={territoryId}
+              isArchived={!!territory.archived_at}
+              onChanged={(archived_at) => setTerritory({ ...territory, archived_at })}
+            />
+          </div>
+        )}
+
+        {/* Archived banner */}
+        {territory.archived_at && (
+          <div
+            className="mt-3 rounded-lg p-3 text-xs"
+            style={{ background: "var(--zr-surface-2)", border: "1px dashed var(--zr-border)", color: "var(--zr-text-muted)" }}
+          >
+            This territory was archived on {new Date(territory.archived_at).toLocaleDateString()}. Past sweeps and visits are preserved for your records. Use the Restore button above to bring it back.
           </div>
         )}
 
@@ -403,6 +419,53 @@ function ShareToCanvasserButton({ territory }: { territory: Territory }) {
         📋 Copy
       </button>
     </div>
+  );
+}
+
+// ─── Archive / Restore territory ─────────────────────────────────────────
+function ArchiveButton({ territoryId, isArchived, onChanged }: { territoryId: string; isArchived: boolean; onChanged: (archived_at: string | null) => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function archive() {
+    if (!confirm("Archive this territory? Past sweeps and visits are preserved for your records. You can restore it anytime.")) return;
+    setBusy(true);
+    const now = new Date().toISOString();
+    const { error: err } = await supabase.from("canvas_territories").update({ archived_at: now }).eq("id", territoryId);
+    setBusy(false);
+    if (err) { alert("Failed: " + err.message); return; }
+    onChanged(now);
+  }
+
+  async function restore() {
+    setBusy(true);
+    const { error: err } = await supabase.from("canvas_territories").update({ archived_at: null }).eq("id", territoryId);
+    setBusy(false);
+    if (err) { alert("Failed: " + err.message); return; }
+    onChanged(null);
+  }
+
+  if (isArchived) {
+    return (
+      <button
+        onClick={restore}
+        disabled={busy}
+        className="rounded px-3 py-1.5 text-xs font-semibold"
+        style={{ background: "rgba(22,163,74,0.15)", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}
+      >
+        {busy ? "..." : "↩ Restore"}
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={archive}
+      disabled={busy}
+      className="rounded px-3 py-1.5 text-xs font-medium"
+      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-muted)", border: "1px solid var(--zr-border)" }}
+      title="Archive this territory when the campaign is done. Data is preserved."
+    >
+      {busy ? "..." : "📦 Archive"}
+    </button>
   );
 }
 

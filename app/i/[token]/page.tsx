@@ -209,6 +209,15 @@ export default function PublicInvoicePage() {
   return (
     <main className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto max-w-xl space-y-4">
+        {/* Print styles for customer-saved PDF */}
+        <style jsx global>{`
+          @media print {
+            body { background: #ffffff !important; }
+            .print\\:hidden { display: none !important; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+        `}</style>
+
         {/* Company header — Business plan tenants get their custom logo
             above the business name; lower plans show just the name. */}
         {company && (
@@ -225,6 +234,14 @@ export default function PublicInvoicePage() {
               {company.phone && <span>{company.phone}</span>}
               {company.email && <span>{company.email}</span>}
             </div>
+            <button
+              onClick={() => window.print()}
+              className="print:hidden mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors"
+              style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
+              title="Print or save as PDF"
+            >
+              🖨 Print / Save as PDF
+            </button>
           </div>
         )}
 

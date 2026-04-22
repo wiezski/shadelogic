@@ -823,35 +823,67 @@ function SchedulePageInner() {
       )}
 
       {/* ══ CREATE MODAL ══ */}
-      {showCreate && (
-        <Modal title="New Appointment" onClose={() => setShowCreate(false)}>
-          <form onSubmit={createAppointment} className="space-y-3">
+      {showCreate && (() => {
+        const fieldStyle: React.CSSProperties = {
+          width: "100%",
+          background: "rgba(60,60,67,0.06)",
+          color: "var(--zr-text-primary)",
+          fontSize: "14px",
+          letterSpacing: "-0.012em",
+          padding: "10px 14px",
+          borderRadius: 12,
+          border: "none",
+          outline: "none",
+        };
+        const labelStyle: React.CSSProperties = {
+          fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500,
+          display: "block", marginBottom: 6, paddingLeft: 4, letterSpacing: "-0.005em",
+        };
+        return (
+        <Modal title="New appointment" onClose={() => setShowCreate(false)}>
+          <form onSubmit={createAppointment} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
             {/* Customer */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Customer *</label>
-              <input type="text" placeholder="Search customers…" value={custSearch}
+              <label style={labelStyle}>Customer</label>
+              <input type="text" placeholder="Search customers" value={custSearch}
                 onChange={e => { setCustSearch(e.target.value); if (!e.target.value) setCustId(""); }}
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                style={fieldStyle} />
               {custSearch && !custId && filteredCusts.length > 0 && (
-                <div className="border rounded mt-1 max-h-36 overflow-y-auto shadow-sm">
-                  {filteredCusts.map(c => (
+                <div style={{
+                  background: "var(--zr-surface-1)",
+                  borderRadius: 12,
+                  marginTop: 6,
+                  maxHeight: 144,
+                  overflowY: "auto",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                }}>
+                  {filteredCusts.map((c, i, arr) => (
                     <button key={c.id} type="button" onClick={() => pickCustomer(c)}
-                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-50 border-b last:border-0">
+                      className="w-full text-left transition-colors"
+                      style={{
+                        padding: "10px 14px",
+                        borderBottom: i < arr.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none",
+                        fontSize: "14px",
+                        color: "var(--zr-text-primary)",
+                        letterSpacing: "-0.012em",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.04)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                       {c.name}
-                      {c.address && <span className="text-xs text-gray-400 ml-1">· {parseAddressDisplay(c.address).split(",")[0]}</span>}
+                      {c.address && <span style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.5)", marginLeft: 6 }}>· {parseAddressDisplay(c.address).split(",")[0]}</span>}
                     </button>
                   ))}
                 </div>
               )}
-              {custId && <div className="text-xs text-green-600 mt-0.5">✓ Customer selected</div>}
+              {custId && <div style={{ fontSize: "12.5px", color: "var(--zr-success)", marginTop: 4, paddingLeft: 4 }}>Customer selected</div>}
             </div>
 
             {/* Type */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Type</label>
+              <label style={labelStyle}>Type</label>
               <select value={createType} onChange={e => handleTypeChange(e.target.value as AppointmentType)}
-                className="w-full border rounded px-2 py-1.5 text-sm">
+                style={{ ...fieldStyle, appearance: "none", WebkitAppearance: "none", paddingRight: 36, cursor: "pointer" }}>
                 {Object.entries(APPT_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>{v.label}</option>
                 ))}
@@ -859,24 +891,24 @@ function SchedulePageInner() {
             </div>
 
             {/* Date + Time */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Date</label>
+                <label style={labelStyle}>Date</label>
                 <input type="date" value={createDate} onChange={e => setCreateDate(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm" required />
+                  style={fieldStyle} required />
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Time</label>
+                <label style={labelStyle}>Time</label>
                 <input type="time" value={createTime} onChange={e => setCreateTime(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm" required />
+                  style={fieldStyle} required />
               </div>
             </div>
 
             {/* Duration */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Duration</label>
+              <label style={labelStyle}>Duration</label>
               <select value={createMins} onChange={e => setCreateMins(Number(e.target.value))}
-                className="w-full border rounded px-2 py-1.5 text-sm">
+                style={{ ...fieldStyle, appearance: "none", WebkitAppearance: "none", paddingRight: 36, cursor: "pointer" }}>
                 <option value={30}>30 min</option>
                 <option value={60}>1 hour</option>
                 <option value={90}>1.5 hours</option>
@@ -890,18 +922,18 @@ function SchedulePageInner() {
 
             {/* Address */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Address</label>
+              <label style={labelStyle}>Address</label>
               <input type="text" value={createAddr} onChange={e => setCreateAddr(e.target.value)}
-                placeholder="Auto-filled from customer…"
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                placeholder="Auto-filled from customer"
+                style={fieldStyle} />
             </div>
 
             {/* Assign To */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Assign To</label>
+              <label style={labelStyle}>Assign to</label>
               <select value={createAssignee} onChange={e => setCreateAssignee(e.target.value)}
-                className="w-full border rounded px-2 py-1.5 text-sm">
-                <option value="">— Unassigned —</option>
+                style={{ ...fieldStyle, appearance: "none", WebkitAppearance: "none", paddingRight: 36, cursor: "pointer" }}>
+                <option value="">Unassigned</option>
                 {team.map(t => (
                   <option key={t.id} value={t.id}>{t.name}{t.id === user?.id ? " (me)" : ""}</option>
                 ))}
@@ -910,23 +942,34 @@ function SchedulePageInner() {
 
             {/* Notes */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Notes</label>
+              <label style={labelStyle}>Notes</label>
               <textarea value={createNotes} onChange={e => setCreateNotes(e.target.value)}
-                rows={2} placeholder="Internal notes…"
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                rows={2} placeholder="Internal notes"
+                style={{ ...fieldStyle, resize: "vertical", fontFamily: "inherit" }} />
             </div>
 
-            <div className="flex gap-2 pt-1">
-              <button type="submit" disabled={saving}
-                className="flex-1 bg-black text-white rounded py-2 text-sm disabled:opacity-50">
-                {saving ? "Saving…" : "Create Appointment"}
-              </button>
+            <div className="flex items-center justify-end gap-5 pt-2">
               <button type="button" onClick={() => setShowCreate(false)}
-                className="border rounded py-2 px-4 text-sm">Cancel</button>
+                style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em", padding: "8px 4px" }}
+                className="transition-opacity active:opacity-60">Cancel</button>
+              <button type="submit" disabled={saving}
+                className="transition-all active:scale-[0.97]"
+                style={{
+                  background: "var(--zr-orange)",
+                  color: "#fff",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  padding: "9px 22px",
+                  borderRadius: 999,
+                  letterSpacing: "-0.012em",
+                  opacity: saving ? 0.5 : 1,
+                }}>
+                {saving ? "Saving…" : "Create"}
+              </button>
             </div>
           </form>
         </Modal>
-      )}
+      );})()}
 
       {/* ══ CONFIRMATION MODAL ══ */}
       {showConfirm && selectedAppt && (
@@ -1213,13 +1256,32 @@ function Modal({ title, onClose, children }: {
   title: string; onClose: () => void; children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-xl rounded-t-2xl max-h-[92vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-2xl sm:rounded-t-xl z-10">
-          <h2 className="font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-black text-xl leading-none">✕</button>
+    // iOS sheet — slides up from bottom on mobile, centered on desktop
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}>
+      <div className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto"
+        style={{
+          background: "var(--zr-surface-1)",
+          borderRadius: 20,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+          boxShadow: "0 -6px 30px rgba(0,0,0,0.12)",
+        }}>
+        <div className="sticky top-0 flex items-center justify-between z-10"
+          style={{
+            background: "var(--zr-surface-1)",
+            padding: "16px 20px 12px",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderBottom: "0.5px solid rgba(60,60,67,0.08)",
+          }}>
+          <h2 style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.018em", color: "var(--zr-text-primary)" }}>{title}</h2>
+          <button onClick={onClose}
+            className="transition-opacity active:opacity-60"
+            style={{ color: "rgba(60,60,67,0.5)", fontSize: "22px", lineHeight: 1, padding: 4 }}
+            aria-label="Close">×</button>
         </div>
-        <div className="p-4">{children}</div>
+        <div style={{ padding: "18px 20px 22px" }}>{children}</div>
       </div>
     </div>
   );

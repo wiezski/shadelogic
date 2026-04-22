@@ -1214,16 +1214,23 @@ export default function QuotePage() {
 
   return (
     <PermissionGate require={["create_quotes", "view_pricing"]}>
-      <main className="min-h-screen p-4 text-sm pb-16" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
-        <div className="mx-auto max-w-3xl space-y-4">
+      <main className="min-h-screen pt-2 pb-24 text-sm" style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }}>
+        <div className="mx-auto max-w-3xl space-y-4 px-4 sm:px-6">
 
+        {/* iOS back + subtle Print / PDF secondary action */}
         <div className="flex items-center justify-between">
-          <Link href={`/customers/${quote.customer_id}`} className="text-sm hover:underline" style={{ color: "var(--zr-orange)" }}>
-            ← Back to {customerName}
+          <Link href={`/customers/${quote.customer_id}`}
+            style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {customerName.split(" ")[0]}
           </Link>
           <a href={`/quotes/${quoteId}/print`} target="_blank" rel="noreferrer"
-            className="text-xs rounded px-2.5 py-1.5" style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}>
-            🖨 Print / PDF
+            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            Print / PDF
           </a>
         </div>
 
@@ -1259,18 +1266,30 @@ export default function QuotePage() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
+        {/* Header — big Apple-style title + status pill + customer/date sub */}
+        <div className="flex items-start justify-between gap-3 px-1">
           <div className="flex-1 min-w-0">
             <input value={title} onChange={e => setTitle(e.target.value)} onBlur={saveTitle}
-              placeholder="Quote title…"
-              className="text-xl font-bold w-full outline-none border-b border-transparent focus:border-gray-300 pb-0.5" />
-            <div className="text-xs text-gray-400 mt-1">
+              placeholder="Quote title"
+              style={{
+                fontSize: "26px",
+                fontWeight: 700,
+                letterSpacing: "-0.025em",
+                color: "var(--zr-text-primary)",
+                lineHeight: 1.15,
+                width: "100%",
+                outline: "none",
+                border: "none",
+                background: "transparent",
+                padding: 0,
+              }} />
+            <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 4, letterSpacing: "-0.005em" }}>
               {customerName} · Created {new Date(quote.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               {quote.sent_at && ` · Sent ${new Date(quote.sent_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
             </div>
           </div>
-          <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${statusInfo.badge}`}>{statusInfo.label}</span>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 ${statusInfo.badge}`}
+            style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.01em" }}>{statusInfo.label}</span>
         </div>
 
         {/* Signed banner */}
@@ -1319,11 +1338,21 @@ export default function QuotePage() {
           </div>
         )}
 
-        {/* Get signature button */}
+        {/* Primary action — Request signature. Solid orange pill, no emoji,
+            placed directly under the header so it reads as the next step. */}
         {quote.status !== "rejected" && !quote.signed_at && lines.length > 0 && (
           <button onClick={() => setShowSignature(true)}
-            className="w-full rounded border border-blue-400 text-blue-700 py-2.5 text-sm font-medium hover:bg-blue-50">
-            ✍ Get Customer Signature
+            className="w-full transition-all active:scale-[0.98]"
+            style={{
+              background: "var(--zr-orange)",
+              color: "#fff",
+              fontSize: "15px",
+              fontWeight: 600,
+              padding: "12px 16px",
+              borderRadius: 14,
+              letterSpacing: "-0.012em",
+            }}>
+            Request signature
           </button>
         )}
 
@@ -1344,45 +1373,52 @@ export default function QuotePage() {
           );
         })()}
 
-        {/* Status */}
-        <div className="rounded border p-3">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Status</div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {STATUSES.map(s => (
-              <button key={s.value} onClick={() => updateStatus(s.value)}
-                disabled={saving || s.value === quote.status}
-                className={`rounded border py-2 px-2 text-sm font-medium transition-colors ${s.value === quote.status ? "bg-black text-white border-black" : "hover:bg-gray-50 text-gray-600"}`}>
-                {s.label}
-                {s.value === "sent"     && quote.status !== "sent"     && <div className="text-xs font-normal opacity-60">→ Quoted</div>}
-                {s.value === "approved" && quote.status !== "approved" && <div className="text-xs font-normal opacity-60">→ Sold</div>}
-              </button>
-            ))}
+        {/* Status — iOS segmented pill, no border box */}
+        <div>
+          <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 6, paddingLeft: 4 }}>Status</div>
+          <div className="grid grid-cols-4 p-1 rounded-full" style={{ background: "var(--zr-surface-3)" }}>
+            {STATUSES.map(s => {
+              const active = s.value === quote.status;
+              return (
+                <button key={s.value} onClick={() => updateStatus(s.value)}
+                  disabled={saving || active}
+                  className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+                  style={active
+                    ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                    : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* ── LINE ITEMS ── */}
-        <div className="rounded border">
-          <div className="flex items-center justify-between px-3 py-2 border-b">
-            <div className="font-semibold text-sm">Quote Lines <span className="text-gray-400 font-normal">({lines.length})</span></div>
-            <div className="flex gap-2">
-              <button onClick={() => { loadTemplateList(); setShowLoadTemplate(true); }}
-                className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
-                📄 Template
-              </button>
-              <button onClick={() => setShowLinkMeasure(true)}
-                className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
-                📐 Measure
-              </button>
-              <button onClick={() => setShowQuickAdd(v => !v)}
-                className={`rounded border px-2.5 py-1 text-xs ${showQuickAdd ? "bg-black text-white" : "hover:bg-gray-50 text-gray-600"}`}>
-                ⚡ Quick Add
-              </button>
-              <button onClick={() => setShowAddLine(true)}
-                className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50 text-gray-600">
-                + Custom
-              </button>
+        <div className="rounded-[14px]" style={{ background: "var(--zr-surface-1)" }}>
+          {/* Header: title + plain text actions. No tinted icon tiles. */}
+          <div style={{ padding: "12px 14px 10px" }}>
+            <div className="flex items-baseline justify-between gap-3 flex-wrap">
+              <div style={{ fontSize: "15px", fontWeight: 600, letterSpacing: "-0.015em", color: "var(--zr-text-primary)" }}>
+                Quote lines <span style={{ color: "rgba(60,60,67,0.45)", fontWeight: 500 }}>({lines.length})</span>
+              </div>
+              {/* Plain text actions separated by · — Apple-style inline verbs */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <button onClick={() => { loadTemplateList(); setShowLoadTemplate(true); }}
+                  style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                  className="transition-opacity active:opacity-60">Template</button>
+                <button onClick={() => setShowLinkMeasure(true)}
+                  style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                  className="transition-opacity active:opacity-60">Measure</button>
+                <button onClick={() => setShowQuickAdd(v => !v)}
+                  style={{ color: showQuickAdd ? "var(--zr-orange)" : "var(--zr-orange)", fontSize: "13px", fontWeight: showQuickAdd ? 600 : 500, letterSpacing: "-0.012em" }}
+                  className="transition-opacity active:opacity-60">Quick add</button>
+                <button onClick={() => setShowAddLine(true)}
+                  style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                  className="transition-opacity active:opacity-60">+ Custom</button>
+              </div>
             </div>
           </div>
+          <div style={{ borderTop: "0.5px solid rgba(60,60,67,0.08)" }} />
 
           {/* Quick-add product grid */}
           {showQuickAdd && products.length > 0 && (
@@ -2056,29 +2092,77 @@ export default function QuotePage() {
           </div>
         )}
 
-        {/* Send */}
-        <div className="rounded border p-3 space-y-2">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Send Quote</div>
-          {/* Customer approval link */}
-          <div className="rounded bg-blue-50 border border-blue-200 px-3 py-2 space-y-1.5">
-            <div className="text-xs text-blue-700 font-medium">📲 Customer Approval Link</div>
-            <div className="text-xs text-blue-600 font-mono break-all">
+        {/* Send — iOS share-sheet hierarchy. One quiet link reference on
+            top; three equal send actions (Text / Email / Copy); Branded
+            email as a subtler verified action when email exists; Schedule
+            follow-up as plain text secondary. No colored button walls. */}
+        <div>
+          <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 6, paddingLeft: 4 }}>Send to customer</div>
+
+          {/* Approval link preview — calm, selectable, no colored box */}
+          <div style={{ padding: "10px 14px", background: "rgba(60,60,67,0.04)", borderRadius: 12, marginBottom: 10 }}>
+            <div style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)", fontWeight: 500, letterSpacing: "-0.003em", marginBottom: 3 }}>
+              Customer link
+            </div>
+            <div style={{ fontSize: "12.5px", color: "var(--zr-text-primary)", fontFamily: "ui-monospace, Menlo, monospace", wordBreak: "break-all", lineHeight: 1.4 }}>
               {typeof window !== "undefined" ? `${window.location.origin}/q/${quoteId}` : `/q/${quoteId}`}
             </div>
-            <a
-              href={`sms:${customer?.phone ? customer.phone.replace(/\D/g,"") : ""}${/iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") ? "&" : "?"}body=${encodeURIComponent(`Hi ${customerName.split(" ")[0]}! Your quote from ${typeof window !== "undefined" ? new URL(window.location.href).hostname : "us"} is ready. View and approve here: ${typeof window !== "undefined" ? window.location.origin : ""}/q/${quoteId}`)}`}
-              className="flex items-center gap-1.5 text-xs text-blue-700 font-medium hover:underline">
-              💬 Text link to customer →
-            </a>
           </div>
-          <a href={`sms:${customer?.phone ? customer.phone.replace(/\D/g,"") : ""}${/iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") ? "&" : "?"}body=${encodeURIComponent(smsSummary)}`}
-            className="flex items-center gap-2 w-full rounded border border-green-500 text-green-700 px-3 py-2 text-sm hover:bg-green-50">
-            💬 Send via Text {customer?.phone ? `(${customer.phone})` : ""}
-          </a>
-          <a href={`mailto:${customer?.email ?? ""}?subject=${encodeURIComponent(`Your Quote — ${title || "ZeroRemake"}`)}&body=${encodeURIComponent(emailBody)}`}
-            className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
-            📧 Send via Email App {customer?.email ? `(${customer.email})` : ""}
-          </a>
+
+          {/* Three equal send actions, iOS share-sheet style */}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <a href={`sms:${customer?.phone ? customer.phone.replace(/\D/g,"") : ""}${/iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") ? "&" : "?"}body=${encodeURIComponent(smsSummary)}`}
+              className="flex flex-col items-center gap-1.5 transition-all active:scale-[0.97]"
+              style={{
+                background: "rgba(60,60,67,0.05)",
+                borderRadius: 14,
+                padding: "12px 8px",
+                textDecoration: "none",
+                color: "var(--zr-text-primary)",
+              }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--zr-success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span style={{ fontSize: "12.5px", fontWeight: 500, letterSpacing: "-0.012em" }}>Text</span>
+            </a>
+            <a href={`mailto:${customer?.email ?? ""}?subject=${encodeURIComponent(`Your Quote — ${title || "ZeroRemake"}`)}&body=${encodeURIComponent(emailBody)}`}
+              className="flex flex-col items-center gap-1.5 transition-all active:scale-[0.97]"
+              style={{
+                background: "rgba(60,60,67,0.05)",
+                borderRadius: 14,
+                padding: "12px 8px",
+                textDecoration: "none",
+                color: "var(--zr-text-primary)",
+              }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--zr-info)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              <span style={{ fontSize: "12.5px", fontWeight: 500, letterSpacing: "-0.012em" }}>Email</span>
+            </a>
+            <button onClick={() => {
+                const url = typeof window !== "undefined" ? `${window.location.origin}/q/${quoteId}` : `/q/${quoteId}`;
+                if (typeof navigator !== "undefined" && navigator.clipboard) {
+                  navigator.clipboard.writeText(url);
+                }
+              }}
+              className="flex flex-col items-center gap-1.5 transition-all active:scale-[0.97]"
+              style={{
+                background: "rgba(60,60,67,0.05)",
+                borderRadius: 14,
+                padding: "12px 8px",
+                color: "var(--zr-text-primary)",
+              }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--zr-orange)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span style={{ fontSize: "12.5px", fontWeight: 500, letterSpacing: "-0.012em" }}>Copy link</span>
+            </button>
+          </div>
+
+          {/* Branded email — verified primary-send action, shown when we
+              have an email address. Subtle pill, not a loud button. */}
           {customer?.email && (
             <button
               disabled={emailSending || emailSentQuote}
@@ -2098,7 +2182,6 @@ export default function QuotePage() {
                 });
                 if (ok) {
                   setEmailSentQuote(true);
-                  // Auto-mark as sent if still draft
                   if (quote.status === "draft") {
                     await supabase.from("quotes").update({ status: "sent" }).eq("id", quoteId);
                     setQuote({ ...quote, status: "sent" });
@@ -2106,16 +2189,30 @@ export default function QuotePage() {
                   }
                 }
               }}
-              className={`flex items-center gap-2 w-full rounded border px-3 py-2 text-sm ${
-                emailSentQuote ? "border-green-500 text-green-700 bg-green-50" : "border-orange-500 text-orange-700 hover:bg-orange-50"
-              }`}
-            >
-              {emailSentQuote ? "✓ Branded Email Sent" : emailSending ? "Sending…" : `📧 Send Branded Email to ${customer.email}`}
+              className="w-full transition-all active:scale-[0.98] mb-3"
+              style={{
+                background: emailSentQuote ? "rgba(48,164,108,0.12)" : "var(--zr-orange)",
+                color: emailSentQuote ? "var(--zr-success)" : "#fff",
+                fontSize: "14px",
+                fontWeight: 600,
+                padding: "11px 16px",
+                borderRadius: 14,
+                letterSpacing: "-0.012em",
+                opacity: emailSending ? 0.6 : 1,
+              }}>
+              {emailSentQuote ? "Branded email sent" : emailSending ? "Sending…" : `Send branded email to ${customer.email}`}
             </button>
           )}
+
+          {/* Secondary — schedule follow-up as plain text */}
           <Link href={`/schedule?customerId=${quote.customer_id}&customerName=${encodeURIComponent(customerName)}`}
-            className="flex items-center gap-2 w-full rounded border px-3 py-2 text-sm hover:bg-gray-50">
-            📅 Schedule Follow-up Appointment
+            style={{ color: "var(--zr-orange)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            Schedule follow-up
           </Link>
         </div>
 
@@ -2270,44 +2367,99 @@ export default function QuotePage() {
         </Modal>
       )}
 
-      {/* ── ADD MATERIAL MODAL ── */}
+      {/* ── ADD ORDER ITEM MODAL (iOS sheet) ── */}
       {showAddMat && (
-        <Modal title="Add Material Item" onClose={() => setShowAddMat(false)}>
-          <form onSubmit={addMaterial} className="space-y-3">
+        <Modal title="Add order item" onClose={() => setShowAddMat(false)}>
+          <form onSubmit={addMaterial} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Description *</label>
+              <label style={{ fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500, display: "block", marginBottom: 6, paddingLeft: 4 }}>
+                Description
+              </label>
               <input value={matDesc} onChange={e => setMatDesc(e.target.value)} required
-                placeholder="e.g. Roller shades (12 units) — Hunter Douglas"
-                className="w-full border rounded px-2 py-1.5 text-sm" />
+                placeholder="Roller shades (12 units) — Hunter Douglas"
+                style={{
+                  width: "100%",
+                  background: "rgba(60,60,67,0.06)",
+                  color: "var(--zr-text-primary)",
+                  fontSize: "14px",
+                  letterSpacing: "-0.012em",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  outline: "none",
+                }} />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Vendor</label>
+                <label style={{ fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500, display: "block", marginBottom: 6, paddingLeft: 4 }}>Vendor</label>
                 <input value={matVendor} onChange={e => setMatVendor(e.target.value)}
-                  placeholder="e.g. Hunter Douglas"
-                  className="w-full border rounded px-2 py-1.5 text-sm" />
+                  placeholder="Hunter Douglas"
+                  style={{
+                    width: "100%",
+                    background: "rgba(60,60,67,0.06)",
+                    color: "var(--zr-text-primary)",
+                    fontSize: "14px",
+                    letterSpacing: "-0.012em",
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: "none",
+                    outline: "none",
+                  }} />
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Order #</label>
+                <label style={{ fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500, display: "block", marginBottom: 6, paddingLeft: 4 }}>Order #</label>
                 <input value={matOrderNum} onChange={e => setMatOrderNum(e.target.value)}
-                  placeholder="PO or order number"
-                  className="w-full border rounded px-2 py-1.5 text-sm" />
+                  placeholder="PO number"
+                  style={{
+                    width: "100%",
+                    background: "rgba(60,60,67,0.06)",
+                    color: "var(--zr-text-primary)",
+                    fontSize: "14px",
+                    letterSpacing: "-0.012em",
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: "none",
+                    outline: "none",
+                  }} />
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Expected Packages</label>
+              <label style={{ fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500, display: "block", marginBottom: 6, paddingLeft: 4 }}>Expected packages</label>
               <input type="number" min="0" value={matExpPkgs} onChange={e => setMatExpPkgs(e.target.value)}
-                placeholder="How many boxes/packages will arrive?"
-                className="w-full border rounded px-2 py-1.5 text-sm" />
-              <p className="text-xs text-gray-300 mt-0.5">Leave blank if unknown — you can add packages later</p>
+                placeholder="How many boxes will arrive?"
+                style={{
+                  width: "100%",
+                  background: "rgba(60,60,67,0.06)",
+                  color: "var(--zr-text-primary)",
+                  fontSize: "14px",
+                  letterSpacing: "-0.012em",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  outline: "none",
+                }} />
+              <p style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)", marginTop: 4, paddingLeft: 4 }}>
+                Leave blank if unknown — you can add packages later.
+              </p>
             </div>
-            <div className="flex gap-2 pt-1">
-              <button type="submit" disabled={savingMat}
-                className="flex-1 bg-black text-white rounded py-2 text-sm disabled:opacity-50">
-                {savingMat ? "Saving…" : "Add Item"}
-              </button>
+            <div className="flex items-center justify-end gap-5 pt-2">
               <button type="button" onClick={() => setShowAddMat(false)}
-                className="border rounded py-2 px-4 text-sm">Cancel</button>
+                style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em", padding: "8px 4px" }}
+                className="transition-opacity active:opacity-60">Cancel</button>
+              <button type="submit" disabled={savingMat}
+                className="transition-all active:scale-[0.97]"
+                style={{
+                  background: "var(--zr-orange)",
+                  color: "#fff",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  padding: "9px 22px",
+                  borderRadius: 999,
+                  letterSpacing: "-0.012em",
+                  opacity: savingMat ? 0.5 : 1,
+                }}>
+                {savingMat ? "Saving…" : "Add item"}
+              </button>
             </div>
           </form>
         </Modal>
@@ -2399,13 +2551,33 @@ function SignatureCanvas({ onSave, saving, signedName, setSignedName, agreed, se
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-xl rounded-t-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between rounded-t-2xl sm:rounded-t-xl">
-          <h2 className="font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-black text-xl leading-none">✕</button>
+    // iOS sheet: slides up from bottom on mobile, centered card on desktop.
+    // Soft backdrop blur, no borders, hairline under header only.
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}>
+      <div className="w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+        style={{
+          background: "var(--zr-surface-1)",
+          borderRadius: 20,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+          boxShadow: "0 -6px 30px rgba(0,0,0,0.12)",
+        }}>
+        <div className="sticky top-0 flex items-center justify-between"
+          style={{
+            background: "var(--zr-surface-1)",
+            padding: "16px 20px 12px",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderBottom: "0.5px solid rgba(60,60,67,0.08)",
+          }}>
+          <h2 style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.018em", color: "var(--zr-text-primary)" }}>{title}</h2>
+          <button onClick={onClose}
+            className="transition-opacity active:opacity-60"
+            style={{ color: "rgba(60,60,67,0.5)", fontSize: "22px", lineHeight: 1, padding: 4 }}
+            aria-label="Close">×</button>
         </div>
-        <div className="p-4">{children}</div>
+        <div style={{ padding: "18px 20px 22px" }}>{children}</div>
       </div>
     </div>
   );

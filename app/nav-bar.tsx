@@ -202,6 +202,7 @@ export function NavBar() {
             { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
             { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
             { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
+            { href: "/canvas",    label: "Canvas",    show: features.canvassing && permissions.view_customers },
           ].filter(i => i.show).filter(i => {
             // Company-level hidden nav (from business type preset)
             if (hiddenNav.length > 0 && hiddenNav.includes(i.href)) return false;

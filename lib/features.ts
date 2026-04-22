@@ -6,7 +6,8 @@ export type FeatureKey =
   | "analytics"
   | "builder_portal"
   | "automation"
-  | "white_label";
+  | "white_label"
+  | "canvassing";
 
 export type Features = Record<FeatureKey, boolean>;
 
@@ -51,6 +52,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     builder_portal: true,
     automation: true,
     white_label: true,
+    canvassing: true,
   },
   starter: {
     crm: true,
@@ -61,6 +63,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     builder_portal: false,
     automation: false,
     white_label: false,
+    canvassing: false,
   },
   professional: {
     crm: true,
@@ -71,6 +74,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     builder_portal: false,
     automation: true,
     white_label: false,
+    canvassing: false,
   },
   business: {
     crm: true,
@@ -81,6 +85,7 @@ export const PLAN_FEATURES: Record<Plan, Features> = {
     builder_portal: true,
     automation: true,
     white_label: true,
+    canvassing: true,
   },
 };
 
@@ -93,6 +98,7 @@ export const FEATURE_LABELS: Record<FeatureKey, { label: string; desc: string }>
   builder_portal: { label: "Builder Portal", desc: "Contractor login, project management, bid requests" },
   automation: { label: "Automation Engine", desc: "Workflow rules, auto follow-ups, triggered actions" },
   white_label: { label: "White-Label Branding", desc: "Custom colors, font, and logo on your dashboard + all customer-facing pages (quotes, invoices, builder portal)" },
+  canvassing:  { label: "Canvassing Tracker", desc: "Track door-to-door visits by neighborhood, record outcomes, and convert leads directly into customers" },
 };
 
 // Resolve: plan defaults merged with any company-specific overrides

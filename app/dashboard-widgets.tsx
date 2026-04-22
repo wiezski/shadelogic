@@ -242,29 +242,54 @@ export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
   warehouse: ["quick_actions", "shipments", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
 };
 
-// ── 1. Quick Actions — flat tiles, no shadow ──────────────────
+// ── 1. Quick Actions — Apple Wallet / Control Center style ──────
+// Transparent buttons on the page canvas. Each action is a tinted-orange
+// icon circle (the same language iOS uses for Control Center toggles and
+// Settings category rows) with a compact label below. No white card, no
+// shadow, no visible border — the icon circle IS the affordance.
 export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => void }) {
-  const tile = {
-    background: "var(--zr-surface-1)",
-    color: "var(--zr-text-primary)",
-  } as const;
-  const iconWrap = {
+  // Shared button styling. Outer button is transparent and tall enough
+  // to be comfortable on a fingertip (~68-72px total height). Tap state
+  // is a very soft gray wash + micro scale, exactly what iOS uses.
+  const btnClass = "zr-ios-action flex flex-col items-center gap-[7px] py-2.5 rounded-2xl transition-all active:scale-[0.97]";
+
+  // Icon circle: 48px, rounded-full, tinted orange at 10% alpha, orange
+  // stroke on the icon itself. Matches Apple's soft-tinted circular
+  // affordances (e.g. Settings > icons column, Wallet quick-action chips).
+  const circleStyle = {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    background: "rgba(214,90,49,0.10)",
     color: "var(--zr-orange)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   } as const;
-  const tileClass = "rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 transition-all active:scale-95";
+
+  const labelStyle = {
+    fontSize: "12.5px",
+    fontWeight: 500,
+    letterSpacing: "-0.01em",
+    color: "var(--zr-text-primary)",
+    lineHeight: 1.2,
+  } as const;
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <button onClick={onNewCustomer} style={tile} className={tileClass}>
-        <span style={iconWrap}><Icon.Person /></span>
-        <span>New customer</span>
+    // Tighter grid — items read as a unified cluster, not three islands.
+    // gap-1 (4px) gives just enough breathing room without chopping them up.
+    <div className="grid grid-cols-3 gap-1">
+      <button onClick={onNewCustomer} className={btnClass}>
+        <span style={circleStyle}><Icon.Person /></span>
+        <span style={labelStyle}>New customer</span>
       </button>
-      <Link href="/schedule" style={tile} className={tileClass + " text-center"}>
-        <span style={iconWrap}><Icon.Calendar /></span>
-        <span>Schedule</span>
+      <Link href="/schedule" className={btnClass}>
+        <span style={circleStyle}><Icon.Calendar /></span>
+        <span style={labelStyle}>Schedule</span>
       </Link>
-      <Link href="/reminders" style={tile} className={tileClass + " text-center"}>
-        <span style={iconWrap}><Icon.Bell /></span>
-        <span>Reminders</span>
+      <Link href="/reminders" className={btnClass}>
+        <span style={circleStyle}><Icon.Bell /></span>
+        <span style={labelStyle}>Reminders</span>
       </Link>
     </div>
   );

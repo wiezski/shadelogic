@@ -24,6 +24,7 @@ type Territory = {
   campaign: string | null;
   materials_used: string | null;
   recanvass_interval_days: number | null;
+  map_image_url: string | null;
 };
 
 type Visit = {
@@ -174,6 +175,35 @@ export default function TerritoryDetailPage() {
           )}
         </div>
 
+        {/* Share-to-canvasser controls */}
+        {territoryId !== "unfiled" && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ShareToCanvasserButton territory={territory} />
+            <MapUploadButton
+              territoryId={territoryId}
+              currentUrl={territory.map_image_url}
+              onUploaded={(url) => setTerritory({ ...territory, map_image_url: url })}
+            />
+          </div>
+        )}
+
+        {/* Map image (if set) */}
+        {territory.map_image_url && (
+          <div className="mt-3">
+            <a href={territory.map_image_url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={territory.map_image_url}
+                alt={`${territory.name} map`}
+                className="w-full rounded-lg"
+                style={{ border: "1px solid var(--zr-border)" }}
+              />
+            </a>
+            <div className="text-[11px] mt-1 text-center" style={{ color: "var(--zr-text-muted)" }}>
+              Tap image to open full size
+            </div>
+          </div>
+        )}
+
         {/* Territory metadata (campaign, start point, cadence) */}
         {(territory.campaign || territory.materials_used || territory.start_address || territory.start_lat || territory.recanvass_interval_days) && (
           <div className="mt-3 rounded-lg p-3 space-y-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -317,5 +347,104 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
       <div className="text-2xl font-bold" style={{ color: color || "var(--zr-text-primary)" }}>{value}</div>
       <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--zr-text-muted)" }}>{label}</div>
     </div>
+  );
+}
+
+// ─── Share to canvasser via SMS (uses `sms:` URL scheme — opens Messages app) ──
+function ShareToCanvasserButton({ territory }: { territory: Territory }) {
+  function buildMessage(): string {
+    const parts: string[] = [];
+    parts.push(`📍 Canvas assignment: ${territory.name}`);
+    if (territory.city || territory.state) {
+      parts.push(`Area: ${[territory.city, territory.state].filter(Boolean).join(", ")}${territory.zip_codes?.length ? ` · ${territory.zip_codes.join(", ")}` : ""}`);
+    }
+    if (territory.start_address) parts.push(`Start: ${territory.start_address}`);
+    if (territory.start_lat && territory.start_lng) {
+      parts.push(`Map: https://www.google.com/maps?q=${territory.start_lat},${territory.start_lng}`);
+    }
+    if (territory.campaign) parts.push(`Campaign: ${territory.campaign}`);
+    if (territory.materials_used) parts.push(`Leave behind: ${territory.materials_used}`);
+    if (territory.description) parts.push(territory.description);
+    if (territory.map_image_url) parts.push(`Map image: ${territory.map_image_url}`);
+    return parts.join("\n\n");
+  }
+
+  function shareViaSMS() {
+    const body = encodeURIComponent(buildMessage());
+    // Uses the sms: URI scheme — opens Messages on iPhone/Android with the message pre-filled
+    window.open(`sms:?&body=${body}`, "_blank");
+  }
+
+  async function copyToClipboard() {
+    try {
+      await navigator.clipboard.writeText(buildMessage());
+      alert("Copied! Paste it into any message or email.");
+    } catch {
+      alert("Couldn't copy automatically. Long-press the page to select text manually.");
+    }
+  }
+
+  return (
+    <div className="flex gap-2">
+      <button
+        onClick={shareViaSMS}
+        className="rounded px-3 py-1.5 text-xs font-semibold"
+        style={{ background: "#16a34a", color: "#fff" }}
+        title="Open Messages with pre-filled text — send to the canvasser"
+      >
+        📱 Text to canvasser
+      </button>
+      <button
+        onClick={copyToClipboard}
+        className="rounded px-3 py-1.5 text-xs font-medium"
+        style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+        title="Copy the same details to your clipboard"
+      >
+        📋 Copy
+      </button>
+    </div>
+  );
+}
+
+// ─── Map image upload ────────────────────────────────────────────────────
+function MapUploadButton({ territoryId, currentUrl, onUploaded }: { territoryId: string; currentUrl: string | null; onUploaded: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${territoryId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("canvas-maps").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("canvas-maps").getPublicUrl(path);
+      const url = pub.publicUrl;
+      await supabase.from("canvas_territories").update({ map_image_url: url }).eq("id", territoryId);
+      onUploaded(url);
+    } catch (err) {
+      alert("Upload failed: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <label
+      className="rounded px-3 py-1.5 text-xs font-medium cursor-pointer"
+      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+      title={currentUrl ? "Replace the current map image" : "Upload a map screenshot (annotate it in Preview/Photos first)"}
+    >
+      {uploading ? "Uploading..." : currentUrl ? "🗺 Replace map" : "🗺 Upload map"}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        disabled={uploading}
+        onChange={e => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+        }}
+      />
+    </label>
   );
 }

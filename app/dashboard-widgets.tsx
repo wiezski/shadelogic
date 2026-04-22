@@ -365,14 +365,17 @@ export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => voi
   );
 }
 
-// ── 2. KPI Strip — one card, four stats, hairline dividers ──
-// Consolidating the four KPIs into a single card removes the card-on-canvas
-// boxing. Big tabular numbers; trends are small muted hints, not highlights.
+// ── 2. KPI Strip — canvas-level stats, hairlines only ──
+// No card wrapper. Four KPIs sit directly on the page canvas, separated
+// by subtle hairlines. Big tabular numbers carry the visual weight;
+// trends are small muted hints beneath. Matches the no-box language of
+// Shipments and Today's Focus.
 export function KPIStripWidget({ totalRevenue, revenueTrend, revenueByMonth, totalLeads, leadTrend, activityByWeek, closeRate }: {
   totalRevenue: number; revenueTrend: number; revenueByMonth: { label: string; value: number }[];
   totalLeads: number; leadTrend: number; activityByWeek: number[]; closeRate: number;
 }) {
-  const label = { fontSize: "12px", color: "rgba(60,60,67,0.55)", fontWeight: 500 } as const;
+  const C_DIVIDER = "rgba(60,60,67,0.08)";
+  const label = { fontSize: "12px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "-0.005em" } as const;
   const value = { fontSize: "26px", fontWeight: 700, color: "var(--zr-text-primary)", letterSpacing: "-0.025em", lineHeight: 1 } as const;
   const trend = (delta: number) => ({
     fontSize: "11px",
@@ -383,79 +386,93 @@ export function KPIStripWidget({ totalRevenue, revenueTrend, revenueByMonth, tot
     alignItems: "center",
     gap: "3px",
   } as const);
-  const cell = "flex flex-col py-4 px-4";
+
+  // 2-col mobile / 4-col desktop. Right/bottom hairlines on each cell
+  // except the last column/row — gives the grid rhythm without a card.
+  function cellStyle(i: number, total: number): React.CSSProperties {
+    const isLastCol = (i % 2 === 1);             // mobile 2-col; desktop handled by media query below
+    const isLastRow = (i >= total - 2);
+    return {
+      padding: "16px 20px",
+      borderRight: isLastCol ? "none" : `0.5px solid ${C_DIVIDER}`,
+      borderBottom: isLastRow ? "none" : `0.5px solid ${C_DIVIDER}`,
+    };
+  }
+
+  const cells = [
+    {
+      label: "Revenue · MTD",
+      value: `$${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toLocaleString()}`,
+      accent: revenueByMonth.length >= 2 ? (
+        <Sparkline data={revenueByMonth.map(b => b.value)} width={48} height={18}
+          color={revenueTrend >= 0 ? "var(--zr-success)" : "rgba(214,58,58,0.7)"}
+          fillColor={revenueTrend >= 0 ? "var(--zr-success)" : "rgba(214,58,58,0.7)"} />
+      ) : null,
+      foot: revenueTrend !== 0 ? (
+        <div style={trend(revenueTrend)}>
+          <span>{revenueTrend > 0 ? "↑" : "↓"}</span>
+          <span>{Math.abs(revenueTrend).toFixed(0)}% vs last mo</span>
+        </div>
+      ) : null,
+    },
+    {
+      label: "New leads · MTD",
+      value: String(totalLeads),
+      accent: activityByWeek.length >= 2 ? (
+        <Sparkline data={activityByWeek} width={48} height={18} color="var(--zr-info)" fillColor="var(--zr-info)" />
+      ) : null,
+      foot: leadTrend !== 0 ? (
+        <div style={trend(leadTrend)}>
+          <span>{leadTrend > 0 ? "↑" : "↓"}</span>
+          <span>{Math.abs(leadTrend).toFixed(0)}% vs last mo</span>
+        </div>
+      ) : null,
+    },
+    {
+      label: "Close rate",
+      value: `${closeRate.toFixed(0)}%`,
+      accent: (
+        <DonutChart value={closeRate} size={36} strokeWidth={4}
+          color={closeRate >= 50 ? "var(--zr-success)" : closeRate >= 30 ? "var(--zr-warning)" : "rgba(214,58,58,0.7)"} />
+      ),
+      foot: null,
+    },
+    {
+      label: "Activity · 8wk",
+      value: String(activityByWeek.reduce((a, b) => a + b, 0)),
+      accent: activityByWeek.length >= 2 ? (
+        <Sparkline data={activityByWeek} width={48} height={18} color="var(--zr-orange)" fillColor="var(--zr-orange)" />
+      ) : null,
+      foot: <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.45)", marginTop: "6px" }}>calls, texts, emails</div>,
+    },
+  ];
 
   return (
-    <div className="zr-v2-card">
-      <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: "1px", background: "var(--zr-hairline)" }}>
-        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
-          <div style={label}>Revenue · MTD</div>
+    <div className="grid grid-cols-2 sm:grid-cols-4">
+      {cells.map((c, i) => (
+        <div key={i} style={cellStyle(i, cells.length)}>
+          <div style={label}>{c.label}</div>
           <div className="mt-2 flex items-end justify-between">
-            <span style={value}>
-              ${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toLocaleString()}
-            </span>
-            {revenueByMonth.length >= 2 && (
-              <Sparkline data={revenueByMonth.map(b => b.value)} width={48} height={18}
-                color={revenueTrend >= 0 ? "var(--zr-success)" : "rgba(214,58,58,0.7)"}
-                fillColor={revenueTrend >= 0 ? "var(--zr-success)" : "rgba(214,58,58,0.7)"} />
-            )}
+            <span style={value}>{c.value}</span>
+            {c.accent}
           </div>
-          {revenueTrend !== 0 && (
-            <div style={trend(revenueTrend)}>
-              <span>{revenueTrend > 0 ? "↑" : "↓"}</span>
-              <span>{Math.abs(revenueTrend).toFixed(0)}% vs last mo</span>
-            </div>
-          )}
+          {c.foot}
         </div>
-        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
-          <div style={label}>New leads · MTD</div>
-          <div className="mt-2 flex items-end justify-between">
-            <span style={value}>{totalLeads}</span>
-            {activityByWeek.length >= 2 && (
-              <Sparkline data={activityByWeek} width={48} height={18} color="var(--zr-info)" fillColor="var(--zr-info)" />
-            )}
-          </div>
-          {leadTrend !== 0 && (
-            <div style={trend(leadTrend)}>
-              <span>{leadTrend > 0 ? "↑" : "↓"}</span>
-              <span>{Math.abs(leadTrend).toFixed(0)}% vs last mo</span>
-            </div>
-          )}
-        </div>
-        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
-          <div style={label}>Close rate</div>
-          <div className="mt-2 flex items-end justify-between">
-            <span style={value}>{closeRate.toFixed(0)}%</span>
-            <DonutChart value={closeRate} size={36} strokeWidth={4}
-              color={closeRate >= 50 ? "var(--zr-success)" : closeRate >= 30 ? "var(--zr-warning)" : "rgba(214,58,58,0.7)"} />
-          </div>
-        </div>
-        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
-          <div style={label}>Activity · 8wk</div>
-          <div className="mt-2 flex items-end justify-between">
-            <span style={value}>{activityByWeek.reduce((a, b) => a + b, 0)}</span>
-            {activityByWeek.length >= 2 && (
-              <Sparkline data={activityByWeek} width={48} height={18} color="var(--zr-orange)" fillColor="var(--zr-orange)" />
-            )}
-          </div>
-          <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.45)", marginTop: "6px" }}>calls, texts, emails</div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
 
-// ── 3. Revenue Chart ──────────────────────────────────────────
+// ── 3. Revenue Chart — canvas-level, no card wrapper ──────────
 export function RevenueChartWidget({ revenueByMonth }: { revenueByMonth: { label: string; value: number }[] }) {
   if (!revenueByMonth.some(b => b.value > 0)) return null;
   return (
     <div>
-      <SectionLabel>Revenue — last 6 months</SectionLabel>
-      <div className="zr-v2-card" style={{ padding: "18px" }}>
-        <div className="flex items-center justify-between mb-3">
-          <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-text-primary)" }}>Trend</span>
-          <Link href="/analytics" style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }}>Details ›</Link>
-        </div>
+      <div className="flex items-end justify-between mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>Revenue — last 6 months</span>
+        <Link href="/analytics" style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }} className="pb-[10px]">Details</Link>
+      </div>
+      <div style={{ padding: "4px 20px 8px" }}>
         <MiniBarChart bars={revenueByMonth} width={320} height={88} />
       </div>
     </div>
@@ -583,33 +600,41 @@ export function SalesPipelineWidget({ customers, pipelineValue, selectedStage, s
 
   const stageCustomers = selectedStage ? customers.filter(c => c.lead_status === selectedStage) : [];
 
+  // Pipeline stage cell — transparent on canvas. Active state is a soft
+  // orange tint (not a solid fill) so selection stays calm.
   function PipelineCard({ stage }: { stage: string }) {
     const active = selectedStage === stage;
     const count = stageCounts[stage] ?? 0;
     const value = pipelineValue[stage] ?? 0;
     return (
       <button type="button" onClick={() => setSelectedStage(active ? null : stage)}
-        style={active
-          ? { background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-md)" }
-          : { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", borderRadius: "var(--zr-radius-md)" }}
-        className="p-3 text-center w-full transition-all active:scale-95">
+        className="w-full text-center transition-all active:scale-95"
+        style={{
+          padding: "10px 6px",
+          borderRadius: 12,
+          background: active ? "rgba(214,90,49,0.10)" : "transparent",
+          color: active ? "var(--zr-orange)" : "var(--zr-text-primary)",
+          WebkitTapHighlightColor: "transparent",
+        }}>
         <div style={{
-          color: active ? "#fff" : "var(--zr-text-primary)",
+          color: active ? "var(--zr-orange)" : "var(--zr-text-primary)",
           fontSize: "20px",
           fontWeight: 700,
           letterSpacing: "-0.02em",
           lineHeight: 1,
+          fontVariantNumeric: "tabular-nums",
         }}>{count}</div>
         <div style={{
-          color: active ? "rgba(255,255,255,0.85)" : "rgba(60,60,67,0.55)",
+          color: active ? "var(--zr-orange)" : "rgba(60,60,67,0.6)",
           fontSize: "11px",
           marginTop: "6px",
           letterSpacing: "-0.005em",
           lineHeight: 1.15,
+          fontWeight: active ? 600 : 500,
         }}>{stage}</div>
         {value > 0 && (
           <div style={{
-            color: active ? "rgba(255,255,255,0.9)" : "rgba(60,60,67,0.45)",
+            color: active ? "var(--zr-orange)" : "rgba(60,60,67,0.45)",
             fontSize: "11px",
             marginTop: "4px",
             fontWeight: 500,
@@ -624,12 +649,15 @@ export function SalesPipelineWidget({ customers, pipelineValue, selectedStage, s
 
   return (
     <div>
-      <SectionLabel>Sales pipeline</SectionLabel>
-      <div className="grid grid-cols-5 gap-2 sm:grid-cols-10 mb-3">
+      <div className="flex items-end justify-between mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>Sales pipeline</span>
+      </div>
+      {/* No card wrapper. Transparent cells on canvas with tight gaps. */}
+      <div className="grid grid-cols-5 gap-1 sm:grid-cols-10 mb-4 px-3">
         {ALL_STAGES.map(s => <PipelineCard key={s} stage={s} />)}
       </div>
       {customers.length > 0 && (
-        <div className="zr-v2-card" style={{ padding: "18px", marginBottom: "20px" }}>
+        <div style={{ padding: "4px 20px 16px" }}>
           <PipelineFunnel
             stages={[
               { label: "New", count: stageCounts["New"] || 0, value: pipelineValue["New"], color: "#9ca3af" },
@@ -739,41 +767,53 @@ export function OperationsWidget({ measuresToSchedule, measuresDone, installsToS
     issues: "Open Issues",
   };
 
-  function StatCard({ label, count, filterKey, accent }: { label: string; count: number; filterKey: FilterKey; accent?: string }) {
-    const active = selectedFilter === filterKey;
-    return (
-      <button type="button" onClick={() => setSelectedFilter(active ? null : filterKey)}
-        style={active
-          ? { background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-lg)" }
-          : { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", borderRadius: "var(--zr-radius-lg)" }}
-        className="p-4 text-left w-full transition-all active:scale-[0.98]">
-        <div style={{
-          fontSize: "30px", fontWeight: 700, letterSpacing: "-0.025em",
-          color: active ? "#fff" : (accent || "var(--zr-text-primary)"),
-          lineHeight: 1,
-        }}>{statsLoading ? "—" : count}</div>
-        <div style={{
-          color: active ? "rgba(255,255,255,0.85)" : "rgba(60,60,67,0.55)",
-          fontSize: "13px",
-          marginTop: "10px",
-          fontWeight: 500,
-          letterSpacing: "-0.005em",
-        }}>
-          {label}
-        </div>
-      </button>
-    );
-  }
+  // Stat cells sit transparent on canvas. Active state is a soft orange
+  // tint — matches the Pipeline grid and Quick Actions tile language.
+  const statCells: { label: string; count: number; filterKey: FilterKey; accent?: string }[] = [
+    { label: "Measures to schedule", count: measuresToSchedule.length, filterKey: "measures_to_schedule" },
+    { label: "Measures done",        count: measuresDone.length,        filterKey: "measures_done", accent: "var(--zr-success)" },
+    { label: "Installs to schedule", count: installsToSchedule.length, filterKey: "installs_to_schedule" },
+    { label: "Installs scheduled",   count: installsScheduled.length,   filterKey: "installs_scheduled", accent: "var(--zr-info)" },
+    { label: "Open issues",          count: issueJobs.length,           filterKey: "issues", accent: issueJobs.length > 0 ? "var(--zr-error)" : undefined },
+  ];
 
   return (
     <div>
-      <SectionLabel>Operations</SectionLabel>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-3">
-        <StatCard label="Measures to schedule" count={measuresToSchedule.length} filterKey="measures_to_schedule" />
-        <StatCard label="Measures done" count={measuresDone.length} filterKey="measures_done" accent="var(--zr-success)" />
-        <StatCard label="Installs to schedule" count={installsToSchedule.length} filterKey="installs_to_schedule" />
-        <StatCard label="Installs scheduled" count={installsScheduled.length} filterKey="installs_scheduled" accent="var(--zr-info)" />
-        <StatCard label="Open issues" count={issueJobs.length} filterKey="issues" accent={issueJobs.length > 0 ? "var(--zr-error)" : undefined} />
+      <div className="flex items-end justify-between mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>Operations</span>
+      </div>
+      <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 mb-4 px-3">
+        {statCells.map(({ label, count, filterKey, accent }) => {
+          const active = selectedFilter === filterKey;
+          return (
+            <button key={filterKey} type="button"
+              onClick={() => setSelectedFilter(active ? null : filterKey)}
+              className="text-left w-full transition-all active:scale-[0.98]"
+              style={{
+                padding: "14px 16px",
+                borderRadius: 14,
+                background: active ? "rgba(214,90,49,0.10)" : "transparent",
+                WebkitTapHighlightColor: "transparent",
+              }}>
+              <div style={{
+                fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em",
+                color: active ? "var(--zr-orange)" : (accent || "var(--zr-text-primary)"),
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
+              }}>{statsLoading ? "—" : count}</div>
+              <div style={{
+                color: active ? "var(--zr-orange)" : "rgba(60,60,67,0.6)",
+                fontSize: "13px",
+                marginTop: "8px",
+                fontWeight: active ? 600 : 500,
+                letterSpacing: "-0.005em",
+                lineHeight: 1.25,
+              }}>
+                {label}
+              </div>
+            </button>
+          );
+        })}
       </div>
       {selectedFilter && (
         <div>

@@ -261,62 +261,62 @@ export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => voi
     onClick?: () => void;
   };
 
-  // Icon size & stroke — 28px with 2.25 stroke gives the glyph real presence
-  // on the tile without reading as bold. Stroke weight overrides the Icon
-  // definition's 1.75 default (props spread is applied last in the SVG).
-  const glyph = { width: 28, height: 28, strokeWidth: 2.25 } as const;
+  // Icon size & stroke — 26px with 2.25 stroke. Slightly smaller than the
+  // previous pass so the icon breathes inside the tighter tile, but stroke
+  // weight stays heavy so the glyph clearly out-presences its background.
+  const glyph = { width: 26, height: 26, strokeWidth: 2.25 } as const;
 
-  // Tints sit at 13-14% alpha — soft enough to stay calm, strong enough to
-  // read as three distinct identities at a glance. Glyph colors are the
-  // saturated hue so the icon never looks washed out against its own tile.
+  // Tints at 9-10% alpha — a touch lighter than before. Color identity is
+  // still unmistakable at a glance, but the fill reads as "tinted paper"
+  // rather than a colored surface. Glyph hue is held saturated so the icon
+  // sits cleanly on top of its own tile.
   const actions: Action[] = [
     {
       label: "New customer",
-      tintBg: "rgba(10,132,255,0.13)",
+      tintBg: "rgba(10,132,255,0.09)",
       tintFg: "#0a7cff",
       icon: <Icon.Person {...glyph} />,
       onClick: onNewCustomer,
     },
     {
       label: "Schedule",
-      tintBg: "rgba(214,90,49,0.13)",
+      tintBg: "rgba(214,90,49,0.09)",
       tintFg: "var(--zr-orange)",
       icon: <Icon.Calendar {...glyph} />,
       href: "/schedule",
     },
     {
       label: "Reminders",
-      tintBg: "rgba(48,164,108,0.14)",
+      tintBg: "rgba(48,164,108,0.10)",
       tintFg: "#228b5b",
       icon: <Icon.Bell {...glyph} />,
       href: "/reminders",
     },
   ];
 
-  // The tile is the action affordance. 68pt tall, 18pt radius — tuned a
-  // touch more compact than iOS Shortcuts so the row feels intentional,
-  // not decorative. Press feedback is a micro scale + brightness dip
+  // The tile is the action affordance. 60pt tall, 14pt radius — tighter
+  // and less pillowy than before. Proportions now read as intentional
+  // controls, not decorative pads. Press feedback is a brightness dip
   // on the tile itself (see zr-ios-tile class).
   const tileStyle: React.CSSProperties = {
     width: "100%",
-    height: 68,
-    borderRadius: 18,
+    height: 60,
+    borderRadius: 14,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     transition: "filter 120ms ease, transform 120ms ease",
   };
 
-  // Label sits tight under the tile — 6px gap (was 8) makes the pairing
-  // read as one tappable unit. 13px / weight 550 / primary text color:
-  // clearer than before without drifting into "bold".
+  // Label sits crisp under the tile — 5px gap reads as one tappable unit.
+  // 13px / weight 550 / primary text color.
   const labelStyle: React.CSSProperties = {
     fontSize: "13px",
     fontWeight: 550,
     letterSpacing: "-0.01em",
     color: "var(--zr-text-primary)",
     lineHeight: 1.2,
-    marginTop: 6,
+    marginTop: 5,
     textAlign: "center",
   };
 

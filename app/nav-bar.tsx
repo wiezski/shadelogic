@@ -170,26 +170,44 @@ export function NavBar() {
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           {modeOpen && (
-            <div className="absolute left-0 top-full mt-2 w-48 rounded-2xl z-50 overflow-hidden"
-              style={{ background: "var(--zr-surface-1)", boxShadow: "var(--zr-shadow-lg)" }}>
-              <div className="px-3 py-1.5" style={{ borderBottom: "1px solid var(--zr-border)" }}>
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-muted)" }}>Focus Mode</span>
-              </div>
-              {(Object.keys(MODE_LABELS) as TaskMode[]).map(mode => (
-                <button key={mode} onClick={() => changeMode(mode)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors"
-                  style={{
-                    background: taskMode === mode ? "rgba(234,88,12,0.08)" : "transparent",
-                    color: taskMode === mode ? "var(--zr-orange)" : "var(--zr-text-primary)",
-                    fontWeight: taskMode === mode ? "600" : "normal",
-                  }}
-                  onMouseEnter={e => { if (taskMode !== mode) e.currentTarget.style.background = "var(--zr-surface-2)"; }}
-                  onMouseLeave={e => { if (taskMode !== mode) e.currentTarget.style.background = "transparent"; }}>
-                  <span>{MODE_ICONS[mode]}</span>
-                  <span>{MODE_LABELS[mode]}</span>
-                  {taskMode === mode && <span className="ml-auto">✓</span>}
-                </button>
-              ))}
+            // iOS context-menu style popover. Anchored to trigger, compact,
+            // hairlines between rows, backdrop blur for native feel. Selected
+            // state is a checkmark + orange label only — no filled background.
+            <div className="absolute left-0 top-full mt-1.5 w-52 rounded-[14px] z-50 overflow-hidden"
+              style={{
+                background: "rgba(255,255,255,0.88)",
+                backdropFilter: "saturate(180%) blur(20px)",
+                WebkitBackdropFilter: "saturate(180%) blur(20px)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.04)",
+              }}>
+              {(Object.keys(MODE_LABELS) as TaskMode[]).map((mode, i, arr) => {
+                const selected = taskMode === mode;
+                const isLast = i === arr.length - 1;
+                return (
+                  <button key={mode} onClick={() => changeMode(mode)}
+                    className="w-full flex items-center gap-3 text-left transition-colors"
+                    style={{
+                      padding: "11px 14px",
+                      background: "transparent",
+                      borderBottom: isLast ? "none" : "0.5px solid rgba(60,60,67,0.08)",
+                      color: selected ? "var(--zr-orange)" : "var(--zr-text-primary)",
+                      fontSize: "15px",
+                      fontWeight: selected ? 600 : 400,
+                      letterSpacing: "-0.012em",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                    <span style={{ fontSize: "15px", width: 18, flexShrink: 0, textAlign: "center" }}>{MODE_ICONS[mode]}</span>
+                    <span style={{ flex: 1 }}>{MODE_LABELS[mode]}</span>
+                    {selected && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -285,72 +303,148 @@ export function NavBar() {
           </button>
 
           {bellOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl z-50 overflow-hidden"
-              style={{ background: "var(--zr-surface-1)", boxShadow: "var(--zr-shadow-lg)" }}>
-              <div className="flex items-center justify-between px-3 py-2"
-                style={{ borderBottom: "1px solid var(--zr-border)" }}>
-                <span className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>Notifications</span>
+            // Native iOS notification list. No heavy container tint, no
+            // colored unread fills — unread is signaled by a small leading
+            // orange dot (like Mail / Messages). Rows are edge-to-edge on
+            // the canvas surface with hairline dividers; reads as a
+            // scrollable list, not a floating card.
+            <div className="absolute right-0 top-full mt-1.5 w-[340px] max-w-[calc(100vw-16px)] rounded-[14px] z-50 overflow-hidden"
+              style={{
+                background: "rgba(255,255,255,0.92)",
+                backdropFilter: "saturate(180%) blur(20px)",
+                WebkitBackdropFilter: "saturate(180%) blur(20px)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.04)",
+              }}>
+              {/* Quiet header — list title + Mark all read. No divider; the
+                  first row's hairline carries separation. */}
+              <div className="flex items-center justify-between"
+                style={{ padding: "12px 16px 8px" }}>
+                <span style={{
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  color: "var(--zr-text-primary)",
+                  letterSpacing: "-0.012em",
+                }}>Notifications</span>
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs hover:underline" style={{ color: "var(--zr-orange)" }}>
+                  <button onClick={markAllRead}
+                    style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }}>
                     Mark all read
                   </button>
                 )}
               </div>
-              <div className="max-h-80 overflow-y-auto">
-                {/* Reminder banner — links to /reminders page */}
+
+              <div className="max-h-[420px] overflow-y-auto">
+                {/* Reminder banner — normalized to a plain row with an
+                    orange dot. Same visual weight as other notifications,
+                    no colored fill. */}
                 {reminderCount > 0 && (
                   <div
-                    className="flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+                    className="flex items-start gap-3 cursor-pointer transition-colors"
                     style={{
-                      background: "rgba(234,88,12,0.08)",
-                      borderBottom: "1px solid var(--zr-border)",
+                      padding: "12px 16px",
+                      borderTop: "0.5px solid rgba(60,60,67,0.08)",
+                      background: "transparent",
                     }}
                     onClick={() => { setBellOpen(false); window.location.href = "/reminders"; }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "var(--zr-surface-2)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(234,88,12,0.08)"; }}>
-                    <span className="text-base shrink-0 mt-0.5">🔔</span>
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                    {/* Leading unread dot, aligned with title */}
+                    <span style={{
+                      flexShrink: 0,
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: "var(--zr-orange)",
+                      marginTop: 7,
+                    }} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium" style={{ color: "var(--zr-text-primary)" }}>
-                          {reminderCount} follow-up reminder{reminderCount !== 1 ? "s" : ""} due
-                        </span>
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--zr-orange)" }} />
+                      <div style={{
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: "var(--zr-text-primary)",
+                        letterSpacing: "-0.012em",
+                        lineHeight: 1.3,
+                      }}>
+                        {reminderCount} follow-up reminder{reminderCount !== 1 ? "s" : ""} due
                       </div>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                      <div style={{
+                        fontSize: "13px",
+                        color: "rgba(60,60,67,0.55)",
+                        marginTop: 2,
+                        lineHeight: 1.3,
+                      }}>
                         Quotes, deposits, or customers need attention
-                      </p>
+                      </div>
                     </div>
                   </div>
                 )}
+
                 {notifications.length === 0 && reminderCount === 0 ? (
-                  <div className="p-4 text-center text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                  <div style={{
+                    padding: "28px 16px",
+                    textAlign: "center",
+                    fontSize: "13px",
+                    color: "rgba(60,60,67,0.5)",
+                  }}>
                     No notifications yet
                   </div>
-                ) : notifications.map(n => (
+                ) : notifications.map((n, i) => (
                   <div key={n.id}
-                    className="flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+                    className="flex items-start gap-3 cursor-pointer transition-colors"
                     style={{
-                      background: n.read ? "transparent" : "rgba(234,88,12,0.05)",
-                      borderBottom: "1px solid var(--zr-border)",
+                      padding: "12px 16px",
+                      borderTop: "0.5px solid rgba(60,60,67,0.08)",
+                      background: "transparent",
+                      // last item gets a bottom hairline too for visual closure
+                      borderBottom: i === notifications.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none",
                     }}
                     onClick={() => {
                       if (!n.read) markRead(n.id);
                       if (n.link) { setBellOpen(false); window.location.href = n.link; }
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "var(--zr-surface-2)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = n.read ? "transparent" : "rgba(234,88,12,0.05)"; }}>
-                    <span className="text-base shrink-0 mt-0.5">{n.icon || "🔔"}</span>
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                    {/* Leading dot: orange if unread, invisible spacer if read,
+                        so titles stay vertically aligned regardless of state. */}
+                    <span style={{
+                      flexShrink: 0,
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: n.read ? "transparent" : "var(--zr-orange)",
+                      marginTop: 7,
+                    }} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium truncate" style={{ color: "var(--zr-text-primary)" }}>{n.title}</span>
-                        {!n.read && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--zr-orange)" }} />}
-                      </div>
+                      <div style={{
+                        fontSize: "14px",
+                        fontWeight: n.read ? 500 : 600,
+                        color: "var(--zr-text-primary)",
+                        letterSpacing: "-0.012em",
+                        lineHeight: 1.3,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}>{n.title}</div>
                       {n.message && (
-                        <p className="text-xs mt-0.5 line-clamp-2" style={{ color: "var(--zr-text-muted)" }}>{n.message}</p>
+                        <div style={{
+                          fontSize: "13px",
+                          color: "rgba(60,60,67,0.55)",
+                          marginTop: 2,
+                          lineHeight: 1.35,
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}>{n.message}</div>
                       )}
-                      <span className="text-xs mt-0.5 block" style={{ color: "var(--zr-text-muted)", opacity: 0.7 }}>
+                      <div style={{
+                        fontSize: "12px",
+                        color: "rgba(60,60,67,0.42)",
+                        marginTop: 4,
+                        letterSpacing: "-0.005em",
+                      }}>
                         {timeAgo(n.created_at)}
-                      </span>
+                      </div>
                     </div>
                   </div>
                 ))}

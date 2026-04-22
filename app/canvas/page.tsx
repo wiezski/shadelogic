@@ -428,114 +428,180 @@ function NewTerritoryForm({ companyId, teamMap, onCreated }: { companyId: string
 
   const teamOptions = Object.entries(teamMap);
 
+  // iOS Settings / native-form style: grouped sections with uppercase
+  // section labels, pill-tinted inputs on soft gray, no bordered card
+  // around the whole thing, no row-level borders. Spacing and labels
+  // carry the hierarchy.
+  const fieldStyle: React.CSSProperties = {
+    width: "100%",
+    background: "rgba(60,60,67,0.06)",
+    color: "var(--zr-text-primary)",
+    fontSize: "14px",
+    letterSpacing: "-0.012em",
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "none",
+    outline: "none",
+  };
+  const sectionLabelStyle: React.CSSProperties = {
+    fontSize: "11px",
+    color: "rgba(60,60,67,0.55)",
+    fontWeight: 500,
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+    marginBottom: 6,
+    paddingLeft: 4,
+  };
+  const fieldLabelStyle: React.CSSProperties = {
+    fontSize: "13px",
+    color: "rgba(60,60,67,0.6)",
+    fontWeight: 500,
+    letterSpacing: "-0.005em",
+    marginBottom: 4,
+    paddingLeft: 4,
+    display: "block",
+  };
+
   return (
-    <form onSubmit={save} className="mb-4 rounded-lg p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-      <h2 className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>New Territory</h2>
-      {error && <div className="text-xs" style={{ color: "var(--zr-error)" }}>{error}</div>}
-      <div>
-        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Name *</label>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Oak St neighborhood"
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
-      </div>
-      <div>
-        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Description</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="New construction, high-end homes, etc."
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
-      </div>
+    <form onSubmit={save} className="mb-6" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {error && <div style={{ fontSize: "13px", color: "#c6443a", paddingLeft: 4 }}>{error}</div>}
 
-      {/* Assign to */}
+      {/* ─── Territory ─────────────────────────────────────────── */}
       <div>
-        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Assign to</label>
-        <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
-          <option value="">— Unassigned (anyone on the team) —</option>
-          {teamOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select>
-      </div>
-
-      {/* Start location */}
-      <div>
-        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Starting point (where to begin)</label>
-        <input value={startAddress} onChange={e => setStartAddress(e.target.value)} placeholder="100 Oak St, Salt Lake City"
-          className="w-full rounded px-2 py-1.5 text-sm mb-1"
-          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
-        <button type="button" onClick={captureCurrentGPS}
-          className="text-xs rounded px-2 py-1 font-medium"
-          style={{
-            background: gpsStatus === "ok" ? "rgba(22,163,74,0.15)" : "var(--zr-surface-2)",
-            border: `1px solid ${gpsStatus === "ok" ? "#16a34a" : "var(--zr-border)"}`,
-            color: gpsStatus === "ok" ? "#16a34a" : "var(--zr-text-secondary)",
-          }}>
-          {gpsStatus === "idle" && "📍 Use my current GPS"}
-          {gpsStatus === "loading" && "Getting GPS…"}
-          {gpsStatus === "ok" && `✓ GPS set (${startLat?.toFixed(4)}, ${startLng?.toFixed(4)})`}
-          {gpsStatus === "error" && "⚠ Try again"}
-        </button>
-        {gpsStatus === "error" && gpsError && (
-          <div className="text-[11px] mt-1" style={{ color: "var(--zr-error)" }}>{gpsError}</div>
-        )}
-      </div>
-
-      {/* Campaign + Materials */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Campaign</label>
-          <input value={campaign} onChange={e => setCampaign(e.target.value)} placeholder="Spring 2026 push"
-            className="w-full rounded px-2 py-1.5 text-sm"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
-        </div>
-        <div>
-          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Materials / flyer</label>
-          <input value={materials} onChange={e => setMaterials(e.target.value)} placeholder="Door hanger v2, postcard A"
-            className="w-full rounded px-2 py-1.5 text-sm"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+        <div style={sectionLabelStyle}>Territory</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label style={fieldLabelStyle}>Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Oak St neighborhood" style={fieldStyle} />
+          </div>
+          <div>
+            <label style={fieldLabelStyle}>Description</label>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="New construction, high-end homes, etc." style={fieldStyle} />
+          </div>
         </div>
       </div>
 
-      {/* Recanvass cadence */}
+      {/* ─── Assignment ────────────────────────────────────────── */}
       <div>
-        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Revisit every</label>
-        <select value={recanvass} onChange={e => setRecanvass(e.target.value)}
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
-          <option value="">— One-time (no recanvass) —</option>
-          <option value="30">30 days</option>
-          <option value="60">60 days</option>
-          <option value="90">90 days (quarterly)</option>
-          <option value="180">6 months</option>
-          <option value="365">1 year</option>
-        </select>
-      </div>
-
-      {/* Location block */}
-      <div className="grid grid-cols-[1fr_56px_1fr] gap-2">
-        <div>
-          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>City</label>
-          <input value={city} onChange={e => setCity(e.target.value)} placeholder="Salt Lake City"
-            className="w-full rounded px-2 py-1.5 text-sm"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
-        </div>
-        <div>
-          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>State</label>
-          <input value={state} onChange={e => setState(e.target.value.toUpperCase())} maxLength={2} placeholder="UT"
-            className="w-full rounded px-2 py-1.5 text-sm uppercase"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
-        </div>
-        <div>
-          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Zip(s)</label>
-          <input value={zip} onChange={e => setZip(e.target.value)} placeholder="84101, 84102"
-            className="w-full rounded px-2 py-1.5 text-sm"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+        <div style={sectionLabelStyle}>Assignment</div>
+        <div className="relative">
+          <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+            style={{ ...fieldStyle, paddingRight: 36, appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}>
+            <option value="">Unassigned</option>
+            {teamOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </div>
       </div>
 
+      {/* ─── Location ──────────────────────────────────────────── */}
+      <div>
+        <div style={sectionLabelStyle}>Location</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label style={fieldLabelStyle}>Starting point</label>
+            <input value={startAddress} onChange={e => setStartAddress(e.target.value)} placeholder="100 Oak St, Salt Lake City" style={fieldStyle} />
+            <div className="mt-2">
+              <button type="button" onClick={captureCurrentGPS}
+                className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
+                style={{
+                  color: gpsStatus === "ok" ? "var(--zr-success)" : "var(--zr-orange)",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  letterSpacing: "-0.012em",
+                }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a8 8 0 0 0-8 8c0 6 8 12 8 12s8-6 8-12a8 8 0 0 0-8-8z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {gpsStatus === "idle" && "Use current GPS"}
+                {gpsStatus === "loading" && "Getting GPS…"}
+                {gpsStatus === "ok" && `GPS set (${startLat?.toFixed(4)}, ${startLng?.toFixed(4)})`}
+                {gpsStatus === "error" && "Try again"}
+              </button>
+              {gpsStatus === "error" && gpsError && (
+                <div style={{ fontSize: "12px", color: "#c6443a", marginTop: 4, paddingLeft: 4 }}>{gpsError}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Campaign ──────────────────────────────────────────── */}
+      <div>
+        <div style={sectionLabelStyle}>Campaign</div>
+        <div className="grid grid-cols-2 gap-2.5">
+          <div>
+            <label style={fieldLabelStyle}>Campaign</label>
+            <input value={campaign} onChange={e => setCampaign(e.target.value)} placeholder="Spring 2026 push" style={fieldStyle} />
+          </div>
+          <div>
+            <label style={fieldLabelStyle}>Materials</label>
+            <input value={materials} onChange={e => setMaterials(e.target.value)} placeholder="Door hanger v2" style={fieldStyle} />
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Schedule ──────────────────────────────────────────── */}
+      <div>
+        <div style={sectionLabelStyle}>Schedule</div>
+        <div>
+          <label style={fieldLabelStyle}>Revisit every</label>
+          <div className="relative">
+            <select value={recanvass} onChange={e => setRecanvass(e.target.value)}
+              style={{ ...fieldStyle, paddingRight: 36, appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}>
+              <option value="">One-time (no recanvass)</option>
+              <option value="30">30 days</option>
+              <option value="60">60 days</option>
+              <option value="90">90 days (quarterly)</option>
+              <option value="180">6 months</option>
+              <option value="365">1 year</option>
+            </select>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Region ────────────────────────────────────────────── */}
+      <div>
+        <div style={sectionLabelStyle}>Region</div>
+        <div className="grid grid-cols-[1fr_72px_1fr] gap-2.5">
+          <div>
+            <label style={fieldLabelStyle}>City</label>
+            <input value={city} onChange={e => setCity(e.target.value)} placeholder="Salt Lake City" style={fieldStyle} />
+          </div>
+          <div>
+            <label style={fieldLabelStyle}>State</label>
+            <input value={state} onChange={e => setState(e.target.value.toUpperCase())} maxLength={2} placeholder="UT"
+              style={{ ...fieldStyle, textTransform: "uppercase" }} />
+          </div>
+          <div>
+            <label style={fieldLabelStyle}>Zip(s)</label>
+            <input value={zip} onChange={e => setZip(e.target.value)} placeholder="84101, 84102" style={fieldStyle} />
+          </div>
+        </div>
+      </div>
+
+      {/* Submit — primary pill full-width */}
       <button type="submit" disabled={saving}
-        className="w-full rounded px-4 py-2 text-sm font-semibold disabled:opacity-50"
-        style={{ background: "var(--zr-orange)", color: "#fff" }}>
-        {saving ? "Saving..." : "Create territory"}
+        className="transition-all active:scale-[0.98] mt-2"
+        style={{
+          background: "var(--zr-orange)",
+          color: "#fff",
+          fontSize: "15px",
+          fontWeight: 600,
+          padding: "12px 20px",
+          borderRadius: 14,
+          letterSpacing: "-0.012em",
+          opacity: saving ? 0.5 : 1,
+        }}>
+        {saving ? "Saving…" : "Create territory"}
       </button>
     </form>
   );

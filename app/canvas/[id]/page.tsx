@@ -187,46 +187,72 @@ export default function TerritoryDetailPage() {
     n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}`;
 
   return (
-    <main className="min-h-screen p-4" style={{ background: "var(--zr-black)" }}>
-      <div className="mx-auto max-w-3xl">
-        <Link href="/canvas" className="text-xs" style={{ color: "var(--zr-orange)" }}>← Back to Canvas</Link>
+    <main className="min-h-screen pt-2 pb-24" style={{ background: "var(--zr-canvas)" }}>
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        {/* iOS back */}
+        <div className="mb-3">
+          <Link href="/canvas" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Canvas
+          </Link>
+        </div>
 
-        <div className="mt-2 flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>{territory.name}</h1>
+        {/* Title block + Log actions on the right */}
+        <div className="flex items-start justify-between gap-3 mb-4 px-1">
+          <div className="flex-1 min-w-0">
+            <h1 style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)", lineHeight: 1.15 }}>{territory.name}</h1>
             {(territory.city || territory.state) && (
-              <div className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
+              <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 4, letterSpacing: "-0.005em" }}>
                 {[territory.city, territory.state].filter(Boolean).join(", ")}
                 {territory.zip_codes && territory.zip_codes.length > 0 && ` · ${territory.zip_codes.join(", ")}`}
               </div>
             )}
             {territory.description && (
-              <div className="text-sm mt-2" style={{ color: "var(--zr-text-secondary)" }}>{territory.description}</div>
+              <div style={{ fontSize: "14px", color: "var(--zr-text-primary)", marginTop: 8, letterSpacing: "-0.008em", lineHeight: 1.35 }}>{territory.description}</div>
             )}
           </div>
           {territoryId !== "unfiled" && (
-            <div className="shrink-0 flex flex-col gap-1">
+            <div className="shrink-0 flex flex-col gap-1.5">
               <Link
                 href={`/canvas/sweep?territory=${territoryId}`}
-                className="rounded px-3 py-1.5 text-xs font-semibold text-center"
-                style={{ background: "var(--zr-orange)", color: "#fff" }}
+                className="transition-all active:scale-[0.97]"
+                style={{
+                  background: "var(--zr-orange)",
+                  color: "#fff",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  padding: "7px 14px",
+                  borderRadius: 999,
+                  letterSpacing: "-0.012em",
+                  textAlign: "center",
+                }}
               >
-                + Log Sweep
+                + Log sweep
               </Link>
               <Link
                 href={`/canvas/visit?territory=${territoryId}`}
-                className="rounded px-3 py-1.5 text-xs font-medium text-center"
-                style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+                className="transition-opacity active:opacity-60"
+                style={{
+                  color: "var(--zr-orange)",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  padding: "4px 14px",
+                  letterSpacing: "-0.012em",
+                  textAlign: "center",
+                }}
               >
-                + Log Visit
+                + Log visit
               </Link>
             </div>
           )}
         </div>
 
-        {/* Share-to-canvasser controls */}
+        {/* Action row: primary (Text canvasser) + inline icon actions */}
         {territoryId !== "unfiled" && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mb-3 flex items-center gap-4 flex-wrap">
             <ShareToCanvasserButton territory={territory} />
             <MapUploadButton
               territoryId={territoryId}
@@ -492,22 +518,44 @@ function ShareToCanvasserButton({ territory }: { territory: Territory }) {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex items-center gap-4">
+      {/* Primary — filled green pill */}
       <button
         onClick={shareViaSMS}
-        className="rounded px-3 py-1.5 text-xs font-semibold"
-        style={{ background: "#16a34a", color: "#fff" }}
+        className="transition-all active:scale-[0.97] inline-flex items-center gap-1.5"
+        style={{
+          background: "var(--zr-success)",
+          color: "#fff",
+          fontSize: "14px",
+          fontWeight: 600,
+          padding: "9px 16px",
+          borderRadius: 999,
+          letterSpacing: "-0.012em",
+        }}
         title="Open Messages with pre-filled text — send to the canvasser"
       >
-        📱 Text to canvasser
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        Text canvasser
       </button>
+      {/* Secondary — inline icon action */}
       <button
         onClick={copyToClipboard}
-        className="rounded px-3 py-1.5 text-xs font-medium"
-        style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+        className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
+        style={{
+          color: "rgba(60,60,67,0.65)",
+          fontSize: "13px",
+          fontWeight: 500,
+          letterSpacing: "-0.012em",
+        }}
         title="Copy the same details to your clipboard"
       >
-        📋 Copy
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+        Copy
       </button>
     </div>
   );
@@ -540,10 +588,14 @@ function ArchiveButton({ territoryId, isArchived, onChanged }: { territoryId: st
       <button
         onClick={restore}
         disabled={busy}
-        className="rounded px-3 py-1.5 text-xs font-semibold"
-        style={{ background: "rgba(22,163,74,0.15)", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}
+        className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
+        style={{ color: "var(--zr-success)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
       >
-        {busy ? "..." : "↩ Restore"}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        {busy ? "…" : "Restore"}
       </button>
     );
   }
@@ -551,11 +603,16 @@ function ArchiveButton({ territoryId, isArchived, onChanged }: { territoryId: st
     <button
       onClick={archive}
       disabled={busy}
-      className="rounded px-3 py-1.5 text-xs font-medium"
-      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-muted)", border: "1px solid var(--zr-border)" }}
+      className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
+      style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
       title="Archive this territory when the campaign is done. Data is preserved."
     >
-      {busy ? "..." : "📦 Archive"}
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="4" width="20" height="5" rx="1" />
+        <path d="M4 9v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9" />
+        <path d="M10 13h4" />
+      </svg>
+      {busy ? "…" : "Archive"}
     </button>
   );
 }
@@ -584,11 +641,16 @@ function MapUploadButton({ territoryId, currentUrl, onUploaded }: { territoryId:
 
   return (
     <label
-      className="rounded px-3 py-1.5 text-xs font-medium cursor-pointer"
-      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+      className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5 cursor-pointer"
+      style={{ color: "rgba(60,60,67,0.65)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
       title={currentUrl ? "Replace the current map image" : "Upload a map screenshot (annotate it in Preview/Photos first)"}
     >
-      {uploading ? "Uploading..." : currentUrl ? "🗺 Replace map" : "🗺 Upload map"}
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+        <line x1="8" y1="2" x2="8" y2="18" />
+        <line x1="16" y1="6" x2="16" y2="22" />
+      </svg>
+      {uploading ? "Uploading…" : currentUrl ? "Replace map" : "Upload map"}
       <input
         type="file"
         accept="image/*"

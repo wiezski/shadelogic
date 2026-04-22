@@ -28,7 +28,6 @@ const HIDE_NAV_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/
 import {
   type TaskMode,
   MODE_LABELS,
-  MODE_ICONS,
 } from "../lib/focus-modes";
 
 export function NavBar() {
@@ -157,17 +156,19 @@ export function NavBar() {
           <ZRLogo size="sm" iconOnly />
         </Link>
 
-        {/* Task Mode Selector — lighter chip, no hard border */}
+        {/* Focus chip — soft pill labeled "Focus" with current mode label.
+            When a specific mode is active, the chip is tinted orange so the
+            filter state is obvious at a glance. No emoji. */}
         <div ref={modeRef} className="relative shrink-0 mr-1.5">
           <button onClick={() => setModeOpen(!modeOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all active:scale-95"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all active:scale-95"
             style={{
-              background: taskMode === "all" ? "rgba(60,60,67,0.06)" : "rgba(214,90,49,0.1)",
+              background: taskMode === "all" ? "rgba(60,60,67,0.06)" : "rgba(214,90,49,0.12)",
               color: taskMode === "all" ? "var(--zr-text-secondary)" : "var(--zr-orange)",
+              letterSpacing: "-0.012em",
             }}>
-            <span style={{ fontSize: "13px" }}>{MODE_ICONS[taskMode]}</span>
-            <span className="hidden sm:inline">{MODE_LABELS[taskMode]}</span>
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            <span>{taskMode === "all" ? "Focus" : MODE_LABELS[taskMode]}</span>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}><path d="M6 9l6 6 6-6"/></svg>
           </button>
           {modeOpen && (
             // iOS context-menu style popover. Anchored to trigger, compact,
@@ -198,7 +199,6 @@ export function NavBar() {
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.04)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                    <span style={{ fontSize: "15px", width: 18, flexShrink: 0, textAlign: "center" }}>{MODE_ICONS[mode]}</span>
                     <span style={{ flex: 1 }}>{MODE_LABELS[mode]}</span>
                     {selected && (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

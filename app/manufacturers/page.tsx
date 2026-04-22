@@ -102,10 +102,13 @@ export default function ManufacturersPage() {
   // Get unique manufacturers
   const manufacturers = [...new Set(specs.map(s => s.manufacturer))].sort();
 
-  // Filter specs
+  // Filter specs. "motorized" is a virtual filter on the
+  // motorization_available boolean rather than a category match.
   const filtered = specs.filter(s => {
     if (filterMfg !== "all" && s.manufacturer !== filterMfg) return false;
-    if (filterCat !== "all" && s.category !== filterCat) return false;
+    if (filterCat === "motorized") {
+      if (!s.motorization_available) return false;
+    } else if (filterCat !== "all" && s.category !== filterCat) return false;
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -244,8 +247,8 @@ export default function ManufacturersPage() {
             </div>
           )}
 
-          {/* Filters — pill inputs matching Products, no bordered boxes */}
-          <div className="flex items-center gap-2 flex-wrap mb-4 px-1">
+          {/* Search + Manufacturer dropdown — pill inputs */}
+          <div className="flex items-center gap-2 flex-wrap mb-3 px-1">
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -271,46 +274,53 @@ export default function ManufacturersPage() {
                   fontSize: "13px",
                   fontWeight: 500,
                   letterSpacing: "-0.012em",
-                  padding: "8px 28px 8px 12px",
+                  padding: "8px 30px 8px 12px",
                   borderRadius: 999,
                   border: "none",
                   appearance: "none",
                   WebkitAppearance: "none",
                   cursor: "pointer",
-                  maxWidth: 140,
+                  maxWidth: 160,
                 }}>
-                <option value="all">All mfgs</option>
+                <option value="all">Manufacturer</option>
                 {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </div>
-            <div className="relative shrink-0">
-              <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-                style={{
-                  background: "rgba(60,60,67,0.06)",
-                  color: "var(--zr-text-primary)",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  letterSpacing: "-0.012em",
-                  padding: "8px 28px 8px 12px",
-                  borderRadius: 999,
-                  border: "none",
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  cursor: "pointer",
-                  maxWidth: 140,
-                }}>
-                <option value="all">All cats</option>
-                {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </div>
+          </div>
+
+          {/* Category chips — fast one-tap filtering. Horizontally scrollable
+              on narrow widths so short names don't wrap to multiple lines. */}
+          <div className="flex items-center gap-1.5 mb-4 px-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {[
+              { key: "all",          label: "All" },
+              { key: "blind",        label: "Blinds" },
+              { key: "shade",        label: "Shades" },
+              { key: "shutter",      label: "Shutters" },
+              { key: "motorized",    label: "Motorized" },
+            ].map(chip => {
+              const active = filterCat === chip.key;
+              return (
+                <button key={chip.key}
+                  onClick={() => setFilterCat(chip.key)}
+                  className="transition-all active:scale-[0.97] whitespace-nowrap shrink-0"
+                  style={{
+                    background: active ? "var(--zr-orange)" : "rgba(60,60,67,0.06)",
+                    color: active ? "#fff" : "var(--zr-text-primary)",
+                    fontSize: "13px",
+                    fontWeight: active ? 600 : 500,
+                    letterSpacing: "-0.012em",
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    WebkitTapHighlightColor: "transparent",
+                  }}>
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Count — muted section label style */}

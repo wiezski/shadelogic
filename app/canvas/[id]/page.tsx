@@ -39,6 +39,28 @@ type Visit = {
   lng: number | null;
 };
 
+type LinkedCustomer = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  lead_status: string | null;
+};
+
+type LinkedQuote = {
+  customer_id: string | null;
+  total: number | null;
+  status: string | null;
+};
+
+// A customer counts as "converted from canvas" once their pipeline has
+// advanced past the initial contact stages. We look for pipeline states
+// that indicate real progress (measure scheduled through complete).
+const CONVERTED_STATUSES = new Set([
+  "measure_scheduled", "measured", "quoted",
+  "sold", "contact_for_install", "installed", "complete",
+]);
+const CLOSED_STATUSES = new Set(["sold", "contact_for_install", "installed", "complete"]);
+
 type Sweep = {
   id: string;
   street_name: string;
@@ -68,6 +90,8 @@ export default function TerritoryDetailPage() {
   const [territory, setTerritory] = useState<Territory | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [sweeps, setSweeps] = useState<Sweep[]>([]);
+  const [linkedCustomers, setLinkedCustomers] = useState<LinkedCustomer[]>([]);
+  const [linkedQuotes, setLinkedQuotes] = useState<LinkedQuote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -93,8 +117,24 @@ export default function TerritoryDetailPage() {
         supabase.from("canvas_sweeps").select("*").eq("territory_id", territoryId).order("walked_at", { ascending: false }).limit(200),
       ]);
       setTerritory(tRes.data as Territory | null);
-      setVisits((vRes.data || []) as Visit[]);
+      const visitsData = (vRes.data || []) as Visit[];
+      setVisits(visitsData);
       setSweeps((sRes.data || []) as Sweep[]);
+
+      // Load the customer records for any canvas visits that converted to a
+      // lead, so the territory can show conversion + revenue.
+      const custIds = Array.from(new Set(visitsData.map(v => v.customer_id).filter((x): x is string => !!x)));
+      if (custIds.length > 0) {
+        const [custRes, quoteRes] = await Promise.all([
+          supabase.from("customers").select("id, first_name, last_name, lead_status").in("id", custIds),
+          supabase.from("quotes").select("customer_id, total, status").in("customer_id", custIds).in("status", ["approved","accepted","sold","complete"]),
+        ]);
+        setLinkedCustomers((custRes.data || []) as LinkedCustomer[]);
+        setLinkedQuotes((quoteRes.data || []) as LinkedQuote[]);
+      } else {
+        setLinkedCustomers([]);
+        setLinkedQuotes([]);
+      }
     }
     setLoading(false);
   }
@@ -137,6 +177,14 @@ export default function TerritoryDetailPage() {
   const totalHomes = individualVisits + sweepHomes;
   const totalHangers = flyersFromVisits + sweepHangers;
   const conversionPct = totalHomes > 0 ? ((leads / totalHomes) * 100).toFixed(1) : "0";
+
+  // Conversion tracking — how many of the lead customers actually moved
+  // through the pipeline, and how much revenue came in from them.
+  const convertedCustomers = linkedCustomers.filter(c => c.lead_status && CONVERTED_STATUSES.has(c.lead_status));
+  const closedCustomers = linkedCustomers.filter(c => c.lead_status && CLOSED_STATUSES.has(c.lead_status));
+  const territoryRevenue = linkedQuotes.reduce((sum, q) => sum + (q.total || 0), 0);
+  const fmtMoney = (n: number) =>
+    n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}`;
 
   return (
     <main className="min-h-screen p-4" style={{ background: "var(--zr-black)" }}>
@@ -273,6 +321,49 @@ export default function TerritoryDetailPage() {
           <StatCard label="Conv %" value={`${conversionPct}%`} color="var(--zr-orange)" />
         </div>
 
+        {/* Conversion from canvas leads — only shows once there's at least one linked customer */}
+        {linkedCustomers.length > 0 && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <StatCard label="Progressed" value={convertedCustomers.length} color="#f59e0b" />
+            <StatCard label="Closed" value={closedCustomers.length} color="#16a34a" />
+            <StatCard label="Revenue" value={territoryRevenue > 0 ? fmtMoney(territoryRevenue) : "—"} color="var(--zr-orange)" />
+          </div>
+        )}
+
+        {/* Converted customers list */}
+        {linkedCustomers.length > 0 && (
+          <div className="mt-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--zr-text-secondary)" }}>
+              Canvass-sourced customers
+            </h2>
+            <div className="space-y-2">
+              {linkedCustomers
+                .slice()
+                .sort((a, b) => {
+                  // Sold/installed customers first, then in-pipeline, then new
+                  const rank = (s: string | null) => (s && CLOSED_STATUSES.has(s)) ? 0 : (s && CONVERTED_STATUSES.has(s)) ? 1 : 2;
+                  return rank(a.lead_status) - rank(b.lead_status);
+                })
+                .map(c => {
+                  const isClosed = c.lead_status && CLOSED_STATUSES.has(c.lead_status);
+                  const isProgressed = c.lead_status && CONVERTED_STATUSES.has(c.lead_status);
+                  const badgeColor = isClosed ? "#16a34a" : isProgressed ? "#f59e0b" : "#9ca3af";
+                  const fullName = [c.first_name, c.last_name].filter(Boolean).join(" ") || "(unnamed)";
+                  return (
+                    <Link key={c.id} href={`/customers/${c.id}`}>
+                      <div className="rounded-lg p-3 flex items-center justify-between" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                        <span className="text-sm font-medium" style={{ color: "var(--zr-text-primary)" }}>{fullName}</span>
+                        <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ background: badgeColor, color: "#fff" }}>
+                          {c.lead_status || "new"}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         {/* Sweeps log */}
         {sweeps.length > 0 && (
           <div className="mt-5">
@@ -381,7 +472,7 @@ function ShareToCanvasserButton({ territory }: { territory: Territory }) {
     if (territory.campaign) parts.push(`Campaign: ${territory.campaign}`);
     if (territory.materials_used) parts.push(`Leave behind: ${territory.materials_used}`);
     if (territory.description) parts.push(territory.description);
-    if (territory.map_image_url) parts.push(`Map image: ${territory.map_image_url}`);
+    if (territory.map_image_url) parts.push(`📸 Annotated map: ${territory.map_image_url}`);
     return parts.join("\n\n");
   }
 

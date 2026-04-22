@@ -589,7 +589,7 @@ export default function HomePage() {
       // Fetch quote_materials with active statuses
       const { data: matData } = await supabase
         .from("quote_materials")
-        .select("id, description, status, tracking_number, expected_packages, received_packages, eta, ordered_at, shipped_at, received_at, quote_id, quotes!inner(customer_id, customers!inner(first_name, last_name))")
+        .select("id, description, status, tracking_number, expected_packages, received_packages, eta, ordered_at, shipped_at, received_at, storage_location, quote_id, quotes!inner(customer_id, customers!inner(first_name, last_name))")
         .in("status", ["ordered", "shipped", "received"])
         .order("created_at", { ascending: false })
         .limit(30);
@@ -611,6 +611,7 @@ export default function HomePage() {
           ordered_at: m.ordered_at || null,
           shipped_at: m.shipped_at || null,
           received_at: m.received_at || null,
+          storage_location: m.storage_location || null,
         };
       });
       setShipments(items);

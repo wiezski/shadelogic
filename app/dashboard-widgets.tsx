@@ -637,6 +637,7 @@ export type ShipmentItem = {
   ordered_at: string | null;
   shipped_at: string | null;
   received_at: string | null;
+  storage_location: string | null;
 };
 
 export function ShipmentTrackingWidget({ shipments, loading }: { shipments: ShipmentItem[]; loading: boolean }) {
@@ -664,7 +665,13 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
   const statusColor: Record<string, string> = { ordered: "var(--zr-info)", shipped: "var(--zr-warning)", received: "var(--zr-success)" };
 
   function ShipmentRow({ s }: { s: ShipmentItem }) {
-    const pkgProgress = s.expected_packages ? `${s.received_packages}/${s.expected_packages} pkgs` : null;
+    // The customer, where the boxes are, and how many arrived are what the
+    // installer actually needs to know — lead with those. The vendor/product
+    // description is secondary (and can be missing entirely).
+    const pkgSummary = s.expected_packages ? `${s.received_packages}/${s.expected_packages} arrived` : null;
+    const shipDate = s.shipped_at ? new Date(s.shipped_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
+    const etaFmt = s.eta ? `ETA ${s.eta}` : null;
+    const dateChip = shipDate ? `Shipped ${shipDate}` : etaFmt;
     return (
       <Link href={`/quotes/${s.quote_id}`}
         style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)" }}
@@ -672,16 +679,17 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
         <span className="text-xl shrink-0">{statusIcon[s.status]}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span style={{ color: "var(--zr-text-primary)" }} className="text-sm font-medium truncate">{s.description || "Order"}</span>
+            <span style={{ color: "var(--zr-text-primary)" }} className="text-sm font-semibold truncate">{s.customer_name}</span>
             <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: `${statusColor[s.status]}20`, color: statusColor[s.status] }}>
               {statusLabel[s.status]}
             </span>
           </div>
-          <div style={{ color: "var(--zr-text-muted)" }} className="text-xs mt-0.5 flex items-center gap-2">
-            <span>{s.customer_name}</span>
-            {pkgProgress && <span>· {pkgProgress}</span>}
-            {s.eta && <span>· ETA: {s.eta}</span>}
+          <div style={{ color: "var(--zr-text-muted)" }} className="text-xs mt-0.5 flex items-center gap-2 flex-wrap">
+            {pkgSummary && <span style={{ color: "var(--zr-text-primary)" }} className="font-medium">📦 {pkgSummary}</span>}
+            {s.storage_location && <span>· 📍 {s.storage_location}</span>}
+            {dateChip && <span>· {dateChip}</span>}
             {s.tracking_number && <span>· #{s.tracking_number.slice(-6)}</span>}
+            {s.description && <span className="opacity-70">· {s.description}</span>}
           </div>
         </div>
         {s.status === "shipped" && s.expected_packages && s.expected_packages > 0 && (

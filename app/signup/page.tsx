@@ -143,6 +143,21 @@ function SignupInner() {
       }
     }
 
+    // Fire welcome email (non-blocking — signup succeeds even if email fails).
+    // Only for new-company signups; invitees get no welcome.
+    if (!isInvite) {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const jwt = sess?.session?.access_token;
+        if (jwt) {
+          fetch("/api/signup/welcome-email", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${jwt}` },
+          }).catch(() => { /* non-fatal */ });
+        }
+      } catch { /* non-fatal */ }
+    }
+
     setLoading(false);
     // New company signups → onboarding questionnaire; invite joins → dashboard
     router.replace(isInvite ? "/" : "/onboarding");

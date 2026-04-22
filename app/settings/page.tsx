@@ -29,6 +29,7 @@ type Settings = {
   website: string | null;
   license_number: string | null;
   tagline: string | null;
+  email_signature: string | null;
   google_review_link: string | null;
   default_deposit_pct: number;
   default_markup: number;
@@ -2308,6 +2309,29 @@ export default function SettingsPage() {
               <Field label="Phone" field="phone" type="tel" placeholder="801-555-1234" />
               <Field label="Email" field="email" type="email" placeholder="info@aspenblinds.com" />
               <Field label="Website" field="website" placeholder="www.aspenblinds.com" />
+            </div>
+
+            {/* Email signature */}
+            <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Email Signature</h2>
+              <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                Appended to every customer-facing email (quote delivery, appointment reminders, follow-ups). Leave blank to skip.
+              </p>
+              <textarea
+                defaultValue={settings?.email_signature ?? ""}
+                onBlur={e => {
+                  const v = e.target.value.trim();
+                  save("email_signature", v || null);
+                }}
+                placeholder={"Thanks,\nJamie Sunrise\nSunrise Window Treatments\n801-555-1234"}
+                rows={5}
+                maxLength={2000}
+                className="w-full rounded px-2 py-1.5 text-sm font-mono leading-snug"
+                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+              />
+              <p className="text-[11px]" style={{ color: "var(--zr-text-muted)" }}>
+                Plain text, line breaks preserved. No HTML.
+              </p>
             </div>
 
             {/* Address */}

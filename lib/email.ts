@@ -72,28 +72,43 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
   const from = `${displayName} <${platformDomain.includes("@") ? platformDomain.split("<").pop()?.replace(">", "").trim() || platformDomain : platformDomain}>`;
   const replyTo = params.replyTo || params.fromEmail || undefined;
 
-  // White-label logo injection: if this is a customer-facing email (anything
-  // other than system types) and the sending company has a Business plan
-  // with a logo set, inject their logo at the top of the email body before
-  // sending. No-op for system emails or lower-plan tenants.
+  // Customer-facing enhancements: inject white-label logo (Business plan only)
+  // + append the owner's custom email signature. Skipped for system emails.
   let finalHtml = params.html;
   const isCustomerFacing = params.type !== "password_reset" && params.type !== "trial_reminder" && params.type !== "custom";
   if (isCustomerFacing && params.companyId) {
     try {
       const admin = getAdminClient();
-      const { data: brand } = await admin
-        .from("companies")
-        .select("plan, brand_logo_url")
-        .eq("id", params.companyId)
-        .single();
+      const [{ data: brand }, { data: settings }] = await Promise.all([
+        admin.from("companies").select("plan, brand_logo_url").eq("id", params.companyId).single(),
+        admin.from("company_settings").select("email_signature").eq("company_id", params.companyId).maybeSingle(),
+      ]);
+
+      // 1) Logo at top (Business / Trial only)
       if (brand?.brand_logo_url && (brand.plan === "business" || brand.plan === "trial")) {
         const logoBlock = `<div style="text-align:center;margin-bottom:24px;"><img src="${brand.brand_logo_url}" alt="Logo" style="max-height:60px;max-width:240px;object-fit:contain;" /></div>`;
-        // Inject inside the card, right after <div class="card">
         finalHtml = finalHtml.replace('<div class="card">', `<div class="card">${logoBlock}`);
       }
+
+      // 2) Signature before the footer (all plans)
+      const sig = (settings?.email_signature || "").trim();
+      if (sig) {
+        // Escape HTML and convert line breaks to <br>
+        const escaped = sig
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br>");
+        const sigBlock = `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280;line-height:1.6;">${escaped}</div>`;
+        // Inject just before the closing </div> of the card (the `</div>` followed by the footer)
+        finalHtml = finalHtml.replace(
+          /(\s*)<\/div>\s*<div class="footer">/,
+          `$1${sigBlock}$1</div>$1<div class="footer">`
+        );
+      }
     } catch (err) {
-      // Non-fatal — just log and send without logo
-      console.warn("[email] brand lookup failed, sending without logo:", err);
+      // Non-fatal — just log and send without logo/signature
+      console.warn("[email] brand/signature lookup failed:", err);
     }
   }
 

@@ -276,6 +276,43 @@ export function trialReminder3Days(params: {
 
 // ── 8. Trial Reminder (1 day left) ───────────────────────────
 
+// ── 9. Welcome Email (fires on signup) ───────────────────────
+
+export function welcomeEmail(params: {
+  firstName: string;
+  companyName: string;
+  trialEndsAt: string;
+}) {
+  const subject = `Welcome to ZeroRemake, ${params.firstName}!`;
+  const loginUrl = `${APP_URL}/login`;
+  const setupUrl = `${APP_URL}/setup-guide`;
+
+  const html = emailLayout(`
+    <h1>Welcome aboard 👋</h1>
+    <p>Thanks for signing up, ${params.firstName}. Your ZeroRemake account for <strong>${params.companyName}</strong> is ready to go.</p>
+
+    <p><strong>Your 14-day free trial runs through ${fmtDate(params.trialEndsAt)}.</strong> No card required. You'll get a reminder before it ends.</p>
+
+    <p>To get the most out of ZeroRemake fast:</p>
+
+    <div class="detail">
+      <div class="detail-row"><span class="detail-label">1.</span><span class="detail-value">Add your first customer — start tracking leads right away</span></div>
+      <div class="detail-row"><span class="detail-label">2.</span><span class="detail-value">Create a measure job — capture windows, photos, measurements</span></div>
+      <div class="detail-row"><span class="detail-label">3.</span><span class="detail-value">Send a quote — your customer can review + sign online</span></div>
+    </div>
+
+    <p style="text-align: center;">
+      <a href="${loginUrl}" class="btn">Sign In</a>
+    </p>
+
+    <p class="muted">Want a more detailed walkthrough? <a href="${setupUrl}">Open the setup guide →</a></p>
+
+    <p class="muted">Got questions? Just reply to this email.</p>
+  `, "ZeroRemake");
+
+  return { subject, html };
+}
+
 export function trialReminder1Day(params: {
   firstName: string;
   trialEndsAt: string;

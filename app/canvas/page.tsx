@@ -20,7 +20,16 @@ type Territory = {
   color: string | null;
   created_at: string;
   archived_at: string | null;
+  assigned_to: string | null;
+  start_address: string | null;
+  start_lat: number | null;
+  start_lng: number | null;
+  campaign: string | null;
+  materials_used: string | null;
+  recanvass_interval_days: number | null;
 };
+
+type TeamMember = { id: string; full_name: string | null };
 
 type VisitAgg = {
   territory_id: string;
@@ -40,9 +49,11 @@ const OUTCOME_LABELS: Record<string, string> = {
 
 export default function CanvasPage() {
   const router = useRouter();
-  const { companyId, features, loading: authLoading } = useAuth();
+  const { companyId, user, features, loading: authLoading } = useAuth();
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [aggs, setAggs] = useState<Record<string, VisitAgg>>({});
+  const [teamMap, setTeamMap] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<"all" | "mine">("all");
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -58,12 +69,17 @@ export default function CanvasPage() {
 
   async function load() {
     setLoading(true);
-    const [tRes, vRes] = await Promise.all([
+    const [tRes, vRes, pRes] = await Promise.all([
       supabase.from("canvas_territories").select("*").is("archived_at", null).order("created_at", { ascending: false }),
       supabase.from("canvas_visits").select("territory_id, outcome, visited_at"),
+      supabase.from("profiles").select("id, full_name"),
     ]);
 
     setTerritories((tRes.data || []) as Territory[]);
+
+    const nameMap: Record<string, string> = {};
+    (pRes.data || []).forEach((p: TeamMember) => { nameMap[p.id] = p.full_name || "Unnamed"; });
+    setTeamMap(nameMap);
 
     // Aggregate visit counts per territory
     const byTerritory: Record<string, VisitAgg> = {};
@@ -146,6 +162,7 @@ export default function CanvasPage() {
         {showCreate && (
           <NewTerritoryForm
             companyId={companyId!}
+            teamMap={teamMap}
             onCreated={(t) => {
               setTerritories(prev => [t, ...prev]);
               setShowCreate(false);
@@ -169,45 +186,91 @@ export default function CanvasPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {territories.map(t => {
-              const a = aggs[t.id];
-              return (
-                <Link
-                  key={t.id}
-                  href={`/canvas/${t.id}`}
-                  className="block rounded-lg p-4 transition-colors hover:brightness-110"
-                  style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate" style={{ color: "var(--zr-text-primary)" }}>{t.name}</div>
-                      {(t.city || t.state) && (
-                        <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
-                          {[t.city, t.state].filter(Boolean).join(", ")}
-                          {t.zip_codes && t.zip_codes.length > 0 && ` · ${t.zip_codes.join(", ")}`}
+          <>
+            {/* Filter tabs — Mine vs All */}
+            <div className="mb-3 inline-flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+              <button
+                onClick={() => setFilter("all")}
+                className="px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ background: filter === "all" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: filter === "all" ? "#fff" : "var(--zr-text-secondary)" }}
+              >
+                All ({territories.length})
+              </button>
+              <button
+                onClick={() => setFilter("mine")}
+                className="px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ background: filter === "mine" ? "var(--zr-orange)" : "var(--zr-surface-2)", color: filter === "mine" ? "#fff" : "var(--zr-text-secondary)" }}
+              >
+                Mine ({territories.filter(t => t.assigned_to === user?.id).length})
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {territories.filter(t => filter === "all" || t.assigned_to === user?.id).map(t => {
+                const a = aggs[t.id];
+                // Due-for-recanvass math: if interval set AND last visit was that long ago
+                let dueForRecanvass = false;
+                if (t.recanvass_interval_days && a?.last_visited_at) {
+                  const daysSince = Math.floor((Date.now() - new Date(a.last_visited_at).getTime()) / 86400000);
+                  dueForRecanvass = daysSince >= t.recanvass_interval_days;
+                } else if (t.recanvass_interval_days && !a?.last_visited_at) {
+                  // Never visited but on a recanvass cadence → due now
+                  dueForRecanvass = true;
+                }
+                return (
+                  <Link
+                    key={t.id}
+                    href={`/canvas/${t.id}`}
+                    className="block rounded-lg p-4 transition-colors hover:brightness-110"
+                    style={{ background: "var(--zr-surface-1)", border: `1px solid ${dueForRecanvass ? "rgba(239,68,68,0.5)" : "var(--zr-border)"}` }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="font-semibold truncate" style={{ color: "var(--zr-text-primary)" }}>{t.name}</div>
+                          {t.assigned_to && teamMap[t.assigned_to] && (
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(59,130,246,0.15)", color: "#2563eb" }}>
+                              {t.assigned_to === user?.id ? "You" : teamMap[t.assigned_to]}
+                            </span>
+                          )}
+                          {dueForRecanvass && (
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
+                              🔄 Due for re-canvass
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {t.description && (
-                        <div className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>{t.description}</div>
-                      )}
-                    </div>
-                    {a && a.visits > 0 && (
-                      <div className="shrink-0 text-right text-xs" style={{ color: "var(--zr-text-muted)" }}>
-                        <div><strong style={{ color: "var(--zr-text-primary)" }}>{a.visits}</strong> visits</div>
-                        {a.leads > 0 && <div style={{ color: "#16a34a" }}>{a.leads} lead{a.leads === 1 ? "" : "s"}</div>}
-                        {a.last_visited_at && (
-                          <div className="text-[10px] mt-0.5">
-                            Last: {new Date(a.last_visited_at).toLocaleDateString()}
+                        {(t.city || t.state) && (
+                          <div className="text-xs mt-0.5" style={{ color: "var(--zr-text-muted)" }}>
+                            {[t.city, t.state].filter(Boolean).join(", ")}
+                            {t.zip_codes && t.zip_codes.length > 0 && ` · ${t.zip_codes.join(", ")}`}
                           </div>
                         )}
+                        {t.campaign && (
+                          <div className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>
+                            📣 {t.campaign}
+                          </div>
+                        )}
+                        {t.description && (
+                          <div className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>{t.description}</div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+                      {a && a.visits > 0 && (
+                        <div className="shrink-0 text-right text-xs" style={{ color: "var(--zr-text-muted)" }}>
+                          <div><strong style={{ color: "var(--zr-text-primary)" }}>{a.visits}</strong> visits</div>
+                          {a.leads > 0 && <div style={{ color: "#16a34a" }}>{a.leads} lead{a.leads === 1 ? "" : "s"}</div>}
+                          {a.last_visited_at && (
+                            <div className="text-[10px] mt-0.5">
+                              Last: {new Date(a.last_visited_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Unfiled visits (no territory) */}
@@ -233,14 +296,51 @@ export default function CanvasPage() {
   );
 }
 
-function NewTerritoryForm({ companyId, onCreated }: { companyId: string; onCreated: (t: Territory) => void }) {
+function NewTerritoryForm({ companyId, teamMap, onCreated }: { companyId: string; teamMap: Record<string, string>; onCreated: (t: Territory) => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
+  const [startAddress, setStartAddress] = useState("");
+  const [startLat, setStartLat] = useState<number | null>(null);
+  const [startLng, setStartLng] = useState<number | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [gpsError, setGpsError] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
+  const [campaign, setCampaign] = useState("");
+  const [materials, setMaterials] = useState("");
+  const [recanvass, setRecanvass] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  function captureCurrentGPS() {
+    if (!navigator.geolocation) {
+      setGpsError("Not supported on this device.");
+      setGpsStatus("error");
+      return;
+    }
+    setGpsStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setStartLat(pos.coords.latitude);
+        setStartLng(pos.coords.longitude);
+        setGpsStatus("ok");
+      },
+      err => {
+        setGpsStatus("error");
+        if (err.code === err.PERMISSION_DENIED) {
+          const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+          setGpsError(ios
+            ? "Location denied. On iPhone: Settings → Safari → Location → Ask/Allow, then refresh."
+            : "Location denied. Tap the 🔒 icon in the address bar → Allow location.");
+        } else {
+          setGpsError(err.message || "Couldn't get location.");
+        }
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -254,12 +354,23 @@ function NewTerritoryForm({ companyId, onCreated }: { companyId: string; onCreat
       city: city.trim() || null,
       state: state.trim().toUpperCase() || null,
       zip_codes: zip.trim() ? zip.split(",").map(z => z.trim()).filter(Boolean) : null,
+      assigned_to: assignedTo || null,
+      start_address: startAddress.trim() || null,
+      start_lat: startLat,
+      start_lng: startLng,
+      campaign: campaign.trim() || null,
+      materials_used: materials.trim() || null,
+      recanvass_interval_days: recanvass ? parseInt(recanvass, 10) : null,
     }]).select("*").single();
     setSaving(false);
     if (err || !data) { setError(err?.message || "Failed to create."); return; }
     onCreated(data as Territory);
     setName(""); setDescription(""); setCity(""); setState(""); setZip("");
+    setStartAddress(""); setStartLat(null); setStartLng(null); setGpsStatus("idle");
+    setAssignedTo(""); setCampaign(""); setMaterials(""); setRecanvass("");
   }
+
+  const teamOptions = Object.entries(teamMap);
 
   return (
     <form onSubmit={save} className="mb-4 rounded-lg p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
@@ -277,6 +388,73 @@ function NewTerritoryForm({ companyId, onCreated }: { companyId: string; onCreat
           className="w-full rounded px-2 py-1.5 text-sm"
           style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
       </div>
+
+      {/* Assign to */}
+      <div>
+        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Assign to</label>
+        <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+          className="w-full rounded px-2 py-1.5 text-sm"
+          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
+          <option value="">— Unassigned (anyone on the team) —</option>
+          {teamOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
+      </div>
+
+      {/* Start location */}
+      <div>
+        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Starting point (where to begin)</label>
+        <input value={startAddress} onChange={e => setStartAddress(e.target.value)} placeholder="100 Oak St, Salt Lake City"
+          className="w-full rounded px-2 py-1.5 text-sm mb-1"
+          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+        <button type="button" onClick={captureCurrentGPS}
+          className="text-xs rounded px-2 py-1 font-medium"
+          style={{
+            background: gpsStatus === "ok" ? "rgba(22,163,74,0.15)" : "var(--zr-surface-2)",
+            border: `1px solid ${gpsStatus === "ok" ? "#16a34a" : "var(--zr-border)"}`,
+            color: gpsStatus === "ok" ? "#16a34a" : "var(--zr-text-secondary)",
+          }}>
+          {gpsStatus === "idle" && "📍 Use my current GPS"}
+          {gpsStatus === "loading" && "Getting GPS…"}
+          {gpsStatus === "ok" && `✓ GPS set (${startLat?.toFixed(4)}, ${startLng?.toFixed(4)})`}
+          {gpsStatus === "error" && "⚠ Try again"}
+        </button>
+        {gpsStatus === "error" && gpsError && (
+          <div className="text-[11px] mt-1" style={{ color: "var(--zr-error)" }}>{gpsError}</div>
+        )}
+      </div>
+
+      {/* Campaign + Materials */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Campaign</label>
+          <input value={campaign} onChange={e => setCampaign(e.target.value)} placeholder="Spring 2026 push"
+            className="w-full rounded px-2 py-1.5 text-sm"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+        </div>
+        <div>
+          <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Materials / flyer</label>
+          <input value={materials} onChange={e => setMaterials(e.target.value)} placeholder="Door hanger v2, postcard A"
+            className="w-full rounded px-2 py-1.5 text-sm"
+            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+        </div>
+      </div>
+
+      {/* Recanvass cadence */}
+      <div>
+        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Revisit every</label>
+        <select value={recanvass} onChange={e => setRecanvass(e.target.value)}
+          className="w-full rounded px-2 py-1.5 text-sm"
+          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
+          <option value="">— One-time (no recanvass) —</option>
+          <option value="30">30 days</option>
+          <option value="60">60 days</option>
+          <option value="90">90 days (quarterly)</option>
+          <option value="180">6 months</option>
+          <option value="365">1 year</option>
+        </select>
+      </div>
+
+      {/* Location block */}
       <div className="grid grid-cols-[1fr_56px_1fr] gap-2">
         <div>
           <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>City</label>
@@ -297,6 +475,7 @@ function NewTerritoryForm({ companyId, onCreated }: { companyId: string; onCreat
             style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
         </div>
       </div>
+
       <button type="submit" disabled={saving}
         className="w-full rounded px-4 py-2 text-sm font-semibold disabled:opacity-50"
         style={{ background: "var(--zr-orange)", color: "#fff" }}>

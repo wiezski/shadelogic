@@ -17,6 +17,13 @@ type Territory = {
   state: string | null;
   zip_codes: string[] | null;
   created_at: string;
+  assigned_to: string | null;
+  start_address: string | null;
+  start_lat: number | null;
+  start_lng: number | null;
+  campaign: string | null;
+  materials_used: string | null;
+  recanvass_interval_days: number | null;
 };
 
 type Visit = {
@@ -109,7 +116,7 @@ export default function TerritoryDetailPage() {
         <Link href="/canvas" className="text-xs" style={{ color: "var(--zr-orange)" }}>← Back to Canvas</Link>
 
         <div className="mt-2 flex items-start justify-between gap-3">
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>{territory.name}</h1>
             {(territory.city || territory.state) && (
               <div className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
@@ -131,6 +138,51 @@ export default function TerritoryDetailPage() {
             </Link>
           )}
         </div>
+
+        {/* Territory metadata (campaign, start point, cadence) */}
+        {(territory.campaign || territory.materials_used || territory.start_address || territory.start_lat || territory.recanvass_interval_days) && (
+          <div className="mt-3 rounded-lg p-3 space-y-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+            {territory.campaign && (
+              <div className="flex gap-2 text-xs">
+                <span className="shrink-0 w-20" style={{ color: "var(--zr-text-muted)" }}>📣 Campaign</span>
+                <span style={{ color: "var(--zr-text-primary)" }}>{territory.campaign}</span>
+              </div>
+            )}
+            {territory.materials_used && (
+              <div className="flex gap-2 text-xs">
+                <span className="shrink-0 w-20" style={{ color: "var(--zr-text-muted)" }}>📄 Materials</span>
+                <span style={{ color: "var(--zr-text-primary)" }}>{territory.materials_used}</span>
+              </div>
+            )}
+            {(territory.start_address || (territory.start_lat && territory.start_lng)) && (
+              <div className="flex gap-2 text-xs items-center">
+                <span className="shrink-0 w-20" style={{ color: "var(--zr-text-muted)" }}>📍 Start at</span>
+                <span className="flex-1" style={{ color: "var(--zr-text-primary)" }}>
+                  {territory.start_address || `${territory.start_lat?.toFixed(4)}, ${territory.start_lng?.toFixed(4)}`}
+                </span>
+                <a
+                  href={
+                    territory.start_lat && territory.start_lng
+                      ? `https://www.google.com/maps?q=${territory.start_lat},${territory.start_lng}`
+                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(territory.start_address || "")}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  style={{ background: "rgba(59,130,246,0.15)", color: "#2563eb" }}
+                >
+                  Open in Maps →
+                </a>
+              </div>
+            )}
+            {territory.recanvass_interval_days && (
+              <div className="flex gap-2 text-xs">
+                <span className="shrink-0 w-20" style={{ color: "var(--zr-text-muted)" }}>🔄 Revisit</span>
+                <span style={{ color: "var(--zr-text-primary)" }}>Every {territory.recanvass_interval_days} days</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mt-4 grid grid-cols-4 gap-2">

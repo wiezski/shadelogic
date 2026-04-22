@@ -48,7 +48,7 @@ export default function LogVisitPage() {
 
   function captureGPS() {
     if (!navigator.geolocation) {
-      setGpsError("Geolocation not supported on this device.");
+      setGpsError("This device doesn't support GPS. Enter the address manually.");
       setGpsStatus("error");
       return;
     }
@@ -61,8 +61,27 @@ export default function LogVisitPage() {
         setGpsError("");
       },
       err => {
-        setGpsError(err.message || "Couldn't get location. Check permissions.");
         setGpsStatus("error");
+        // Platform-aware permission help
+        const ua = navigator.userAgent;
+        const iOS = /iPhone|iPad|iPod/.test(ua);
+        const android = /Android/.test(ua);
+
+        if (err.code === err.PERMISSION_DENIED) {
+          if (iOS) {
+            setGpsError("Location denied. Fix in iPhone Settings → Safari → Location → set to Ask or Allow, then refresh this page.");
+          } else if (android) {
+            setGpsError("Location denied. Tap 🔒 next to the URL → Site settings → Location → Allow, then refresh.");
+          } else {
+            setGpsError("Location permission denied. Click the 🔒 icon in your address bar and allow location access, then refresh.");
+          }
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setGpsError("Your device can't determine its location right now. Try moving outside or enter the address manually.");
+        } else if (err.code === err.TIMEOUT) {
+          setGpsError("GPS is taking too long. Try again or just type the address.");
+        } else {
+          setGpsError(err.message || "Couldn't get location. Enter the address manually.");
+        }
       },
       { timeout: 10000, maximumAge: 60000, enableHighAccuracy: true }
     );

@@ -242,55 +242,125 @@ export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
   warehouse: ["quick_actions", "shipments", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
 };
 
-// ── 1. Quick Actions — Apple Wallet / Control Center style ──────
-// Transparent buttons on the page canvas. Each action is a tinted-orange
-// icon circle (the same language iOS uses for Control Center toggles and
-// Settings category rows) with a compact label below. No white card, no
-// shadow, no visible border — the icon circle IS the affordance.
+// ── 1. Quick Actions — iOS Shortcuts / Apple Wallet tile row ──────
+// Three soft-tinted rounded-square tiles, each with a monochrome SF-style
+// glyph centered inside and a small label BELOW the tile. Per-action tint
+// (blue / orange / green) gives Apple-style color-coded recognition while
+// staying calm — the fills are ~10-12% alpha, not saturated.
+// No card wrapper around the group; tiles sit directly on the page canvas,
+// matching the same no-box language as the refined Shipments list.
 export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => void }) {
-  // Shared button styling. Outer button is transparent and tall enough
-  // to be comfortable on a fingertip (~68-72px total height). Tap state
-  // is a very soft gray wash + micro scale, exactly what iOS uses.
-  const btnClass = "zr-ios-action flex flex-col items-center gap-[7px] py-2.5 rounded-2xl transition-all active:scale-[0.97]";
+  // Per-action identity. Tint fills are soft so the row reads calm;
+  // glyph colors are the saturated variant for clear affordance.
+  type Action = {
+    label: string;
+    tintBg: string;
+    tintFg: string;
+    icon: React.ReactNode;
+    href?: string;
+    onClick?: () => void;
+  };
 
-  // Icon circle: 48px, rounded-full, tinted orange at 10% alpha, orange
-  // stroke on the icon itself. Matches Apple's soft-tinted circular
-  // affordances (e.g. Settings > icons column, Wallet quick-action chips).
-  const circleStyle = {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    background: "rgba(214,90,49,0.10)",
-    color: "var(--zr-orange)",
+  // Icon size & stroke — 28px with 2.25 stroke gives the glyph real presence
+  // on the tile without reading as bold. Stroke weight overrides the Icon
+  // definition's 1.75 default (props spread is applied last in the SVG).
+  const glyph = { width: 28, height: 28, strokeWidth: 2.25 } as const;
+
+  // Tints sit at 13-14% alpha — soft enough to stay calm, strong enough to
+  // read as three distinct identities at a glance. Glyph colors are the
+  // saturated hue so the icon never looks washed out against its own tile.
+  const actions: Action[] = [
+    {
+      label: "New customer",
+      tintBg: "rgba(10,132,255,0.13)",
+      tintFg: "#0a7cff",
+      icon: <Icon.Person {...glyph} />,
+      onClick: onNewCustomer,
+    },
+    {
+      label: "Schedule",
+      tintBg: "rgba(214,90,49,0.13)",
+      tintFg: "var(--zr-orange)",
+      icon: <Icon.Calendar {...glyph} />,
+      href: "/schedule",
+    },
+    {
+      label: "Reminders",
+      tintBg: "rgba(48,164,108,0.14)",
+      tintFg: "#228b5b",
+      icon: <Icon.Bell {...glyph} />,
+      href: "/reminders",
+    },
+  ];
+
+  // The tile is the action affordance. 68pt tall, 18pt radius — tuned a
+  // touch more compact than iOS Shortcuts so the row feels intentional,
+  // not decorative. Press feedback is a micro scale + brightness dip
+  // on the tile itself (see zr-ios-tile class).
+  const tileStyle: React.CSSProperties = {
+    width: "100%",
+    height: 68,
+    borderRadius: 18,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-  } as const;
+    transition: "filter 120ms ease, transform 120ms ease",
+  };
 
-  const labelStyle = {
-    fontSize: "12.5px",
-    fontWeight: 500,
+  // Label sits tight under the tile — 6px gap (was 8) makes the pairing
+  // read as one tappable unit. 13px / weight 550 / primary text color:
+  // clearer than before without drifting into "bold".
+  const labelStyle: React.CSSProperties = {
+    fontSize: "13px",
+    fontWeight: 550,
     letterSpacing: "-0.01em",
     color: "var(--zr-text-primary)",
     lineHeight: 1.2,
-  } as const;
+    marginTop: 6,
+    textAlign: "center",
+  };
 
-  return (
-    // Tighter grid — items read as a unified cluster, not three islands.
-    // gap-1 (4px) gives just enough breathing room without chopping them up.
-    <div className="grid grid-cols-3 gap-1">
-      <button onClick={onNewCustomer} className={btnClass}>
-        <span style={circleStyle}><Icon.Person /></span>
-        <span style={labelStyle}>New customer</span>
+  // Outer tap target wraps tile + label so both compress together on press.
+  const wrapClass = "flex flex-col items-stretch transition-transform active:scale-[0.97]";
+  const wrapStyle: React.CSSProperties = {
+    background: "transparent",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    textDecoration: "none",
+    color: "inherit",
+    WebkitTapHighlightColor: "transparent",
+  };
+
+  function Tile({ a }: { a: Action }) {
+    const inner = (
+      <>
+        <span className="zr-ios-tile" style={{ ...tileStyle, background: a.tintBg, color: a.tintFg }}>
+          {a.icon}
+        </span>
+        <span style={labelStyle}>{a.label}</span>
+      </>
+    );
+    if (a.href) {
+      return (
+        <Link href={a.href} className={wrapClass} style={wrapStyle}>
+          {inner}
+        </Link>
+      );
+    }
+    return (
+      <button type="button" onClick={a.onClick} className={wrapClass} style={wrapStyle}>
+        {inner}
       </button>
-      <Link href="/schedule" className={btnClass}>
-        <span style={circleStyle}><Icon.Calendar /></span>
-        <span style={labelStyle}>Schedule</span>
-      </Link>
-      <Link href="/reminders" className={btnClass}>
-        <span style={circleStyle}><Icon.Bell /></span>
-        <span style={labelStyle}>Reminders</span>
-      </Link>
+    );
+  }
+
+  // Edge padding (px-5) matches the Shipments list's content alignment.
+  // gap-2 (8px) between tiles: tight enough to read as one cluster, loose
+  // enough that each tile has breathing room.
+  return (
+    <div className="grid grid-cols-3 gap-2 px-5">
+      {actions.map(a => <Tile key={a.label} a={a} />)}
     </div>
   );
 }

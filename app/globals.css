@@ -273,6 +273,21 @@ body {
   transition-duration: 40ms;
 }
 
+/* Quick Actions tile — the tinted rounded-square affordance. Press feedback
+   is a micro-brightness dip on the tile itself, which reads as "solid and
+   tappable" without shadows or borders. The outer wrapper still provides
+   the scale animation so tile + label compress together. */
+.zr-ios-tile {
+  -webkit-tap-highlight-color: transparent;
+}
+.zr-ios-tile:hover {
+  filter: brightness(0.97);
+}
+.zr-ios-tile:active {
+  filter: brightness(0.92);
+  transition-duration: 40ms;
+}
+
 /* A small leading colored dot — iOS Mail / Reminders style status indicator.
    Replaces heavy emoji icon tiles for a calmer, lighter feel. */
 .zr-v2-dot {

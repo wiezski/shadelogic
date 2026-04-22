@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { groupByPerson, type ProfileLite } from "../../lib/name-normalize";
 import { FeatureGate } from "../feature-gate";
 import { PermissionGate } from "../permission-gate";
 
@@ -222,16 +223,15 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.count - a.count);
     setIssueStats(sorted);
 
-    // Measurer stats
-    const measMap: Record<string, { jobs: number; jobIds: string[] }> = {};
-    loadedJobs.forEach((j) => {
-      const name = j.measured_by || "Unassigned";
-      if (!measMap[name]) measMap[name] = { jobs: 0, jobIds: [] };
-      measMap[name].jobs++;
-      measMap[name].jobIds.push(j.id);
-    });
+    // Measurer stats — normalize free-text measured_by against profile full_names
+    // so "Steve" / "steve" / "Steve Wiezbowski" collapse into one row.
+    const { data: profileRows } = await supabase.from("profiles").select("id, full_name");
+    const companyProfiles: ProfileLite[] = (profileRows || []) as ProfileLite[];
+
+    const measBuckets = groupByPerson(loadedJobs, (j) => j.measured_by, companyProfiles);
     const measStats: MeasurerStat[] = await Promise.all(
-      Object.entries(measMap).map(async ([name, { jobs: jobCount, jobIds: mJobIds }]) => {
+      Array.from(measBuckets.values()).map(async (bucket) => {
+        const mJobIds = bucket.items.map(j => j.id);
         const { data: mRooms } = await supabase.from("rooms").select("id").in("measure_job_id", mJobIds);
         const mRoomIds = (mRooms || []).map((r: { id: string }) => r.id);
         let winCount = 0;
@@ -239,7 +239,7 @@ export default function AnalyticsPage() {
           const { count } = await supabase.from("windows").select("id", { count: "exact", head: true }).in("room_id", mRoomIds);
           winCount = count || 0;
         }
-        return { name, jobs: jobCount, windows: winCount };
+        return { name: bucket.displayName, jobs: mJobIds.length, windows: winCount };
       })
     );
     setMeasurerStats(measStats.sort((a, b) => b.jobs - a.jobs));
@@ -401,24 +401,26 @@ export default function AnalyticsPage() {
       .select("id, measured_by, install_mode, install_status, install_scheduled_at, created_at")
       .eq("install_mode", true);
     const instJobs = (installJobs || []) as { id: string; measured_by: string | null; install_mode: boolean; install_status: string | null; install_scheduled_at: string | null; created_at: string }[];
-    const instMap: Record<string, { jobs: number; completed: number; totalDays: number; completedWithDays: number; jobIds: string[] }> = {};
+    // Normalize installer names using profile lookups, same as measurer stats above.
+    const { data: instProfileRows } = await supabase.from("profiles").select("id, full_name");
+    const instProfiles: ProfileLite[] = (instProfileRows || []) as ProfileLite[];
+    const instBuckets = groupByPerson(instJobs, (j) => j.measured_by, instProfiles);
+    const instMap: Record<string, { displayName: string; jobs: number; completed: number; totalDays: number; completedWithDays: number; jobIds: string[] }> = {};
     const nowMs2 = Date.now();
-    instJobs.forEach(j => {
-      const name = j.measured_by || "Unassigned";
-      if (!instMap[name]) instMap[name] = { jobs: 0, completed: 0, totalDays: 0, completedWithDays: 0, jobIds: [] };
-      instMap[name].jobs++;
-      instMap[name].jobIds.push(j.id);
-      if (j.install_status === "completed") {
-        instMap[name].completed++;
-      }
-      // Avg days from scheduled to now (proxy for turnaround)
-      if (j.install_scheduled_at) {
-        const days = Math.max(1, Math.floor((nowMs2 - new Date(j.install_scheduled_at).getTime()) / 86400000));
-        if (j.install_status === "completed") {
-          instMap[name].totalDays += days;
-          instMap[name].completedWithDays++;
+    instBuckets.forEach((bucket, key) => {
+      instMap[key] = { displayName: bucket.displayName, jobs: 0, completed: 0, totalDays: 0, completedWithDays: 0, jobIds: [] };
+      bucket.items.forEach(j => {
+        instMap[key].jobs++;
+        instMap[key].jobIds.push(j.id);
+        if (j.install_status === "completed") instMap[key].completed++;
+        if (j.install_scheduled_at) {
+          const days = Math.max(1, Math.floor((nowMs2 - new Date(j.install_scheduled_at).getTime()) / 86400000));
+          if (j.install_status === "completed") {
+            instMap[key].totalDays += days;
+            instMap[key].completedWithDays++;
+          }
         }
-      }
+      });
     });
     // Count issues per installer
     const allInstJobIds = instJobs.map(j => j.id);
@@ -442,10 +444,10 @@ export default function AnalyticsPage() {
         }
       }
     }
-    const instArr = Object.entries(instMap).map(([name, data]) => {
+    const instArr = Object.values(instMap).map((data) => {
       const issues = data.jobIds.reduce((sum, jid) => sum + (issueCountByJob[jid] || 0), 0);
       const avgDays = data.completedWithDays > 0 ? Math.round(data.totalDays / data.completedWithDays) : 0;
-      return { name, jobs: data.jobs, completed: data.completed, issues, avgDays };
+      return { name: data.displayName, jobs: data.jobs, completed: data.completed, issues, avgDays };
     }).sort((a, b) => b.jobs - a.jobs);
     setInstallerStats(instArr);
 

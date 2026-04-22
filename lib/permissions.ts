@@ -14,6 +14,7 @@ export type PermKey =
   | "view_customers"      // read customer records at all
   | "assign_to_others"    // assign customers, tasks, reminders to other team members
   | "manage_billing"      // manage subscription, billing, plan changes
+  | "manage_pay_rates"    // edit pay rates and contractor rate cards
   | "manage_permissions"; // change other users' roles and permissions
 
 export type Permissions = Record<PermKey, boolean>;
@@ -50,15 +51,15 @@ const T = true;
 const F = false;
 
 export const ROLE_DEFAULTS: Record<Role, Permissions> = {
-  owner:      { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:T, manage_team:T, access_settings:T, complete_installs:T, view_reports:T, manage_schedule:T, manage_materials:T, view_customers:T, assign_to_others:T, manage_billing:T, manage_permissions:T },
-  admin:      { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:T, manage_team:T, access_settings:T, complete_installs:T, view_reports:T, manage_schedule:T, manage_materials:T, view_customers:T, assign_to_others:T, manage_billing:T, manage_permissions:T },
-  lead_sales: { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:T, manage_schedule:T, manage_materials:F, view_customers:T, assign_to_others:T, manage_billing:F, manage_permissions:F },
-  sales:      { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:F, manage_schedule:T, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_permissions:F },
-  office:     { view_pricing:T, edit_customers:T, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:T, manage_schedule:T, manage_materials:T, view_customers:T, assign_to_others:F, manage_billing:F, manage_permissions:F },
-  accounting: { view_pricing:T, edit_customers:F, create_quotes:F, view_financials:T, manage_team:F, access_settings:F, complete_installs:F, view_reports:T, manage_schedule:F, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_permissions:F },
-  scheduler:  { view_pricing:F, edit_customers:F, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:F, manage_schedule:T, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_permissions:F },
-  installer:  { view_pricing:F, edit_customers:F, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:T, view_reports:F, manage_schedule:F, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_permissions:F },
-  warehouse:  { view_pricing:F, edit_customers:F, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:F, manage_schedule:F, manage_materials:T, view_customers:F, assign_to_others:F, manage_billing:F, manage_permissions:F },
+  owner:      { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:T, manage_team:T, access_settings:T, complete_installs:T, view_reports:T, manage_schedule:T, manage_materials:T, view_customers:T, assign_to_others:T, manage_billing:T, manage_pay_rates:T, manage_permissions:T },
+  admin:      { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:T, manage_team:T, access_settings:T, complete_installs:T, view_reports:T, manage_schedule:T, manage_materials:T, view_customers:T, assign_to_others:T, manage_billing:T, manage_pay_rates:T, manage_permissions:T },
+  lead_sales: { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:T, manage_schedule:T, manage_materials:F, view_customers:T, assign_to_others:T, manage_billing:F, manage_pay_rates:F, manage_permissions:F },
+  sales:      { view_pricing:T, edit_customers:T, create_quotes:T, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:F, manage_schedule:T, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_pay_rates:F, manage_permissions:F },
+  office:     { view_pricing:T, edit_customers:T, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:T, manage_schedule:T, manage_materials:T, view_customers:T, assign_to_others:F, manage_billing:F, manage_pay_rates:F, manage_permissions:F },
+  accounting: { view_pricing:T, edit_customers:F, create_quotes:F, view_financials:T, manage_team:F, access_settings:F, complete_installs:F, view_reports:T, manage_schedule:F, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_pay_rates:T, manage_permissions:F },
+  scheduler:  { view_pricing:F, edit_customers:F, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:F, manage_schedule:T, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_pay_rates:F, manage_permissions:F },
+  installer:  { view_pricing:F, edit_customers:F, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:T, view_reports:F, manage_schedule:F, manage_materials:F, view_customers:T, assign_to_others:F, manage_billing:F, manage_pay_rates:F, manage_permissions:F },
+  warehouse:  { view_pricing:F, edit_customers:F, create_quotes:F, view_financials:F, manage_team:F, access_settings:F, complete_installs:F, view_reports:F, manage_schedule:F, manage_materials:T, view_customers:F, assign_to_others:F, manage_billing:F, manage_pay_rates:F, manage_permissions:F },
 };
 
 export const PERM_LABELS: Record<PermKey, { label: string; desc: string }> = {
@@ -75,6 +76,7 @@ export const PERM_LABELS: Record<PermKey, { label: string; desc: string }> = {
   manage_team:        { label: "Manage Team",          desc: "Invite users and view team members" },
   manage_permissions: { label: "Manage Permissions",   desc: "Change team roles and permissions" },
   manage_billing:     { label: "Manage Billing",       desc: "Manage subscription, plans, and payment methods" },
+  manage_pay_rates:   { label: "Manage Pay Rates",     desc: "Edit team pay rates and contractor rate cards" },
   access_settings:    { label: "Access Settings",      desc: "Edit company settings and product catalog" },
 };
 

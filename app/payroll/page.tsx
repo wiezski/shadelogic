@@ -229,7 +229,7 @@ function PayrollPageInner() {
         </h1>
         <div className="flex gap-2">
           <ExportDropdown entries={filteredEntries} team={team} filterRange={filterRange} filterPerson={filterPerson} />
-          <AddEntryButton team={team} rates={rates} onAdded={loadAll} />
+          <AddEntryButton team={team} rates={rates} contractorRates={contractorRates} onAdded={loadAll} />
         </div>
       </div>
 
@@ -451,6 +451,9 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
   filterPerson: string;
   onUpdated: () => void;
 }) {
+  // Gate all editing on manage_pay_rates — owner/admin/accounting by default.
+  const { permissions, role } = useAuth();
+  const canManage = role === "owner" || permissions.manage_pay_rates === true;
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formPerson, setFormPerson] = useState("");
@@ -604,12 +607,20 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>PAY RATE CONFIGURATION</div>
-        <button onClick={openNew}
-          className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-          style={{ background: "var(--zr-orange)", color: "#fff" }}>
-          + Set Pay Rate
-        </button>
+        {canManage && (
+          <button onClick={openNew}
+            className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+            style={{ background: "var(--zr-orange)", color: "#fff" }}>
+            + Set Pay Rate
+          </button>
+        )}
       </div>
+
+      {!canManage && (
+        <div className="mb-3 text-xs px-3 py-2 rounded" style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-muted)", border: "1px dashed var(--zr-border)" }}>
+          Viewing only — rate card edits are restricted to the owner and accounting roles.
+        </div>
+      )}
 
       {/* ── New/Edit Pay Rate Form ── */}
       {showForm && (
@@ -723,67 +734,7 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
         </div>
       )}
 
-      {/* ── Contractor Rate Card Editor (modal-like) ── */}
-      {editingContractor && (
-        <div className="mb-4 rounded-lg p-4" style={{ background: "var(--zr-surface-2)", border: "2px solid var(--zr-orange)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>
-              Rate Card — {team.find(t => t.id === editingContractor)?.full_name || "Contractor"}
-            </div>
-            <button onClick={() => setCrItems([...crItems, { service_name: "", rate: "", unit_label: "each" }])}
-              className="text-xs px-2 py-1 rounded font-medium"
-              style={{ background: "var(--zr-orange)", color: "#fff" }}>
-              + Add Line
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="grid gap-2 text-xs font-semibold" style={{ gridTemplateColumns: "1fr 100px 90px 30px", color: "var(--zr-text-muted)" }}>
-              <span>Service</span><span>Rate ($)</span><span>Unit</span><span></span>
-            </div>
-            {crItems.map((item, idx) => (
-              <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 100px 90px 30px" }}>
-                <input type="text" value={item.service_name} placeholder="e.g. Custom Service"
-                  onChange={e => { const n = [...crItems]; n[idx].service_name = e.target.value; setCrItems(n); }}
-                  className="text-sm rounded px-2 py-1.5" style={inputStyle} />
-                <input type="number" step="0.01" value={item.rate} placeholder="0.00"
-                  onChange={e => { const n = [...crItems]; n[idx].rate = e.target.value; setCrItems(n); }}
-                  className="text-sm rounded px-2 py-1.5" style={inputStyle} />
-                <select value={item.unit_label}
-                  onChange={e => { const n = [...crItems]; n[idx].unit_label = e.target.value; setCrItems(n); }}
-                  className="text-xs rounded px-1.5 py-1.5" style={inputStyle}>
-                  <option value="each">each</option>
-                  <option value="per LF">per LF</option>
-                  <option value="per SF">per SF</option>
-                  <option value="per hour">per hour</option>
-                  <option value="per mile">per mile</option>
-                  <option value="per window">per window</option>
-                  <option value="per panel">per panel</option>
-                  <option value="flat">flat</option>
-                </select>
-                <button onClick={() => setCrItems(crItems.filter((_, i) => i !== idx))}
-                  className="text-xs font-bold" style={{ color: "var(--zr-error)" }}>✕</button>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <button onClick={saveContractorCard} disabled={savingCr}
-              className="text-xs px-4 py-1.5 rounded font-medium"
-              style={{ background: "var(--zr-orange)", color: "#fff", opacity: savingCr ? 0.5 : 1 }}>
-              {savingCr ? "Saving..." : "Save Rate Card"}
-            </button>
-            <button onClick={() => setCrItems([...crItems, { service_name: "", rate: "", unit_label: "each" }])}
-              className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-              style={{ border: "1px dashed var(--zr-border)", color: "var(--zr-text-secondary)" }}>
-              + Add Custom Service
-            </button>
-            <button onClick={() => setEditingContractor(null)}
-              className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
-              style={{ color: "var(--zr-text-muted)" }}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Rate Card editor now renders inline inside the person's row — see below */}
 
       {/* ── Rate Cards by Person ── */}
       {filteredTeam.length === 0 ? (
@@ -809,11 +760,13 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
                         {member.role}
                       </span>
                     </div>
-                    <button onClick={() => { openNew(); setFormPerson(member.id); }}
-                      className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-                      style={{ background: "var(--zr-orange)", color: "#fff" }}>
-                      + Set Pay Rate
-                    </button>
+                    {canManage && (
+                      <button onClick={() => { openNew(); setFormPerson(member.id); }}
+                        className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+                        style={{ background: "var(--zr-orange)", color: "#fff" }}>
+                        + Set Pay Rate
+                      </button>
+                    )}
                   </div>
                   <div className="mt-1 text-xs" style={{ color: "var(--zr-text-muted)" }}>No pay rate configured</div>
                 </div>
@@ -835,25 +788,27 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
                       {r.is_contractor ? "Contractor" : member.role}
                     </span>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => openEdit(r)}
-                      className="text-xs px-2 py-1 rounded font-medium transition-colors"
-                      style={{ color: "var(--zr-orange)" }}>
-                      Edit
-                    </button>
-                    {r.is_contractor && (
-                      <button onClick={() => openContractorCard(member.id)}
+                  {canManage ? (
+                    <div className="flex gap-1">
+                      <button onClick={() => openEdit(r)}
                         className="text-xs px-2 py-1 rounded font-medium transition-colors"
-                        style={{ color: "var(--zr-info)" }}>
-                        Rate Card
+                        style={{ color: "var(--zr-orange)" }}>
+                        Edit
                       </button>
-                    )}
-                    <button onClick={() => deleteRate(r.id)}
-                      className="text-xs px-2 py-1 rounded font-medium transition-colors"
-                      style={{ color: "var(--zr-error)" }}>
-                      Remove
-                    </button>
-                  </div>
+                      {r.is_contractor && (
+                        <button onClick={() => openContractorCard(member.id)}
+                          className="text-xs px-2 py-1 rounded font-medium transition-colors"
+                          style={{ color: "var(--zr-info)" }}>
+                          Rate Card
+                        </button>
+                      )}
+                      <button onClick={() => deleteRate(r.id)}
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors"
+                        style={{ color: "var(--zr-error)" }}>
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Pay summary badges */}
@@ -871,11 +826,13 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
                   <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--zr-border)" }}>
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="text-xs font-semibold" style={{ color: "var(--zr-text-muted)" }}>RATE CARD</div>
-                      <button onClick={() => openContractorCard(member.id)}
-                        className="text-xs font-medium transition-colors"
-                        style={{ color: "var(--zr-orange)" }}>
-                        Edit / Add Services
-                      </button>
+                      {canManage && (
+                        <button onClick={() => openContractorCard(member.id)}
+                          className="text-xs font-medium transition-colors"
+                          style={{ color: "var(--zr-orange)" }}>
+                          Edit / Add Services
+                        </button>
+                      )}
                     </div>
                     {personCrItems.length > 0 ? (
                       <div className="grid gap-1" style={{ gridTemplateColumns: "1fr auto auto" }}>
@@ -899,6 +856,63 @@ function RatesTab({ rates, team, contractorRates, companyId, filterPerson, onUpd
 
                 {r.notes && (
                   <div className="mt-2 text-xs" style={{ color: "var(--zr-text-muted)" }}>{r.notes}</div>
+                )}
+
+                {/* Inline Rate Card editor — opens in place when "Edit / Add Services" is clicked */}
+                {r.is_contractor && editingContractor === member.id && (
+                  <div className="mt-3 rounded-lg p-3" style={{ background: "var(--zr-surface-1)", border: "2px solid var(--zr-orange)" }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>
+                        Edit Rate Card — {member.full_name || "Contractor"}
+                      </div>
+                      <button onClick={() => setCrItems([...crItems, { service_name: "", rate: "", unit_label: "each" }])}
+                        className="text-xs px-2 py-1 rounded font-medium"
+                        style={{ background: "var(--zr-orange)", color: "#fff" }}>
+                        + Add Line
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="grid gap-2 text-xs font-semibold" style={{ gridTemplateColumns: "1fr 100px 90px 30px", color: "var(--zr-text-muted)" }}>
+                        <span>Service</span><span>Rate ($)</span><span>Unit</span><span></span>
+                      </div>
+                      {crItems.map((item, idx) => (
+                        <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 100px 90px 30px" }}>
+                          <input type="text" value={item.service_name} placeholder="e.g. Custom Service"
+                            onChange={e => { const n = [...crItems]; n[idx].service_name = e.target.value; setCrItems(n); }}
+                            className="text-sm rounded px-2 py-1.5" style={inputStyle} />
+                          <input type="number" step="0.01" value={item.rate} placeholder="0.00"
+                            onChange={e => { const n = [...crItems]; n[idx].rate = e.target.value; setCrItems(n); }}
+                            className="text-sm rounded px-2 py-1.5" style={inputStyle} />
+                          <select value={item.unit_label}
+                            onChange={e => { const n = [...crItems]; n[idx].unit_label = e.target.value; setCrItems(n); }}
+                            className="text-xs rounded px-1.5 py-1.5" style={inputStyle}>
+                            <option value="each">each</option>
+                            <option value="per LF">per LF</option>
+                            <option value="per SF">per SF</option>
+                            <option value="per hour">per hour</option>
+                            <option value="per mile">per mile</option>
+                            <option value="per window">per window</option>
+                            <option value="per panel">per panel</option>
+                            <option value="flat">flat</option>
+                          </select>
+                          <button onClick={() => setCrItems(crItems.filter((_, i) => i !== idx))}
+                            className="text-xs font-bold" style={{ color: "var(--zr-error)" }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <button onClick={saveContractorCard} disabled={savingCr}
+                        className="text-xs px-4 py-1.5 rounded font-medium"
+                        style={{ background: "var(--zr-orange)", color: "#fff", opacity: savingCr ? 0.5 : 1 }}>
+                        {savingCr ? "Saving..." : "Save Rate Card"}
+                      </button>
+                      <button onClick={() => setEditingContractor(null)}
+                        className="text-xs px-4 py-1.5 rounded font-medium transition-colors"
+                        style={{ color: "var(--zr-text-muted)" }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );
@@ -1280,9 +1294,10 @@ function ExportDropdown({ entries, team, filterRange, filterPerson }: {
 }
 
 // ── Add Entry Button + Modal ───────────────────────────────────
-function AddEntryButton({ team, rates, onAdded }: {
+function AddEntryButton({ team, rates, contractorRates, onAdded }: {
   team: TeamMember[];
   rates: PayRate[];
+  contractorRates: ContractorRateItem[];
   onAdded: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1295,24 +1310,56 @@ function AddEntryButton({ team, rates, onAdded }: {
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  // Contractor rate-card line-item mode
+  const [rateItemId, setRateItemId] = useState<string>("");
+  const [quantity, setQuantity] = useState("1");
+
+  const selectedRate = rates.find(r => r.profile_id === person && r.active);
+  const isContractor = !!selectedRate?.is_contractor;
+  const personRateItems = contractorRates.filter(cr => cr.profile_id === person);
+
+  // Auto-switch entry type to "job" when a contractor is picked so the rate-card UI shows.
+  useEffect(() => {
+    if (isContractor && entryType !== "job" && entryType !== "bonus" && entryType !== "deduction") {
+      setEntryType("job");
+    }
+  }, [isContractor]); // eslint-disable-line
 
   // Auto-calculate amount based on rate
   useEffect(() => {
     if (!person) return;
-    const rate = rates.find(r => r.profile_id === person && r.active);
+    const rate = selectedRate;
     if (!rate) return;
 
+    // Contractor rate-card line item: amount = item rate × quantity
+    if (isContractor && rateItemId) {
+      const item = personRateItems.find(r => r.id === rateItemId);
+      const qty = parseFloat(quantity) || 0;
+      if (item) setAmount((item.rate * qty).toFixed(2));
+      return;
+    }
     if (entryType === "hours" && hours && rate.pay_type === "hourly") {
       setAmount((parseFloat(hours) * rate.rate).toFixed(2));
     } else if (entryType === "commission" && saleAmount && rate.commission_pct) {
       setAmount((parseFloat(saleAmount) * rate.commission_pct / 100).toFixed(2));
     }
-  }, [person, entryType, hours, saleAmount, rates]); // eslint-disable-line
+  }, [person, entryType, hours, saleAmount, rates, rateItemId, quantity]); // eslint-disable-line
 
   async function save() {
     if (!person || !amount) return;
     setSaving(true);
     const rate = rates.find(r => r.profile_id === person && r.active);
+    // If this was a contractor rate-card item, fold the line-item name +
+    // quantity into the description so the pay entries row reads naturally.
+    let finalDescription = description || null;
+    if (isContractor && rateItemId) {
+      const item = personRateItems.find(r => r.id === rateItemId);
+      if (item) {
+        const qty = parseFloat(quantity) || 1;
+        const base = `${item.service_name} × ${qty} @ $${item.rate.toFixed(2)}/${item.unit_label}`;
+        finalDescription = description ? `${base} — ${description}` : base;
+      }
+    }
     await supabase.from("pay_entries").insert([{
       profile_id: person,
       entry_type: entryType,
@@ -1322,13 +1369,14 @@ function AddEntryButton({ team, rates, onAdded }: {
       sale_amount: entryType === "commission" && saleAmount ? parseFloat(saleAmount) : null,
       commission_pct: entryType === "commission" ? (rate?.commission_pct ?? null) : null,
       amount: parseFloat(amount),
-      description: description || null,
+      description: finalDescription,
       notes: notes || null,
       status: "pending",
     }]);
     setOpen(false);
     setPerson(""); setEntryType("hours"); setHours("");
     setSaleAmount(""); setAmount(""); setDescription(""); setNotes("");
+    setRateItemId(""); setQuantity("1");
     setSaving(false);
     onAdded();
   }
@@ -1376,7 +1424,40 @@ function AddEntryButton({ team, rates, onAdded }: {
               </div>
 
               {/* Conditional fields */}
-              {entryType === "hours" && (
+              {isContractor && personRateItems.length > 0 && entryType !== "bonus" && entryType !== "deduction" && (
+                <div className="rounded-md p-2.5" style={{ background: "var(--zr-surface-2)", border: "1px dashed var(--zr-border)" }}>
+                  <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>
+                    Rate-card service (from price list)
+                  </label>
+                  <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 80px" }}>
+                    <select value={rateItemId} onChange={e => setRateItemId(e.target.value)}
+                      className="text-sm rounded px-2.5 py-1.5"
+                      style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }}>
+                      <option value="">— Free-form amount —</option>
+                      {personRateItems.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.service_name} — ${r.rate.toFixed(2)}/{r.unit_label}
+                        </option>
+                      ))}
+                    </select>
+                    <input type="number" step="0.5" min="0" placeholder="Qty"
+                      value={quantity}
+                      onChange={e => setQuantity(e.target.value)}
+                      disabled={!rateItemId}
+                      className="text-sm rounded px-2.5 py-1.5 text-center"
+                      style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)", opacity: rateItemId ? 1 : 0.5 }} />
+                  </div>
+                  <p className="text-[10px] mt-1" style={{ color: "var(--zr-text-muted)" }}>
+                    Pick an item to auto-fill the amount from the contractor&apos;s rate card.
+                  </p>
+                </div>
+              )}
+              {isContractor && personRateItems.length === 0 && (
+                <div className="text-xs rounded p-2" style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-muted)" }}>
+                  No rate-card services configured for this contractor yet. Set them up on the Pay Rates tab.
+                </div>
+              )}
+              {entryType === "hours" && !isContractor && (
                 <div>
                   <label className="text-xs font-medium mb-1 block" style={{ color: "var(--zr-text-muted)" }}>Hours</label>
                   <input type="number" step="0.25" placeholder="0" value={hours}

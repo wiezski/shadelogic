@@ -252,6 +252,7 @@ export default function MeasureJobPage() {
   const [materialsConfirmed, setMaterialsConfirmed] = useState(false);
   const [showSignOff, setShowSignOff] = useState(false);
   const [signOffName, setSignOffName] = useState("");
+  const [teamMemberNames, setTeamMemberNames] = useState<string[]>([]);
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const measureInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -263,6 +264,18 @@ export default function MeasureJobPage() {
     try {
       setLoading(true);
       setLoadError(null);
+
+      // Load team members once for the Measured By autocomplete — keeps entries
+      // consistent (no "Steve" vs "steve" vs "Steve W" fragmentation).
+      supabase
+        .from("profiles")
+        .select("full_name")
+        .then(({ data }) => {
+          const names = (data || [])
+            .map((p: { full_name: string | null }) => (p.full_name || "").trim())
+            .filter(Boolean);
+          setTeamMemberNames(Array.from(new Set(names)).sort());
+        });
 
       const { data: jobData, error: jobError } = await supabase
         .from("measure_jobs")
@@ -474,7 +487,8 @@ export default function MeasureJobPage() {
     field: "width" | "height" | "casing_depth",
     value: string | null
   ) {
-    const normalized = normalizeMeasurement(value || "");
+    const raw = value || "";
+    const normalized = normalizeMeasurement(raw);
 
     if (normalized === null) {
       updateWindowLocal(windowId, field, "");
@@ -485,7 +499,13 @@ export default function MeasureJobPage() {
       return;
     }
 
-    updateWindowLocal(windowId, field, normalized);
+    // Only re-render if the normalized value actually differs from what the
+    // user typed. Unnecessary setState here was causing a subtle layout
+    // shift that intercepted the next click (Width blur → user clicks
+    // Height → click missed after reflow).
+    if (normalized !== raw) {
+      updateWindowLocal(windowId, field, normalized);
+    }
     saveWindowField(windowId, field, normalized);
   }
 
@@ -1380,13 +1400,17 @@ export default function MeasureJobPage() {
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Measured By</label>
                   <input
-                    className="w-24 rounded px-2 py-1"
+                    className="w-32 rounded px-2 py-1"
                     style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
                     value={job.measured_by || ""}
                     onChange={(e) => updateJobLocal("measured_by", e.target.value)}
                     onBlur={(e) => saveJobField("measured_by", e.target.value || null)}
                     placeholder="Name"
+                    list="team-member-names"
                   />
+                  <datalist id="team-member-names">
+                    {teamMemberNames.map(n => (<option key={n} value={n} />))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Tallest window</label>

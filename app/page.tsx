@@ -697,68 +697,89 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4">
+    <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen px-4 pt-5 pb-24 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h1 style={{ color: "var(--zr-text-primary)" }} className="text-xl font-bold">Dashboard</h1>
-          <div className="flex items-center gap-3">
-            {tab === "dashboard" && (
-              <>
-                {editingLayout && (
-                  <button onClick={resetLayout} className="text-xs px-2 py-1 rounded"
-                    style={{ color: "var(--zr-text-muted)" }}>
-                    Reset
-                  </button>
-                )}
-                <button onClick={() => setEditingLayout(!editingLayout)}
-                  className="text-xs px-2.5 py-1.5 rounded font-medium"
-                  style={{ background: editingLayout ? "var(--zr-orange)" : "var(--zr-surface-2)", color: editingLayout ? "#fff" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
-                  {editingLayout ? "✓ Done" : "⚙ Customize"}
-                </button>
-              </>
-            )}
-            <Link href="/analytics" style={{ color: "var(--zr-orange)" }} className="text-sm hover:underline">Analytics →</Link>
+        {/* ── Large iOS-style page title + action row ──────────────── */}
+        <div className="mb-5 flex items-end justify-between">
+          <div>
+            <h1 style={{ color: "var(--zr-text-primary)", letterSpacing: "-0.03em" }} className="text-3xl font-bold leading-tight">
+              Dashboard
+            </h1>
+            <Link href="/analytics"
+              style={{ color: "var(--zr-orange)" }}
+              className="text-[15px] font-medium mt-1 inline-flex items-center gap-1">
+              Analytics <span>›</span>
+            </Link>
           </div>
+          {tab === "dashboard" && (
+            <div className="flex items-center gap-2">
+              {editingLayout && (
+                <button onClick={resetLayout}
+                  className="text-[13px] px-3 py-2 rounded-full"
+                  style={{ color: "var(--zr-text-secondary)", background: "var(--zr-surface-2)" }}>
+                  Reset
+                </button>
+              )}
+              <button onClick={() => setEditingLayout(!editingLayout)}
+                className="text-[13px] px-3.5 py-2 rounded-full font-medium transition-colors"
+                style={editingLayout
+                  ? { background: "var(--zr-orange)", color: "#fff", boxShadow: "0 1px 2px rgba(214,90,49,0.25)" }
+                  : { background: "var(--zr-surface-1)", color: "var(--zr-text-secondary)", boxShadow: "var(--zr-shadow-sm)" }}>
+                {editingLayout ? "Done" : "Customize"}
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="mb-4 flex rounded border overflow-hidden" style={{ borderColor: "var(--zr-border)" }}>
-          <button style={{ background: tab === "dashboard" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: tab === "dashboard" ? "#fff" : "var(--zr-text-primary)" }} className="flex-1 py-2 text-sm font-medium" onClick={() => setTab("dashboard")}>Dashboard</button>
-          <button style={{ background: tab === "customers" ? "var(--zr-orange)" : "var(--zr-surface-1)", color: tab === "customers" ? "#fff" : "var(--zr-text-primary)" }} className="flex-1 py-2 text-sm font-medium" onClick={() => setTab("customers")}>Customers</button>
+        {/* ── iOS-style segmented control ──────────────────────────── */}
+        <div className="mb-6 grid grid-cols-2 p-1 rounded-full"
+          style={{ background: "var(--zr-surface-3)" }}>
+          <button onClick={() => setTab("dashboard")}
+            className="py-2 text-[14px] font-semibold rounded-full transition-all"
+            style={tab === "dashboard"
+              ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+              : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+            Dashboard
+          </button>
+          <button onClick={() => setTab("customers")}
+            className="py-2 text-[14px] font-semibold rounded-full transition-all"
+            style={tab === "customers"
+              ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+              : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+            Customers
+          </button>
         </div>
 
         {tab === "dashboard" && (
           <>
-            {/* First-run welcome banner — visible only for brand-new tenants
-                with zero customers. Dismisses automatically once the first
-                customer is added, so existing tenants never see it. */}
+            {/* First-run welcome — soft card, no border, warm gradient accent */}
             {customers.length === 0 && !statsLoading && (
               <div
-                className="mb-4 rounded-xl p-4 flex items-start gap-3"
+                className="mb-6 rounded-2xl p-5 flex items-start gap-4"
                 style={{
-                  background: "linear-gradient(135deg, rgba(230,48,0,0.08) 0%, rgba(230,48,0,0.02) 100%)",
-                  border: "1px solid rgba(230,48,0,0.25)",
+                  background: "linear-gradient(135deg, rgba(214,90,49,0.08) 0%, rgba(214,90,49,0.02) 100%)",
+                  boxShadow: "var(--zr-shadow-md)",
                 }}
               >
-                <div className="text-2xl leading-none pt-0.5">👋</div>
+                <div className="text-3xl leading-none pt-0.5">👋</div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold mb-0.5" style={{ color: "var(--zr-text-primary)" }}>
-                    Welcome to ZeroRemake!
+                  <div className="text-[17px] font-semibold mb-1" style={{ color: "var(--zr-text-primary)" }}>
+                    Welcome to ZeroRemake
                   </div>
-                  <div className="text-xs mb-2" style={{ color: "var(--zr-text-secondary)" }}>
-                    Add your first customer to start tracking leads, quotes, and installs — everything on the dashboard will populate as you go.
+                  <div className="text-[14px] mb-3 leading-relaxed" style={{ color: "var(--zr-text-secondary)" }}>
+                    Add your first customer to start tracking leads, quotes, and installs — everything here will populate as you go.
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => { setTab("customers"); setShowForm(true); }}
-                      className="text-xs font-semibold px-3 py-1.5 rounded cursor-pointer"
-                      style={{ background: "var(--zr-orange)", color: "#fff" }}
+                      className="zr-v2-btn-primary text-[14px]"
                     >
-                      + Add your first customer
+                      Add your first customer
                     </button>
                     <Link
                       href="/setup-guide"
-                      className="text-xs font-medium px-3 py-1.5 rounded cursor-pointer"
-                      style={{ color: "var(--zr-orange)", border: "1px solid rgba(230,48,0,0.35)", background: "#fff" }}
+                      className="text-[14px] font-medium px-4 py-3 rounded-xl"
+                      style={{ color: "var(--zr-orange)", background: "var(--zr-surface-1)", boxShadow: "var(--zr-shadow-sm)" }}
                     >
                       Setup guide
                     </Link>
@@ -767,50 +788,56 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Visible widgets in user's order */}
-            {widgetOrder.filter(id => {
-              if (hiddenWidgets.includes(id)) return false;
-              // In a focus mode, only show mode-relevant widgets
-              const modeWidgets = getModeWidgets(taskMode);
-              if (modeWidgets.length > 0 && !modeWidgets.includes(id)) return false;
-              return true;
-            }).map((id, idx, visibleArr) => (
-              <div key={id} className="mb-4">
-                {editingLayout && (
-                  <div className="flex items-center justify-between mb-1 px-1">
-                    <span className="text-xs font-medium" style={{ color: "var(--zr-text-muted)" }}>{WIDGET_LABELS[id]}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => toggleWidget(id)}
-                        className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--zr-error)", border: "1px solid var(--zr-border)" }}>
-                        Hide
-                      </button>
-                      <button onClick={() => moveWidget(id, -1)} disabled={idx === 0}
-                        className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: "var(--zr-surface-2)", color: idx === 0 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
-                        ▲
-                      </button>
-                      <button onClick={() => moveWidget(id, 1)} disabled={idx === visibleArr.length - 1}
-                        className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: "var(--zr-surface-2)", color: idx === visibleArr.length - 1 ? "var(--zr-border)" : "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
-                        ▼
-                      </button>
+            {/* Visible widgets — spacing separates them, no borders */}
+            <div className="flex flex-col gap-7">
+              {widgetOrder.filter(id => {
+                if (hiddenWidgets.includes(id)) return false;
+                const modeWidgets = getModeWidgets(taskMode);
+                if (modeWidgets.length > 0 && !modeWidgets.includes(id)) return false;
+                return true;
+              }).map((id, idx, visibleArr) => (
+                <div key={id}>
+                  {editingLayout && (
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <span className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-muted)" }}>
+                        {WIDGET_LABELS[id]}
+                      </span>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => toggleWidget(id)}
+                          className="text-[12px] px-2.5 py-1 rounded-full font-medium"
+                          style={{ background: "rgba(214,58,58,0.1)", color: "var(--zr-error)" }}>
+                          Hide
+                        </button>
+                        <button onClick={() => moveWidget(id, -1)} disabled={idx === 0}
+                          className="text-[12px] w-7 h-7 rounded-full flex items-center justify-center"
+                          style={{ background: "var(--zr-surface-1)", color: idx === 0 ? "var(--zr-text-muted)" : "var(--zr-text-secondary)", boxShadow: "var(--zr-shadow-sm)", opacity: idx === 0 ? 0.4 : 1 }}>
+                          ↑
+                        </button>
+                        <button onClick={() => moveWidget(id, 1)} disabled={idx === visibleArr.length - 1}
+                          className="text-[12px] w-7 h-7 rounded-full flex items-center justify-center"
+                          style={{ background: "var(--zr-surface-1)", color: idx === visibleArr.length - 1 ? "var(--zr-text-muted)" : "var(--zr-text-secondary)", boxShadow: "var(--zr-shadow-sm)", opacity: idx === visibleArr.length - 1 ? 0.4 : 1 }}>
+                          ↓
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {renderWidget(id)}
-              </div>
-            ))}
+                  )}
+                  {renderWidget(id)}
+                </div>
+              ))}
+            </div>
 
-            {/* Hidden widgets — show in customize mode so user can re-enable */}
+            {/* Hidden widgets — soft tray shown only during customize */}
             {editingLayout && hiddenWidgets.length > 0 && (
-              <div className="mb-4 rounded p-3" style={{ background: "var(--zr-surface-1)", border: "1px dashed var(--zr-border)" }}>
-                <div className="text-xs font-medium mb-2" style={{ color: "var(--zr-text-muted)" }}>Hidden Widgets</div>
+              <div className="mt-7 rounded-2xl p-4"
+                style={{ background: "var(--zr-surface-1)", boxShadow: "var(--zr-shadow-sm)" }}>
+                <div className="text-[12px] font-semibold uppercase tracking-wide mb-3 px-1" style={{ color: "var(--zr-text-muted)" }}>
+                  Hidden widgets
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {hiddenWidgets.map(id => (
                     <button key={id} onClick={() => toggleWidget(id)}
-                      className="text-xs px-2.5 py-1.5 rounded font-medium"
-                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}>
+                      className="text-[13px] px-3 py-2 rounded-full font-medium"
+                      style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)" }}>
                       + {WIDGET_LABELS[id]}
                     </button>
                   ))}
@@ -819,8 +846,8 @@ export default function HomePage() {
             )}
 
             {/* Bottom quick action */}
-            <div className="flex gap-2">
-              <button onClick={() => { setTab("customers"); setShowForm(true); }} style={{ background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-md)" }} className="px-4 py-2 text-sm">
+            <div className="mt-7 flex gap-2">
+              <button onClick={() => { setTab("customers"); setShowForm(true); }} className="zr-v2-btn-primary">
                 + New Customer
               </button>
             </div>

@@ -663,20 +663,39 @@ export default function AnalyticsPage() {
   return (
     <FeatureGate require="analytics">
       <PermissionGate require="view_reports">
-        <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-6">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-4 flex items-center justify-between">
-          <Link href="/" style={{ color: "var(--zr-orange)" }} className="hover:underline text-sm">← Back</Link>
-          <button onClick={exportCSV} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }} className="text-xs rounded px-2.5 py-1.5 hover:opacity-80">
-            ⬇ Export CSV
+        <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        {/* iOS-style back row — chevron + plain "Back" text, no pill, no underline */}
+        <div className="mb-3 flex items-center justify-between">
+          <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Back
+          </Link>
+          <button onClick={exportCSV}
+            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            Export CSV
           </button>
         </div>
 
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <div className="flex gap-1 rounded overflow-hidden" style={{ border: "1px solid var(--zr-border)" }}>
+        {/* Page title + segmented control matching the Dashboard pattern */}
+        <div className="mb-5 flex items-center gap-3">
+          <h1 style={{
+            fontSize: "22px", fontWeight: 700, letterSpacing: "-0.022em",
+            color: "var(--zr-text-primary)",
+            flexShrink: 0,
+          }}>Analytics</h1>
+          <div className="flex-1 grid grid-cols-3 p-1 rounded-full"
+            style={{ background: "var(--zr-surface-3)" }}>
             {(["week", "month", "all"] as const).map((r) => (
-              <button key={r} onClick={() => setRange(r)} style={range === r ? { background: "var(--zr-orange)", color: "#fff" } : { background: "var(--zr-surface-2)", color: "var(--zr-text-primary)" }} className={`px-3 py-1 text-sm`}>
+              <button key={r} onClick={() => setRange(r)}
+                className="py-1.5 text-[13px] font-semibold rounded-full transition-all"
+                style={range === r
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
                 {r === "week" ? "7 days" : r === "month" ? "30 days" : "All time"}
               </button>
             ))}
@@ -698,68 +717,111 @@ export default function AnalyticsPage() {
           </div>
         ) : (
           <>
-            {/* ── Operations Section ───────────────────── */}
-            <div className="mb-4 flex items-center gap-3">
-              <h2 className="text-lg font-bold">Operations</h2>
-              <div style={{ borderTop: "1px solid var(--zr-border)" }} className="flex-1" />
+            {/* Operations — calm muted section label, no divider line */}
+            <div className="mb-2 px-5">
+              <span className="zr-v2-section-label" style={{ padding: 0 }}>Operations</span>
             </div>
 
-            {/* Top stats — clickable → /jobs?filter=... */}
-            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {/* Canvas stat grid — transparent cells, no borders. Matches
+                the dashboard Operations widget language. Accent color is
+                applied only to the number, and only when it carries
+                meaning (green = done, blue = scheduled, red = issues). */}
+            <div className="mb-6 grid grid-cols-2 gap-1 sm:grid-cols-3 px-3">
               {[
-                { key: "measures_to_schedule", label: "Measures to Schedule", count: measuresToSchedule, color: "text-black" },
-                { key: "measures_done",         label: "Measures Done",         count: measuresDone,        color: "text-green-600" },
-                { key: "installs_to_schedule",  label: "Installs to Schedule",  count: installsToSchedule,  color: "text-black" },
-                { key: "installs_scheduled",    label: "Installs Scheduled",    count: installsScheduled,   color: "text-blue-600" },
-                { key: "issues",                label: "Open Issues",           count: openIssues,          color: openIssues > 0 ? "text-red-600" : "text-black" },
-              ].map(({ key, label, count, color }) => (
+                { key: "measures_to_schedule", label: "Measures to schedule", count: measuresToSchedule, accent: "var(--zr-text-primary)" },
+                { key: "measures_done",         label: "Measures done",         count: measuresDone,        accent: "var(--zr-success)" },
+                { key: "installs_to_schedule",  label: "Installs to schedule",  count: installsToSchedule,  accent: "var(--zr-text-primary)" },
+                { key: "installs_scheduled",    label: "Installs scheduled",    count: installsScheduled,   accent: "var(--zr-info)" },
+                { key: "issues",                label: "Open issues",           count: openIssues,          accent: openIssues > 0 ? "#c6443a" : "var(--zr-text-primary)" },
+              ].map(({ key, label, count, accent }) => (
                 <Link key={key} href={`/jobs?filter=${key}`}
-                  style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}
-                  className="rounded p-4 text-center hover:opacity-80 transition-opacity block">
-                  <div className={`text-3xl font-bold ${color}`}>{count}</div>
-                  <div className="mt-1 text-xs text-gray-500">{label}</div>
-                  <div className="mt-1 text-xs text-blue-500">View all →</div>
+                  className="block text-left transition-opacity active:opacity-60"
+                  style={{
+                    padding: "14px 16px",
+                    borderRadius: 14,
+                    background: "transparent",
+                    WebkitTapHighlightColor: "transparent",
+                  }}>
+                  <div style={{
+                    fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em",
+                    color: accent,
+                    lineHeight: 1,
+                    fontVariantNumeric: "tabular-nums",
+                  }}>{count}</div>
+                  <div style={{
+                    color: "rgba(60,60,67,0.6)",
+                    fontSize: "13px",
+                    marginTop: "8px",
+                    fontWeight: 500,
+                    letterSpacing: "-0.005em",
+                    lineHeight: 1.25,
+                  }}>{label}</div>
                 </Link>
               ))}
             </div>
 
-            {/* Install completion % */}
+            {/* Install completion — no card, just a calm progress row on canvas */}
             {installTotal > 0 && (
-              <div className="mb-6 rounded border p-4">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold">Install Completion</span>
-                  <span className="font-bold text-green-600">{installPct}%</span>
+              <div className="mb-6 px-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.012em" }}>Install completion</span>
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--zr-success)", fontVariantNumeric: "tabular-nums" }}>{installPct}%</span>
                 </div>
-                <div className="h-3 w-full rounded bg-gray-200">
-                  <div className="h-3 rounded bg-green-500 transition-all" style={{ width: `${installPct}%` }} />
+                <div style={{ height: 6, width: "100%", borderRadius: 3, background: "rgba(60,60,67,0.08)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 3, background: "var(--zr-success)", width: `${installPct}%`, transition: "width 300ms ease" }} />
                 </div>
-                <div className="mt-1 text-xs text-gray-500">{installComplete} of {installTotal} windows complete · {installIssueCount} issues</div>
+                <div style={{ marginTop: 6, fontSize: "12.5px", color: "rgba(60,60,67,0.55)", letterSpacing: "-0.005em" }}>
+                  {installComplete} of {installTotal} windows complete · {installIssueCount} issues
+                </div>
               </div>
             )}
 
-            {/* Issue breakdown — clickable drill-down */}
+            {/* Issue breakdown — no card, calm rows on canvas */}
             {issueStats.length > 0 && (
-              <div className="mb-6 rounded border p-4">
-                <h2 className="mb-3 font-semibold">Issues by Type <span className="text-xs font-normal text-gray-400">(tap to see jobs)</span></h2>
-                <div className="space-y-2">
+              <div className="mb-6">
+                <div className="mb-2 px-5">
+                  <span className="zr-v2-section-label" style={{ padding: 0 }}>Issues by type</span>
+                </div>
+                <div className="px-5" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {issueStats.map((s) => (
                     <div key={s.issue_type}>
-                      <button type="button" onClick={() => toggleIssueExpand(s.issue_type)} className="flex w-full items-center gap-2 rounded p-1 hover:bg-gray-50">
-                        <div className="w-36 truncate text-left text-sm">{s.issue_type}</div>
-                        <div className="flex-1 rounded bg-gray-100">
-                          <div className="h-4 rounded bg-red-400" style={{ width: `${Math.min(100, (s.count / issueStats[0].count) * 100)}%` }} />
+                      <button type="button" onClick={() => toggleIssueExpand(s.issue_type)}
+                        className="flex w-full items-center gap-3 transition-opacity active:opacity-60"
+                        style={{ padding: "6px 0", WebkitTapHighlightColor: "transparent" }}>
+                        <div style={{
+                          width: 120, flexShrink: 0,
+                          fontSize: "14px",
+                          color: "var(--zr-text-primary)",
+                          letterSpacing: "-0.01em",
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}>{s.issue_type}</div>
+                        <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(60,60,67,0.08)", overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 3, background: "rgba(214,68,58,0.55)", width: `${Math.min(100, (s.count / issueStats[0].count) * 100)}%`, transition: "width 300ms ease" }} />
                         </div>
-                        <div className="w-6 text-right text-sm font-medium">{s.count}</div>
-                        <div className="text-xs text-gray-400">{s.expanded ? "▲" : "▼"}</div>
+                        <div style={{ width: 28, textAlign: "right", fontSize: "14px", fontWeight: 600, color: "var(--zr-text-primary)", fontVariantNumeric: "tabular-nums" }}>{s.count}</div>
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ color: "rgba(60,60,67,0.4)", transform: s.expanded ? "rotate(180deg)" : "none", transition: "transform 150ms ease" }}>
+                          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                       </button>
 
                       {s.expanded && (
-                        <div className="ml-2 mt-1 rounded border bg-gray-50 p-2">
+                        <div style={{ marginTop: 4, paddingLeft: 0 }}>
                           {s.jobs.map((j, i) => (
-                            <Link key={i} href={`/measure-jobs/${j.job_id}`} className="block rounded p-2 hover:bg-white">
-                              <div className="text-sm font-medium text-blue-600">{j.job_title}</div>
-                              <div className="text-xs text-gray-500">{j.customer_name} · {j.room_name} · {j.window_label}</div>
-                              {j.notes && <div className="mt-0.5 text-xs text-gray-400 italic">"{j.notes}"</div>}
+                            <Link key={i} href={`/measure-jobs/${j.job_id}`}
+                              style={{
+                                display: "block",
+                                padding: "10px 0 10px 12px",
+                                textDecoration: "none",
+                                borderLeft: "2px solid rgba(60,60,67,0.1)",
+                                marginLeft: 4,
+                              }}
+                              className="transition-opacity active:opacity-60">
+                              <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-orange)", letterSpacing: "-0.012em" }}>{j.job_title}</div>
+                              <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 2 }}>{j.customer_name} · {j.room_name} · {j.window_label}</div>
+                              {j.notes && <div style={{ marginTop: 4, fontSize: "12.5px", color: "rgba(60,60,67,0.45)", fontStyle: "italic" }}>&ldquo;{j.notes}&rdquo;</div>}
                             </Link>
                           ))}
                         </div>

@@ -648,28 +648,55 @@ function SchedulePageInner() {
   return (
     <FeatureGate require="scheduling">
       <PermissionGate require={["manage_schedule", "complete_installs"]}>
-        <main className="min-h-screen" style={{ background: "#ffffff", color: "#1a1a1a" }}>
+        <main className="min-h-screen" style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }}>
 
-      {/* ── Top bar ── */}
-      <div className="border-b px-4 py-3 flex items-center justify-between sticky top-0 bg-white z-20">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm text-gray-400 hover:text-black">← Home</Link>
-          <h1 className="text-xl font-bold text-gray-900">Schedule</h1>
-        </div>
-        <div className="flex gap-1">
-          {(["day","week","month"] as const).map(v => (
-            <button key={v} onClick={() => { setView(v); setMonthDaySelected(null); }}
-              className={`px-3 py-1 rounded text-sm capitalize ${view === v ? "bg-black text-white" : "border text-gray-600 hover:bg-gray-50"}`}>
-              {v}
-            </button>
-          ))}
+      {/* ── Top bar — iOS back + title + segmented view toggle ── */}
+      <div className="sticky top-0 z-20"
+        style={{
+          background: "rgba(255,255,255,0.88)",
+          backdropFilter: "saturate(180%) blur(20px)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)",
+          borderBottom: "0.5px solid rgba(60,60,67,0.1)",
+        }}>
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em", flexShrink: 0 }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Home
+          </Link>
+          <h1 style={{ fontSize: "17px", fontWeight: 600, letterSpacing: "-0.015em", color: "var(--zr-text-primary)" }}>Schedule</h1>
+          {/* Segmented control matching the Dashboard/Customers pattern */}
+          <div className="grid grid-cols-3 p-1 rounded-full" style={{ background: "var(--zr-surface-3)", minWidth: 160 }}>
+            {(["day","week","month"] as const).map(v => (
+              <button key={v} onClick={() => { setView(v); setMonthDaySelected(null); }}
+                className="py-1 text-[12px] font-semibold rounded-full transition-all capitalize"
+                style={view === v
+                  ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                  : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Date nav ── */}
-      <div className="px-4 py-2 flex items-center justify-between border-b bg-white sticky top-[53px] z-10">
-        <button onClick={() => navigate(-1)} className="text-xl text-gray-400 hover:text-black px-1 leading-none">‹</button>
-        <div className="text-sm font-medium text-center text-gray-800">
+      {/* ── Date nav — quiet row, iOS chevron buttons ── */}
+      <div className="px-4 py-2 flex items-center justify-between sticky z-10"
+        style={{
+          top: 53,
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "saturate(180%) blur(16px)",
+          WebkitBackdropFilter: "saturate(180%) blur(16px)",
+          borderBottom: "0.5px solid rgba(60,60,67,0.08)",
+        }}>
+        <button onClick={() => navigate(-1)} className="transition-opacity active:opacity-60 p-2 -m-2" aria-label="Previous">
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+            <path d="M7 1L1 7L7 13" stroke="rgba(60,60,67,0.55)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--zr-text-primary)", letterSpacing: "-0.012em", textAlign: "center" }}>
           {view === "month"
             ? currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })
             : view === "week"
@@ -677,35 +704,61 @@ function SchedulePageInner() {
             : currentDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
           }
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button onClick={() => setCurrentDate(new Date())}
-            className="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50">Today</button>
-          <button onClick={() => navigate(1)} className="text-xl text-gray-400 hover:text-black px-1 leading-none">›</button>
+            style={{ color: "var(--zr-orange)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">Today</button>
+          <button onClick={() => navigate(1)} className="transition-opacity active:opacity-60 p-2 -m-2" aria-label="Next">
+            <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+              <path d="M1 1L7 7L1 13" stroke="rgba(60,60,67,0.55)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="px-4 py-2 flex items-center justify-between bg-white gap-2 flex-wrap">
-        {/* Person filter */}
+      {/* ── Toolbar — person filter + actions ── */}
+      <div className="px-4 py-3 flex items-center justify-between gap-2 flex-wrap" style={{ background: "var(--zr-canvas)" }}>
+        {/* Person filter — styled to match the Focus Mode chip, not a raw <select> */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <select
-            value={filterPerson}
-            onChange={e => setFilterPerson(e.target.value)}
-            className="border rounded px-2 py-1 text-sm bg-white min-w-0 max-w-[180px]"
-          >
-            {canSeeAll && <option value="all">Everyone</option>}
-            {getVisibleTeam().map(t => (
-              <option key={t.id} value={t.id}>
-                {t.name}{t.id === user?.id ? " (me)" : ""}
-              </option>
-            ))}
-          </select>
+          <div className="relative" style={{ minWidth: 0, maxWidth: 200 }}>
+            <select
+              value={filterPerson}
+              onChange={e => setFilterPerson(e.target.value)}
+              style={{
+                background: "rgba(60,60,67,0.06)",
+                color: "var(--zr-text-primary)",
+                fontSize: "13px",
+                fontWeight: 500,
+                letterSpacing: "-0.012em",
+                padding: "6px 28px 6px 12px",
+                borderRadius: 999,
+                border: "none",
+                appearance: "none",
+                WebkitAppearance: "none",
+                cursor: "pointer",
+                maxWidth: "100%",
+              }}
+            >
+              {canSeeAll && <option value="all">Everyone</option>}
+              {getVisibleTeam().map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}{t.id === user?.id ? " (me)" : ""}
+                </option>
+              ))}
+            </select>
+            {/* Chevron hint, absolutely positioned so it sits inside the pill */}
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
           {/* Legend (hidden on small screens) — hover shows the full description */}
           <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1">
             {Object.entries(APPT_TYPES).map(([k, v]) => (
               <span
                 key={k}
-                className="flex items-center gap-1 text-xs text-gray-500 cursor-help"
+                className="flex items-center gap-1 text-xs cursor-help"
+                style={{ color: "rgba(60,60,67,0.55)" }}
                 title={`${v.label} — ${v.description}`}
               >
                 <span className={`inline-block w-2 h-2 rounded-full ${v.dot}`} />
@@ -714,18 +767,32 @@ function SchedulePageInner() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={exportToICS}
-            className="border rounded px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+            style={{
+              color: "rgba(60,60,67,0.7)",
+              fontSize: "13px",
+              fontWeight: 500,
+              letterSpacing: "-0.012em",
+            }}
+            className="transition-opacity active:opacity-60"
             title="Export visible appointments to .ics calendar file"
           >
-            📅 Add to Calendar
+            Add to Calendar
           </button>
           <button
             onClick={() => openCreate(view === "week" ? today : currentDate, 9)}
-            className="text-white text-sm px-3 py-1.5 rounded"
-            style={{ background: "var(--zr-orange)" }}>
+            className="transition-all active:scale-[0.97]"
+            style={{
+              background: "var(--zr-orange)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 600,
+              padding: "7px 14px",
+              borderRadius: 999,
+              letterSpacing: "-0.012em",
+            }}>
             + New
           </button>
         </div>
@@ -1292,41 +1359,68 @@ function WeekView({ weekDays, timeSlots, today, getAppts, onSlot, onAppt }: {
   onSlot: (d: Date, h: number) => void;
   onAppt: (a: Appointment) => void;
 }) {
+  // Softened design tokens — hairlines instead of solid borders; the
+  // today column gets a calm orange wash (brand) instead of blue tint.
+  const HAIRLINE = "0.5px solid rgba(60,60,67,0.08)";
+  const TIME_LABEL = "rgba(60,60,67,0.55)";
+  const TODAY_WASH = "rgba(214,90,49,0.05)";
+
   return (
     <div className="overflow-x-auto pb-8">
       <div style={{ minWidth: 600 }}>
         {/* Day headers */}
-        <div className="grid border-b bg-white" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
-          <div className="border-r" />
-          {weekDays.map((day, i) => (
-            <div key={i}
-              className={`text-center py-2 border-r last:border-0 ${isSameDay(day, today) ? "bg-blue-50" : ""}`}>
-              <div className="text-xs text-gray-400">{day.toLocaleDateString("en-US", { weekday: "short" })}</div>
-              <div className={`text-sm font-bold ${isSameDay(day, today) ? "text-blue-600" : ""}`}>{day.getDate()}</div>
-            </div>
-          ))}
+        <div className="grid" style={{
+          gridTemplateColumns: "52px repeat(7, 1fr)",
+          borderBottom: HAIRLINE,
+          background: "transparent",
+        }}>
+          <div />
+          {weekDays.map((day, i) => {
+            const isTodayCol = isSameDay(day, today);
+            return (
+              <div key={i} className="text-center py-2"
+                style={{ background: isTodayCol ? TODAY_WASH : "transparent" }}>
+                <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>
+                  {day.toLocaleDateString("en-US", { weekday: "short" })}
+                </div>
+                <div style={{
+                  fontSize: "15px", fontWeight: 600, letterSpacing: "-0.012em",
+                  color: isTodayCol ? "var(--zr-orange)" : "var(--zr-text-primary)",
+                  marginTop: 2,
+                }}>{day.getDate()}</div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Grid body */}
         <div className="relative" style={{ height: GRID_HOURS * HOUR_PX }}>
           {/* Hour lines + labels */}
           {timeSlots.map(h => (
-            <div key={h} className="absolute left-0 right-0 border-t border-gray-100 pointer-events-none"
-              style={{ top: (h - GRID_START) * HOUR_PX }}>
-              <span className="absolute text-xs text-gray-300 pl-1" style={{ top: -9, width: 50 }}>{fmtHour(h)}</span>
+            <div key={h} className="absolute left-0 right-0 pointer-events-none"
+              style={{ top: (h - GRID_START) * HOUR_PX, borderTop: HAIRLINE }}>
+              <span className="absolute pl-1" style={{ top: -8, width: 50, fontSize: "11px", color: TIME_LABEL, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
+                {fmtHour(h)}
+              </span>
             </div>
           ))}
 
-          {/* Day columns */}
+          {/* Day columns — today gets a soft brand wash, no column borders */}
           <div className="absolute inset-0 grid" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
-            <div className="border-r" />
+            <div />
             {weekDays.map((day, di) => (
-              <div key={di} className={`relative border-r last:border-0 ${isSameDay(day, today) ? "bg-blue-50/20" : ""}`}>
+              <div key={di} className="relative"
+                style={{ background: isSameDay(day, today) ? TODAY_WASH : "transparent" }}>
                 {/* Clickable slots */}
                 {timeSlots.map(h => (
                   <div key={h} onClick={() => onSlot(day, h)}
-                    className="absolute left-0 right-0 cursor-pointer hover:bg-blue-50/40"
-                    style={{ top: (h - GRID_START) * HOUR_PX, height: HOUR_PX }} />
+                    className="absolute left-0 right-0 cursor-pointer transition-colors"
+                    style={{
+                      top: (h - GRID_START) * HOUR_PX,
+                      height: HOUR_PX,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.03)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }} />
                 ))}
                 {/* Appointments */}
                 {getAppts(day).map(a => (
@@ -1351,16 +1445,21 @@ function DayView({ day, timeSlots, today, appts, onSlot, onAppt }: {
   onSlot: (h: number) => void;
   onAppt: (a: Appointment) => void;
 }) {
+  const HAIRLINE = "0.5px solid rgba(60,60,67,0.08)";
   return (
     <div className="px-4 pb-8">
       <div className="relative" style={{ height: GRID_HOURS * HOUR_PX }}>
         {/* Hour lines + labels */}
         {timeSlots.map(h => (
-          <div key={h} className="absolute left-0 right-0 flex border-t border-gray-100"
-            style={{ top: (h - GRID_START) * HOUR_PX, height: HOUR_PX }}>
-            <span className="text-xs text-gray-300 w-12 shrink-0 -translate-y-2.5 pl-1">{fmtHour(h)}</span>
+          <div key={h} className="absolute left-0 right-0 flex"
+            style={{ top: (h - GRID_START) * HOUR_PX, height: HOUR_PX, borderTop: HAIRLINE }}>
+            <span style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, fontVariantNumeric: "tabular-nums", width: 48, flexShrink: 0, transform: "translateY(-8px)", paddingLeft: 4 }}>
+              {fmtHour(h)}
+            </span>
             <div onClick={() => onSlot(h)}
-              className="flex-1 cursor-pointer hover:bg-blue-50/40 rounded" />
+              className="flex-1 cursor-pointer rounded transition-colors"
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(60,60,67,0.03)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }} />
           </div>
         ))}
         {/* Appointments */}

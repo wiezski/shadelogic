@@ -241,6 +241,21 @@ body {
   align-items: center;
 }
 
+/* Native-iOS full-width row used by ShipmentTrackingWidget. No card wrapper,
+   no chevron, no background surface — just text on the page canvas with a
+   hairline divider handled inline. Hover/active give a subtle wash on tap,
+   the same ~6% gray iOS Mail uses. */
+.zr-ios-row {
+  -webkit-tap-highlight-color: transparent;
+}
+.zr-ios-row:hover {
+  background-color: rgba(60, 60, 67, 0.025);
+}
+.zr-ios-row:active {
+  background-color: rgba(60, 60, 67, 0.06);
+  transition-duration: 40ms;
+}
+
 /* A small leading colored dot — iOS Mail / Reminders style status indicator.
    Replaces heavy emoji icon tiles for a calmer, lighter feel. */
 .zr-v2-dot {

@@ -1025,14 +1025,33 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
   const shipped = shipments.filter(s => s.status === "shipped");
   const justArrived = shipments.filter(s => s.status === "received" && s.received_at && daysAgo(s.received_at) <= 3);
 
+  // ─────────────────────────────────────────────────────────────
+  // Native iOS list design (Apple Reminders / Mail / Messages).
+  // No card wrapper. No chevrons. No inner boxes. Rows are edge-
+  // to-edge text on the page canvas, separated by a hairline that
+  // inset-starts after the left-edge padding — the iOS convention.
+  // ─────────────────────────────────────────────────────────────
+
+  // Soft gray tokens tuned to Apple's informational hierarchy
+  const C_NAME      = "var(--zr-text-primary)";   // bold primary
+  const C_STATUS    = "rgba(60,60,67,0.42)";      // status (muted, barely there)
+  const C_PRIMARY   = "rgba(60,60,67,0.62)";      // key detail line
+  const C_SECONDARY = "rgba(60,60,67,0.38)";      // optional tertiary line
+  const C_DIVIDER   = "rgba(60,60,67,0.08)";      // hairline between rows
+
   if (loading) {
     return (
       <div>
-        <SectionLabel>Shipments & deliveries</SectionLabel>
-        <div className="zr-v2-card" style={{ padding: "16px" }}>
-          <div className="space-y-3">
-            {[1,2,3].map(i => <div key={i} className="h-14 rounded-xl zr-skeleton" />)}
-          </div>
+        <div className="flex items-end justify-between mb-1 px-5">
+          <span className="zr-v2-section-label" style={{ padding: 0 }}>Shipments</span>
+        </div>
+        <div>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ padding: "18px 20px", borderBottom: i < 3 ? `0.5px solid ${C_DIVIDER}` : "none" }}>
+              <div style={{ height: 18, width: "45%", borderRadius: 4 }} className="zr-skeleton" />
+              <div style={{ height: 13, width: "30%", borderRadius: 4, marginTop: 8 }} className="zr-skeleton" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1042,9 +1061,6 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
     return null;
   }
 
-  // Status labels — one muted gray for all statuses. Status is hierarchy,
-  // not a highlight. The only color that can appear is the rare "In transit"
-  // hint, and it's barely there.
   const statusLabel: Record<string, string> = {
     ordered:  "Ordered",
     shipped:  "In transit",
@@ -1052,79 +1068,125 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
     staged:   "Staged",
   };
 
-  function ShipmentRow({ s }: { s: ShipmentItem }) {
-    // Two-line iOS list cell:
-    //   Line 1: customer name (left) · status + count (right, muted)
-    //   Line 2: single meta line — most specific info wins (location > date)
-    // No leading icon tile. No inline emoji. No pills. The entire row is
-    // one tappable surface with the chevron as the only affordance.
-    const shipDate = s.shipped_at ? new Date(s.shipped_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
-    const etaFmt = s.eta ? `ETA ${s.eta}` : null;
-    const dateChip = shipDate ? `Shipped ${shipDate}` : etaFmt;
-    const pkgHint = s.status === "shipped" && s.expected_packages
+  // Key detail (line 2) picker — whichever is most informative for the state
+  function keyDetail(s: ShipmentItem): string | null {
+    const fmt = (d: string) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    if (s.status === "received" && s.received_at) return `Arrived ${fmt(s.received_at)}`;
+    if (s.status === "shipped") {
+      if (s.eta) return `ETA ${s.eta}`;
+      if (s.shipped_at) return `Shipped ${fmt(s.shipped_at)}`;
+    }
+    if (s.status === "ordered" && s.ordered_at) return `Ordered ${fmt(s.ordered_at)}`;
+    if (s.status === "staged") return "Ready to install";
+    return null;
+  }
+
+  function ShipmentRow({ s, isLast }: { s: ShipmentItem; isLast: boolean }) {
+    // Package progress shows inline with status on line 1 as plain text — never a pill or circle
+    const pkgProgress = s.expected_packages && s.expected_packages > 0 && (s.status === "shipped" || s.status === "ordered")
       ? `${s.received_packages}/${s.expected_packages}`
       : null;
 
-    // Prefer location over date if we have both — installer cares most about
-    // where the boxes are. If no location, fall back to ship/ETA date.
-    const meta = s.storage_location || dateChip || s.description || "";
-
-    // Merge the status word + optional pkg count into one soft-colored suffix
-    const statusSuffix = [statusLabel[s.status] || s.status, pkgHint]
-      .filter(Boolean)
-      .join(" · ");
+    const primary = keyDetail(s);
+    // Secondary line only if we have location OR a description that isn't
+    // already captured by the primary line. Keeps the row from ever stacking
+    // redundant info.
+    const secondary = s.storage_location || s.description || null;
+    const showSecondary = secondary && secondary !== primary;
 
     return (
-      <Link href={`/quotes/${s.quote_id}`} className="zr-v2-row">
-        <div className="min-w-0 flex-1">
-          {/* Line 1: name on left, status on right, both inline */}
-          <div className="flex items-baseline gap-3">
-            <span style={{
-              color: "var(--zr-text-primary)",
-              fontSize: "16px",
-              fontWeight: 600,
-              letterSpacing: "-0.015em",
-              lineHeight: 1.25,
-              flex: 1,
-              minWidth: 0,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}>
-              {s.customer_name}
-            </span>
-            <span style={{
-              color: "rgba(60,60,67,0.55)",
-              fontSize: "13px",
-              fontWeight: 500,
-              letterSpacing: "-0.005em",
-              fontVariantNumeric: "tabular-nums",
-              flexShrink: 0,
-            }}>
-              {statusSuffix}
-            </span>
-          </div>
-          {/* Line 2: single muted meta line */}
-          {meta && (
-            <div style={{
-              color: "rgba(60,60,67,0.45)",
-              fontSize: "13px",
-              letterSpacing: "-0.005em",
-              lineHeight: 1.3,
-              marginTop: "3px",
-            }} className="truncate">
-              {meta}
-            </div>
-          )}
+      <Link
+        href={`/quotes/${s.quote_id}`}
+        style={{
+          display: "block",
+          textDecoration: "none",
+          color: "inherit",
+          padding: "18px 20px 16px",
+          borderBottom: isLast ? "none" : `0.5px solid ${C_DIVIDER}`,
+          transition: "background-color 120ms ease",
+        }}
+        className="zr-ios-row"
+      >
+        {/* ── Line 1: Name (bold) · Status + pkg count (muted, right-anchored) ── */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 3 }}>
+          <span style={{
+            flex: 1,
+            minWidth: 0,
+            color: C_NAME,
+            fontSize: "17px",
+            fontWeight: 600,
+            letterSpacing: "-0.022em",
+            lineHeight: 1.25,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {s.customer_name}
+          </span>
+          <span style={{
+            flexShrink: 0,
+            color: C_STATUS,
+            fontSize: "13px",
+            fontWeight: 400,
+            letterSpacing: "-0.003em",
+            fontVariantNumeric: "tabular-nums",
+            lineHeight: 1.25,
+          }}>
+            {statusLabel[s.status] || s.status}
+            {pkgProgress && (
+              <span style={{ marginLeft: 8, color: C_STATUS, fontVariantNumeric: "tabular-nums" }}>
+                {pkgProgress}
+              </span>
+            )}
+          </span>
         </div>
-        <Chevron />
+
+        {/* ── Line 2: Key detail ── */}
+        {primary && (
+          <div style={{
+            color: C_PRIMARY,
+            fontSize: "14px",
+            fontWeight: 400,
+            letterSpacing: "-0.006em",
+            lineHeight: 1.3,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {primary}
+          </div>
+        )}
+
+        {/* ── Line 3 (optional): Secondary, very light ── */}
+        {showSecondary && (
+          <div style={{
+            color: C_SECONDARY,
+            fontSize: "13px",
+            fontWeight: 400,
+            letterSpacing: "-0.003em",
+            lineHeight: 1.3,
+            marginTop: 2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {secondary}
+          </div>
+        )}
       </Link>
     );
   }
 
+  // Ordered list of rows in display priority: in-transit first, recent arrivals, then orders
+  const rows: ShipmentItem[] = [
+    ...shipped,
+    ...justArrived,
+    ...ordered.slice(0, 5),
+  ];
+
   return (
     <div>
-      <div className="flex items-end justify-between mb-2 px-5">
+      <div className="flex items-end justify-between mb-1 px-5">
         <span className="zr-v2-section-label" style={{ padding: 0 }}>
           Shipments · {ordered.length + shipped.length} active
         </span>
@@ -1133,17 +1195,17 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
         </Link>
       </div>
 
-      <div className="zr-v2-open-list">
-        {/* In Transit first — most urgent */}
-        {shipped.map(s => <ShipmentRow key={s.id} s={s} />)}
-        {/* Just delivered */}
-        {justArrived.map(s => <ShipmentRow key={s.id} s={s} />)}
-        {/* Ordered / waiting */}
-        {ordered.slice(0, 5).map(s => <ShipmentRow key={s.id} s={s} />)}
+      {/* No card wrapper. Rows sit directly on the page canvas. */}
+      <div>
+        {rows.map((s, i) => (
+          <ShipmentRow key={s.id} s={s} isLast={i === rows.length - 1} />
+        ))}
       </div>
 
       {ordered.length > 5 && (
-        <p style={{ color: "var(--zr-text-muted)" }} className="mt-2 text-xs text-center">+{ordered.length - 5} more on order</p>
+        <p style={{ color: "var(--zr-text-muted)", marginTop: 8, paddingLeft: 20, fontSize: "12px" }}>
+          +{ordered.length - 5} more on order
+        </p>
       )}
     </div>
   );

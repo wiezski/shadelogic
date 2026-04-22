@@ -697,10 +697,10 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen px-4 pt-5 pb-24 sm:px-6">
-      <div className="mx-auto max-w-3xl">
+    <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-5 pb-24">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
         {/* ── Large iOS-style page title + action row ──────────────── */}
-        <div className="mb-5 flex items-end justify-between">
+        <div className="mb-6 flex items-end justify-between">
           <div>
             <h1 style={{ color: "var(--zr-text-primary)", letterSpacing: "-0.03em" }} className="text-[34px] font-bold leading-[1.1]">
               Dashboard
@@ -791,8 +791,8 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Visible widgets — spacing separates them, no borders */}
-            <div className="flex flex-col gap-7">
+            {/* Visible widgets — generous spacing, no borders */}
+            <div className="flex flex-col gap-9">
               {widgetOrder.filter(id => {
                 if (hiddenWidgets.includes(id)) return false;
                 const modeWidgets = getModeWidgets(taskMode);

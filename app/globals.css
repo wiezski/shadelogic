@@ -139,22 +139,22 @@ body {
    the design stays consistent across widgets.
    ============================================================ */
 
-/* A section label: sentence-case caption that sits ABOVE a grouped list.
-   iOS 17 uses sentence case (Apple deprecated uppercase section labels). */
+/* A section label — sits above the list, in line with row padding.
+   Calm iOS 17 sentence-case style. */
 .zr-v2-section-label {
-  color: rgba(60, 60, 67, 0.6);
+  color: rgba(60, 60, 67, 0.55);
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: -0.01em;
-  padding: 0 6px 10px 6px;
+  letter-spacing: -0.005em;
+  padding: 0 20px 10px 20px;
   font-family: var(--zr-font-body);
 }
 
-/* A card — the primary visual unit. Whisper shadow, no border. */
+/* A card — iOS Settings "grouped" container. NO shadow, NO border.
+   Just a white rectangle on the gray canvas. Radius defines the shape. */
 .zr-v2-card {
   background: var(--zr-surface-1);
   border-radius: var(--zr-radius-lg);
-  box-shadow: var(--zr-shadow-sm);
   overflow: hidden;
 }
 
@@ -163,31 +163,68 @@ body {
   padding: 18px 18px;
 }
 
-/* A grouped list inside a card. Children are <a>/<button> rows
-   separated by hairline dividers, NOT borders on each row. */
+/* Grouped list. Rows separated by a hairline inset from the left edge
+   (iOS convention — the separator doesn't touch the row's left edge,
+   it starts where the leading icon column ends). */
 .zr-v2-list {
   display: flex;
   flex-direction: column;
 }
 .zr-v2-list > * + * {
-  border-top: 1px solid var(--zr-hairline);
+  position: relative;
+}
+.zr-v2-list > * + *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 54px;       /* inset past the leading-icon column */
+  right: 0;
+  height: 0.5px;
+  background: rgba(60, 60, 67, 0.12);
+  pointer-events: none;
 }
 
-/* A tappable row inside a list. Full-width, generous padding,
-   subtle press state. Left content + optional right badge/chev. */
+/* An "open" list — no card wrapper, rows sit directly on the page
+   canvas with the white background on each row creating the grouped
+   appearance. Use this for calmer modules like Today's Focus. */
+.zr-v2-open-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--zr-surface-1);
+  border-radius: var(--zr-radius-lg);
+  overflow: hidden;
+}
+.zr-v2-open-list > * + * {
+  position: relative;
+}
+.zr-v2-open-list > * + *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 0.5px;
+  background: rgba(60, 60, 67, 0.1);
+  pointer-events: none;
+}
+
+/* A tappable row. Edge-to-edge within its container, 18px horizontal
+   padding, 16px vertical. Min 64px total — matches iOS 44pt tap target
+   with breathing room. The gap flexes between leading icon/slot and the
+   content column. */
 .zr-v2-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 18px;
+  padding: 16px 18px;
   background: var(--zr-surface-1);
   color: var(--zr-text-primary);
   text-decoration: none;
   transition: background var(--zr-transition);
-  min-height: 62px; /* comfortable tap target — matches iOS 44pt + padding */
+  min-height: 64px;
 }
 .zr-v2-row:hover {
-  background: rgba(60,60,67,0.03);
+  background: rgba(60,60,67,0.025);
 }
 .zr-v2-row:active {
   background: rgba(60,60,67,0.06);

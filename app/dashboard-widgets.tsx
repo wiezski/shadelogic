@@ -242,33 +242,27 @@ export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
   warehouse: ["quick_actions", "shipments", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
 };
 
-// ── 1. Quick Actions — tap tiles with line icons, no emoji ──
+// ── 1. Quick Actions — flat tiles, no shadow ──────────────────
 export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => void }) {
   const tile = {
     background: "var(--zr-surface-1)",
-    boxShadow: "var(--zr-shadow-sm)",
     color: "var(--zr-text-primary)",
   } as const;
   const iconWrap = {
     color: "var(--zr-orange)",
   } as const;
+  const tileClass = "rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 transition-all active:scale-95";
   return (
     <div className="grid grid-cols-3 gap-3">
-      <button onClick={onNewCustomer}
-        style={tile}
-        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 transition-all active:scale-95">
+      <button onClick={onNewCustomer} style={tile} className={tileClass}>
         <span style={iconWrap}><Icon.Person /></span>
         <span>New customer</span>
       </button>
-      <Link href="/schedule"
-        style={tile}
-        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 text-center transition-all active:scale-95">
+      <Link href="/schedule" style={tile} className={tileClass + " text-center"}>
         <span style={iconWrap}><Icon.Calendar /></span>
         <span>Schedule</span>
       </Link>
-      <Link href="/reminders"
-        style={tile}
-        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 text-center transition-all active:scale-95">
+      <Link href="/reminders" style={tile} className={tileClass + " text-center"}>
         <span style={iconWrap}><Icon.Bell /></span>
         <span>Reminders</span>
       </Link>
@@ -373,41 +367,41 @@ export function RevenueChartWidget({ revenueByMonth }: { revenueByMonth: { label
   );
 }
 
-// ── 4. Today's Focus — iOS Reminders style: tiny dot + clean row ──
-// Removed the icon tile entirely; a single 10px colored dot carries the
-// status. Calmer, more readable. Colors live in text or dot only.
+// ── 4. Today's Focus — iOS Reminders style ──
+// No card, no border, no colored icons. Just a grouped list on the canvas
+// with the title + a single muted line each. Calm, not urgent.
 export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string; sub: string; href: string; color: string }[] }) {
   if (focusItems.length === 0) return null;
-
-  function dotColor(colorClass: string): string {
-    if (colorClass.includes("red"))    return "#d6443a";
-    if (colorClass.includes("amber"))  return "#c28a0e";
-    if (colorClass.includes("orange")) return "#c25a2f";
-    if (colorClass.includes("blue"))   return "#0a84ff";
-    if (colorClass.includes("green"))  return "#288a58";
-    return "rgba(60,60,67,0.35)";
-  }
 
   return (
     <div>
       <SectionLabel>Today&apos;s focus</SectionLabel>
-      <div className="zr-v2-card">
-        <div className="zr-v2-list">
-          {focusItems.map((item, i) => (
-            <Link key={i} href={item.href} className="zr-v2-row">
-              <span className="zr-v2-dot" style={{ background: dotColor(item.color) }} />
-              <div className="min-w-0 flex-1">
-                <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3 }} className="truncate">
-                  {item.label}
-                </div>
-                <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", marginTop: "3px", lineHeight: 1.35 }} className="truncate">
-                  {item.sub}
-                </div>
+      <div className="zr-v2-open-list">
+        {focusItems.map((item, i) => (
+          <Link key={i} href={item.href} className="zr-v2-row">
+            <div className="min-w-0 flex-1">
+              <div style={{
+                color: "var(--zr-text-primary)",
+                fontSize: "16px",
+                fontWeight: 600,
+                letterSpacing: "-0.015em",
+                lineHeight: 1.25,
+              }} className="truncate">
+                {item.label}
               </div>
-              <Chevron />
-            </Link>
-          ))}
-        </div>
+              <div style={{
+                color: "rgba(60,60,67,0.5)",
+                fontSize: "13px",
+                marginTop: "4px",
+                letterSpacing: "-0.005em",
+                lineHeight: 1.3,
+              }} className="truncate">
+                {item.sub}
+              </div>
+            </div>
+            <Chevron />
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -444,13 +438,31 @@ export function SalesPipelineWidget({ customers, pipelineValue, selectedStage, s
     return (
       <button type="button" onClick={() => setSelectedStage(active ? null : stage)}
         style={active
-          ? { background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-md)", boxShadow: "var(--zr-shadow-glow)" }
-          : { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", borderRadius: "var(--zr-radius-md)", boxShadow: "var(--zr-shadow-sm)" }}
-        className="p-2.5 text-center w-full transition-all active:scale-95">
-        <div style={{ color: active ? "#fff" : undefined, letterSpacing: "-0.02em" }} className={`text-xl font-bold ${active ? "" : STAGE_COLORS[stage] ?? "text-gray-900"}`}>{count}</div>
-        <div style={{ color: active ? "rgba(255,255,255,0.85)" : "var(--zr-text-muted)", fontSize: "11px" }} className="mt-1 leading-tight">{stage}</div>
+          ? { background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-md)" }
+          : { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", borderRadius: "var(--zr-radius-md)" }}
+        className="p-3 text-center w-full transition-all active:scale-95">
+        <div style={{
+          color: active ? "#fff" : "var(--zr-text-primary)",
+          fontSize: "20px",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          lineHeight: 1,
+        }}>{count}</div>
+        <div style={{
+          color: active ? "rgba(255,255,255,0.85)" : "rgba(60,60,67,0.55)",
+          fontSize: "11px",
+          marginTop: "6px",
+          letterSpacing: "-0.005em",
+          lineHeight: 1.15,
+        }}>{stage}</div>
         {value > 0 && (
-          <div style={{ color: active ? "rgba(255,255,255,0.9)" : "var(--zr-success)", fontSize: "11px" }} className="mt-1 font-semibold">
+          <div style={{
+            color: active ? "rgba(255,255,255,0.9)" : "rgba(60,60,67,0.45)",
+            fontSize: "11px",
+            marginTop: "4px",
+            fontWeight: 500,
+            fontVariantNumeric: "tabular-nums",
+          }}>
             ${value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toFixed(0)}
           </div>
         )}
@@ -465,7 +477,7 @@ export function SalesPipelineWidget({ customers, pipelineValue, selectedStage, s
         {ALL_STAGES.map(s => <PipelineCard key={s} stage={s} />)}
       </div>
       {customers.length > 0 && (
-        <div className="zr-v2-card" style={{ padding: "18px", marginBottom: "12px" }}>
+        <div className="zr-v2-card" style={{ padding: "18px", marginBottom: "20px" }}>
           <PipelineFunnel
             stages={[
               { label: "New", count: stageCounts["New"] || 0, value: pipelineValue["New"], color: "#9ca3af" },
@@ -481,30 +493,67 @@ export function SalesPipelineWidget({ customers, pipelineValue, selectedStage, s
         </div>
       )}
       {selectedStage && (
-        <div className="zr-v2-card">
-          <div className="flex items-center justify-between px-5 py-4">
-            <h2 style={{ color: "var(--zr-text-primary)", fontSize: "17px", fontWeight: 600, letterSpacing: "-0.01em" }}>
-              {selectedStage} <span style={{ color: "var(--zr-text-muted)", fontWeight: 400 }}>· {stageCustomers.length}</span>
-            </h2>
+        <div>
+          <div className="flex items-end justify-between px-5 mb-2">
+            <span className="zr-v2-section-label" style={{ padding: 0 }}>
+              {selectedStage} · {stageCustomers.length}
+            </span>
             <button type="button" onClick={() => setSelectedStage(null)}
-              style={{ color: "var(--zr-text-muted)", fontSize: "13px" }} className="px-2 py-1">Close</button>
+              style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }} className="pb-[10px]">
+              Close
+            </button>
           </div>
           {stageCustomers.length === 0 ? (
-            <p style={{ color: "var(--zr-text-muted)" }} className="text-sm px-5 pb-5">No customers at this stage.</p>
+            <div className="zr-v2-open-list" style={{ padding: "24px 18px" }}>
+              <p style={{ color: "rgba(60,60,67,0.5)" }} className="text-[14px] text-center">No customers at this stage.</p>
+            </div>
           ) : (
-            <div className="zr-v2-list" style={{ borderTop: "1px solid var(--zr-hairline)" }}>
+            <div className="zr-v2-open-list">
               {stageCustomers.map(c => {
                 const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown";
                 const inactive = c.last_activity_at ? daysAgo(c.last_activity_at) : null;
                 return (
                   <Link key={c.id} href={`/customers/${c.id}`} className="zr-v2-row">
                     <div className="min-w-0 flex-1">
-                      <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">{name}</div>
+                      <div className="flex items-baseline gap-3">
+                        <span style={{
+                          color: "var(--zr-text-primary)",
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          letterSpacing: "-0.015em",
+                          lineHeight: 1.25,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}>
+                          {name}
+                        </span>
+                        {c.heat_score && (
+                          <span style={{
+                            color: c.heat_score === "Hot" ? "rgba(214,68,58,0.8)"
+                                 : c.heat_score === "Cold" ? "rgba(91,141,239,0.8)"
+                                 : "rgba(60,60,67,0.5)",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            flexShrink: 0,
+                          }}>
+                            {c.heat_score}
+                          </span>
+                        )}
+                      </div>
                       {inactive !== null && (
-                        <div style={{ color: "var(--zr-text-muted)", fontSize: "13px", marginTop: "2px" }}>Last activity {inactive}d ago</div>
+                        <div style={{
+                          color: "rgba(60,60,67,0.5)",
+                          fontSize: "13px",
+                          marginTop: "4px",
+                          letterSpacing: "-0.005em",
+                        }}>
+                          Last activity {inactive}d ago
+                        </div>
                       )}
                     </div>
-                    {c.heat_score && <span className={`zr-v2-pill ${heatStyle[c.heat_score]}`}>{c.heat_score}</span>}
                     <Chevron />
                   </Link>
                 );
@@ -543,15 +592,21 @@ export function OperationsWidget({ measuresToSchedule, measuresDone, installsToS
     return (
       <button type="button" onClick={() => setSelectedFilter(active ? null : filterKey)}
         style={active
-          ? { background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-lg)", boxShadow: "var(--zr-shadow-glow)" }
-          : { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", borderRadius: "var(--zr-radius-lg)", boxShadow: "var(--zr-shadow-sm)" }}
+          ? { background: "var(--zr-orange)", color: "#fff", borderRadius: "var(--zr-radius-lg)" }
+          : { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", borderRadius: "var(--zr-radius-lg)" }}
         className="p-4 text-left w-full transition-all active:scale-[0.98]">
         <div style={{
-          fontSize: "28px", fontWeight: 700, letterSpacing: "-0.02em",
+          fontSize: "30px", fontWeight: 700, letterSpacing: "-0.025em",
           color: active ? "#fff" : (accent || "var(--zr-text-primary)"),
           lineHeight: 1,
         }}>{statsLoading ? "—" : count}</div>
-        <div style={{ color: active ? "rgba(255,255,255,0.85)" : "var(--zr-text-secondary)", fontSize: "13px", marginTop: "8px", fontWeight: 500 }}>
+        <div style={{
+          color: active ? "rgba(255,255,255,0.85)" : "rgba(60,60,67,0.55)",
+          fontSize: "13px",
+          marginTop: "10px",
+          fontWeight: 500,
+          letterSpacing: "-0.005em",
+        }}>
           {label}
         </div>
       </button>
@@ -569,41 +624,70 @@ export function OperationsWidget({ measuresToSchedule, measuresDone, installsToS
         <StatCard label="Open issues" count={issueJobs.length} filterKey="issues" accent={issueJobs.length > 0 ? "var(--zr-error)" : undefined} />
       </div>
       {selectedFilter && (
-        <div className="zr-v2-card">
-          <div className="flex items-center justify-between px-5 py-4">
-            <h2 style={{ color: "var(--zr-text-primary)", fontSize: "17px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+        <div>
+          <div className="flex items-end justify-between px-5 mb-2">
+            <span className="zr-v2-section-label" style={{ padding: 0 }}>
               {filterLabels[selectedFilter]}
-            </h2>
+            </span>
             <button type="button" onClick={() => setSelectedFilter(null)}
-              style={{ color: "var(--zr-text-muted)", fontSize: "13px" }} className="px-2 py-1">Close</button>
+              style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }} className="pb-[10px]">
+              Close
+            </button>
           </div>
           {filterJobs[selectedFilter].length === 0 ? (
-            <p style={{ color: "var(--zr-text-muted)" }} className="text-sm px-5 pb-5">None right now.</p>
+            <div className="zr-v2-open-list" style={{ padding: "24px 18px" }}>
+              <p style={{ color: "rgba(60,60,67,0.5)" }} className="text-[14px] text-center">None right now.</p>
+            </div>
           ) : (
-            <div className="zr-v2-list" style={{ borderTop: "1px solid var(--zr-hairline)" }}>
-              {filterJobs[selectedFilter].map(job => (
-                <Link key={job.id} href={`/measure-jobs/${job.id}`} className="zr-v2-row">
-                  <div className="min-w-0 flex-1">
-                    <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">
-                      {job.title}
+            <div className="zr-v2-open-list">
+              {filterJobs[selectedFilter].map(job => {
+                const overdueLabel = job.overdue
+                  ? "Overdue"
+                  : job.needs_attention && daysAgo(job.created_at) > 5
+                  ? `Idle ${daysAgo(job.created_at)}d`
+                  : null;
+                return (
+                  <Link key={job.id} href={`/measure-jobs/${job.id}`} className="zr-v2-row">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-3">
+                        <span style={{
+                          color: "var(--zr-text-primary)",
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          letterSpacing: "-0.015em",
+                          lineHeight: 1.25,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}>
+                          {job.title}
+                        </span>
+                        {overdueLabel && (
+                          <span style={{
+                            color: job.overdue ? "rgba(194,138,14,0.9)" : "rgba(60,60,67,0.5)",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            flexShrink: 0,
+                          }}>
+                            {overdueLabel}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{
+                        color: "rgba(60,60,67,0.5)",
+                        fontSize: "13px",
+                        marginTop: "4px",
+                        letterSpacing: "-0.005em",
+                      }} className="truncate">
+                        {job.customer_name}
+                      </div>
                     </div>
-                    <div style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "2px" }} className="truncate">
-                      {job.customer_name}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {job.overdue && (
-                      <span className="zr-v2-pill" style={{ background: "rgba(224,138,0,0.14)", color: "#b8710b" }}>Overdue</span>
-                    )}
-                    {job.needs_attention && !job.overdue && daysAgo(job.created_at) > 5 && (
-                      <span className="zr-v2-pill" style={{ background: "var(--zr-surface-3)", color: "var(--zr-text-muted)" }}>
-                        Idle {daysAgo(job.created_at)}d
-                      </span>
-                    )}
-                  </div>
-                  <Chevron />
-                </Link>
-              ))}
+                    <Chevron />
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
@@ -638,79 +722,82 @@ export function WorkQueueWidget({ workQueue, workQueueLoading, currentUserId, qu
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2">
-          <span className="zr-v2-section-label" style={{ padding: 0 }}>Work queue</span>
-          <span className="zr-v2-pill" style={filteredQueue.some(w => w.priority === 1)
-            ? { background: "rgba(214,58,58,0.12)", color: "#c6443a" }
-            : { background: "rgba(224,138,0,0.12)", color: "#b8710b" }}>
-            {filteredQueue.length}
-          </span>
-        </div>
+      <div className="flex items-end justify-between mb-2 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>
+          Work queue · {filteredQueue.length}
+        </span>
         {canAssign && (
-          <div className="flex rounded-full p-0.5" style={{ background: "var(--zr-surface-3)" }}>
+          <div className="flex rounded-full p-0.5 pb-0.5" style={{ background: "rgba(60,60,67,0.08)" }}>
             <button onClick={() => setQueueFilter("mine")}
               className="px-3 py-1 text-[12px] font-semibold rounded-full transition-all"
               style={queueFilter === "mine"
-                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
-                : { background: "transparent", color: "var(--zr-text-secondary)" }}>Mine</button>
+                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)" }
+                : { background: "transparent", color: "rgba(60,60,67,0.55)" }}>Mine</button>
             <button onClick={() => setQueueFilter("all")}
               className="px-3 py-1 text-[12px] font-semibold rounded-full transition-all"
               style={queueFilter === "all"
-                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
-                : { background: "transparent", color: "var(--zr-text-secondary)" }}>All</button>
+                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)" }
+                : { background: "transparent", color: "rgba(60,60,67,0.55)" }}>All</button>
           </div>
         )}
       </div>
 
-      <div className="zr-v2-card">
-        {filteredQueue.length === 0 ? (
-          <div style={{ color: "var(--zr-text-muted)", padding: "18px" }} className="text-sm text-center">
+      {filteredQueue.length === 0 ? (
+        <div className="zr-v2-open-list" style={{ padding: "24px 18px" }}>
+          <div style={{ color: "rgba(60,60,67,0.5)" }} className="text-[14px] text-center">
             No items in your queue right now.
           </div>
-        ) : (
-          <div className="zr-v2-list">
-            {filteredQueue.slice(0, 8).map(w => (
+        </div>
+      ) : (
+        <div className="zr-v2-open-list">
+          {filteredQueue.slice(0, 8).map(w => {
+            const priorityLabel =
+              w.priority === 1 ? "Now" : w.priority === 2 ? "Today" : "Soon";
+            const priorityColor =
+              w.priority === 1 ? "rgba(214,68,58,0.85)" : "rgba(60,60,67,0.5)";
+            return (
               <Link key={w.customer_id} href={`/customers/${w.customer_id}`} className="zr-v2-row">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+                  <div className="flex items-baseline gap-3">
+                    <span style={{
+                      color: "var(--zr-text-primary)",
+                      fontSize: "16px",
+                      fontWeight: 600,
+                      letterSpacing: "-0.015em",
+                      lineHeight: 1.25,
+                      flex: 1,
+                      minWidth: 0,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
                       {w.customer_name}
                     </span>
-                    {w.heat_score && w.heat_score !== "Warm" && (
-                      <span className={`zr-v2-pill ${heatStyle[w.heat_score]}`}>{w.heat_score}</span>
-                    )}
-                    <span className={`zr-v2-pill ${stageStyle[w.lead_status] || "bg-gray-100 text-gray-600"}`}>
-                      {w.lead_status}
+                    <span style={{ color: priorityColor, fontSize: "13px", fontWeight: 500, flexShrink: 0 }}>
+                      {priorityLabel}
                     </span>
-                    {w.assigned_name && queueFilter === "all" && (
-                      <span className="zr-v2-pill" style={{ background: "rgba(99,102,241,0.12)", color: "#4f46e5" }}>
-                        {w.assigned_name}
-                      </span>
-                    )}
                   </div>
-                  <div style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "4px" }}>
-                    {w.reason}
+                  <div style={{
+                    color: "rgba(60,60,67,0.5)",
+                    fontSize: "13px",
+                    marginTop: "4px",
+                    letterSpacing: "-0.005em",
+                  }} className="truncate">
+                    {w.lead_status}
+                    {w.next_action ? ` · ${w.next_action}` : w.reason ? ` · ${w.reason}` : ""}
+                    {w.assigned_name && queueFilter === "all" ? ` · ${w.assigned_name}` : ""}
                   </div>
-                  {w.next_action && (
-                    <div style={{ color: "var(--zr-orange)", fontSize: "13px", marginTop: "2px", fontWeight: 500 }}>
-                      → {w.next_action}
-                    </div>
-                  )}
                 </div>
-                <span className="zr-v2-pill" style={priorityStyle(w.priority)}>
-                  {w.priority === 1 ? "Now" : w.priority === 2 ? "Today" : "Soon"}
-                </span>
                 <Chevron />
               </Link>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {filteredQueue.length > 8 && (
-        <p style={{ color: "var(--zr-text-muted)" }} className="mt-2 text-[13px] text-center">
-          +{filteredQueue.length - 8} more — check Customers tab
+        <p style={{ color: "rgba(60,60,67,0.5)" }} className="mt-3 text-[13px] text-center">
+          +{filteredQueue.length - 8} more in Customers
         </p>
       )}
     </div>
@@ -722,32 +809,39 @@ export function ReadyToInstallWidget({ readyToInstall }: { readyToInstall: { id:
   if (readyToInstall.length === 0) return null;
   return (
     <div>
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2">
-          <span className="zr-v2-section-label" style={{ padding: 0 }}>Ready to install</span>
-          <span className="zr-v2-pill" style={{ background: "rgba(48,164,108,0.14)", color: "var(--zr-success)" }}>
-            {readyToInstall.length}
-          </span>
-        </div>
-        <span style={{ color: "var(--zr-text-muted)", fontSize: "12px" }}>All materials received</span>
+      <div className="flex items-end justify-between mb-2 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>
+          Ready to install · {readyToInstall.length}
+        </span>
+        <span style={{ color: "rgba(60,60,67,0.45)", fontSize: "13px" }} className="pb-[10px]">
+          Materials received
+        </span>
       </div>
-      <div className="zr-v2-card">
-        <div className="zr-v2-list">
-          {readyToInstall.map(c => (
-            <Link key={c.id} href={`/customers/${c.id}`} className="zr-v2-row">
-              <span style={{ color: "var(--zr-success)" }}><Icon.Check /></span>
-              <div className="min-w-0 flex-1">
-                <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3 }} className="truncate">
-                  {c.name}
-                </div>
-                <div style={{ color: "var(--zr-success)", fontSize: "13px", marginTop: "3px", fontWeight: 500, lineHeight: 1.3 }}>
-                  Schedule install
-                </div>
+      <div className="zr-v2-open-list">
+        {readyToInstall.map(c => (
+          <Link key={c.id} href={`/customers/${c.id}`} className="zr-v2-row">
+            <div className="min-w-0 flex-1">
+              <div style={{
+                color: "var(--zr-text-primary)",
+                fontSize: "16px",
+                fontWeight: 600,
+                letterSpacing: "-0.015em",
+                lineHeight: 1.25,
+              }} className="truncate">
+                {c.name}
               </div>
-              <Chevron />
-            </Link>
-          ))}
-        </div>
+              <div style={{
+                color: "rgba(60,60,67,0.5)",
+                fontSize: "13px",
+                marginTop: "4px",
+                letterSpacing: "-0.005em",
+              }}>
+                Schedule install
+              </div>
+            </div>
+            <Chevron />
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -779,60 +873,69 @@ export function TodaysAppointmentsWidget({ todayAppts }: { todayAppts: TodayAppt
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2">
-          <span className="zr-v2-section-label" style={{ padding: 0 }}>Today&apos;s appointments</span>
-          <span className="zr-v2-pill" style={{ background: "rgba(10,132,255,0.12)", color: "var(--zr-info)" }}>{todayAppts.length}</span>
-        </div>
-        <Link href="/schedule" style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }}>
-          View calendar ›
+      <div className="flex items-end justify-between mb-2 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>
+          Today · {todayAppts.length} {todayAppts.length === 1 ? "appointment" : "appointments"}
+          {unconfirmed.length > 0 ? ` · ${unconfirmed.length} unconfirmed` : ""}
+        </span>
+        <Link href="/schedule" style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }} className="pb-[10px]">
+          Calendar
         </Link>
       </div>
 
-      {unconfirmed.length > 0 && (
-        <div className="mb-3 rounded-2xl flex items-center gap-3 px-4 py-3"
-          style={{ background: "rgba(224,138,0,0.08)" }}>
-          <span style={{ fontSize: "16px" }}>⚠️</span>
-          <span style={{ color: "#b8710b", fontSize: "13px", fontWeight: 500 }}>
-            {unconfirmed.length} appointment{unconfirmed.length > 1 ? "s" : ""} not yet confirmed
-          </span>
-        </div>
-      )}
-
-      <div className="zr-v2-card">
-        <div className="zr-v2-list">
-          {todayAppts.map(a => {
-            const dt = new Date(a.scheduled_at);
-            const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-            const isNext = nextAppt?.id === a.id;
-            return (
-              <Link key={a.id} href={`/customers/${a.customer_id}`}
-                className="zr-v2-row"
-                style={{ alignItems: "flex-start", paddingTop: "16px", paddingBottom: "16px", ...(isNext ? { background: "rgba(10,132,255,0.035)" } : {}) }}>
-                {/* Time is the leading column — iOS Calendar pattern */}
-                <div className="shrink-0 text-left" style={{ width: "60px" }}>
-                  <div style={{ color: isNext ? "var(--zr-info)" : "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.2 }}>
-                    {timeStr}
-                  </div>
-                  {isNext && (
-                    <div style={{ color: "var(--zr-info)", fontSize: "11px", fontWeight: 500, marginTop: "3px" }}>
-                      Next up
-                    </div>
-                  )}
+      <div className="zr-v2-open-list">
+        {todayAppts.map(a => {
+          const dt = new Date(a.scheduled_at);
+          const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+          const isNext = nextAppt?.id === a.id;
+          return (
+            <Link key={a.id} href={`/customers/${a.customer_id}`} className="zr-v2-row">
+              {/* Time is the leading column — iOS Calendar */}
+              <div className="shrink-0" style={{ width: "56px" }}>
+                <div style={{
+                  color: isNext ? "var(--zr-orange)" : "var(--zr-text-primary)",
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  letterSpacing: "-0.015em",
+                  lineHeight: 1.2,
+                  fontVariantNumeric: "tabular-nums",
+                }}>
+                  {timeStr}
                 </div>
-                <div className="min-w-0 flex-1" style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                  <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.25 }} className="truncate">
-                    {a.customer_name}
+                {isNext && (
+                  <div style={{
+                    color: "var(--zr-orange)",
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    marginTop: "3px",
+                  }}>
+                    Next
                   </div>
-                  <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", lineHeight: 1.3 }} className="truncate">
-                    {typeLabels[a.type] ?? a.type}{a.address ? ` · ${a.address}` : ""}
-                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div style={{
+                  color: "var(--zr-text-primary)",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  letterSpacing: "-0.015em",
+                  lineHeight: 1.25,
+                }} className="truncate">
+                  {a.customer_name}
                 </div>
-                <Chevron />
-              </Link>
-            );
-          })}
-        </div>
+                <div style={{
+                  color: "rgba(60,60,67,0.5)",
+                  fontSize: "13px",
+                  marginTop: "4px",
+                  letterSpacing: "-0.005em",
+                }} className="truncate">
+                  {typeLabels[a.type] ?? a.type}{a.address ? ` · ${a.address}` : ""}
+                </div>
+              </div>
+              <Chevron />
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -844,30 +947,56 @@ export function TasksDueWidget({ tasksDue }: { tasksDue: TaskDue[] }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2 px-1">
-        <span className="zr-v2-section-label" style={{ padding: 0 }}>Tasks due</span>
-        <span className="zr-v2-pill" style={{ background: "rgba(214,58,58,0.12)", color: "#c6443a" }}>{tasksDue.length}</span>
+      <div className="flex items-end justify-between mb-2 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>
+          Tasks due · {tasksDue.length}
+        </span>
       </div>
-      <div className="zr-v2-card">
-        <div className="zr-v2-list">
-          {tasksDue.map(t => {
-            const overdue = t.due_date && t.due_date < today;
-            return (
-              <Link key={t.id} href={`/customers/${t.customer_id}`} className="zr-v2-row">
-                <span className="zr-v2-dot" style={{ background: overdue ? "#d6443a" : "#c28a0e" }} />
-                <div className="min-w-0 flex-1">
-                  <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3 }} className="truncate">
+      <div className="zr-v2-open-list">
+        {tasksDue.map(t => {
+          const overdue = t.due_date && t.due_date < today;
+          return (
+            <Link key={t.id} href={`/customers/${t.customer_id}`} className="zr-v2-row">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-3">
+                  <span style={{
+                    color: "var(--zr-text-primary)",
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    letterSpacing: "-0.015em",
+                    lineHeight: 1.25,
+                    flex: 1,
+                    minWidth: 0,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}>
                     {t.title}
-                  </div>
-                  <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", marginTop: "3px", lineHeight: 1.3 }} className="truncate">
-                    {t.customer_name}{t.due_date ? (overdue ? " · Overdue" : " · Today") : ""}
-                  </div>
+                  </span>
+                  {t.due_date && (
+                    <span style={{
+                      color: overdue ? "rgba(214,68,58,0.85)" : "rgba(60,60,67,0.5)",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}>
+                      {overdue ? "Overdue" : "Today"}
+                    </span>
+                  )}
                 </div>
-                <Chevron />
-              </Link>
-            );
-          })}
-        </div>
+                <div style={{
+                  color: "rgba(60,60,67,0.5)",
+                  fontSize: "13px",
+                  marginTop: "4px",
+                  letterSpacing: "-0.005em",
+                }} className="truncate">
+                  {t.customer_name}
+                </div>
+              </div>
+              <Chevron />
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -913,93 +1042,104 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
     return null;
   }
 
-  // Muted status tokens — color is accent-only, not saturated highlight.
-  // Icon is a line-SVG in the same color; no tinted tile background.
-  const statusStyle: Record<string, { icon: React.ReactNode; label: string; fg: string }> = {
-    ordered:  { icon: <Icon.Box />,   label: "Ordered",    fg: "#5b8def" },
-    shipped:  { icon: <Icon.Truck />, label: "In transit", fg: "#c28a0e" },
-    received: { icon: <Icon.Check />, label: "Delivered",  fg: "#30a46c" },
-    staged:   { icon: <Icon.Box />,   label: "Staged",     fg: "rgba(60,60,67,0.55)" },
+  // Status labels — one muted gray for all statuses. Status is hierarchy,
+  // not a highlight. The only color that can appear is the rare "In transit"
+  // hint, and it's barely there.
+  const statusLabel: Record<string, string> = {
+    ordered:  "Ordered",
+    shipped:  "In transit",
+    received: "Delivered",
+    staged:   "Staged",
   };
 
   function ShipmentRow({ s }: { s: ShipmentItem }) {
-    // Clear 3-line hierarchy per Steve's spec: name → status → details.
-    // No icon tile background, no per-row separators fighting the content.
-    // The right-side 2/3 badge is anchored vertically with the chevron.
-    const st = statusStyle[s.status];
-    const pkgSummary = s.expected_packages ? `${s.received_packages}/${s.expected_packages} packages` : null;
+    // Two-line iOS list cell:
+    //   Line 1: customer name (left) · status + count (right, muted)
+    //   Line 2: single meta line — most specific info wins (location > date)
+    // No leading icon tile. No inline emoji. No pills. The entire row is
+    // one tappable surface with the chevron as the only affordance.
     const shipDate = s.shipped_at ? new Date(s.shipped_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
     const etaFmt = s.eta ? `ETA ${s.eta}` : null;
     const dateChip = shipDate ? `Shipped ${shipDate}` : etaFmt;
+    const pkgHint = s.status === "shipped" && s.expected_packages
+      ? `${s.received_packages}/${s.expected_packages}`
+      : null;
 
-    // Build the meta line from just the essentials — location and timing.
-    // Package count moves out of this line into the right-anchored badge.
-    const metaParts: string[] = [];
-    if (s.storage_location) metaParts.push(s.storage_location);
-    if (dateChip) metaParts.push(dateChip);
+    // Prefer location over date if we have both — installer cares most about
+    // where the boxes are. If no location, fall back to ship/ETA date.
+    const meta = s.storage_location || dateChip || s.description || "";
+
+    // Merge the status word + optional pkg count into one soft-colored suffix
+    const statusSuffix = [statusLabel[s.status] || s.status, pkgHint]
+      .filter(Boolean)
+      .join(" · ");
 
     return (
-      <Link href={`/quotes/${s.quote_id}`} className="zr-v2-row" style={{ alignItems: "flex-start", paddingTop: "16px", paddingBottom: "16px" }}>
-        {/* Leading line icon in accent color — no tile background */}
-        <span style={{ color: st.fg, marginTop: "2px" }}>
-          {st.icon}
-        </span>
-
-        {/* Name → status → details */}
-        <div className="min-w-0 flex-1" style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-          <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.25 }} className="truncate">
-            {s.customer_name}
+      <Link href={`/quotes/${s.quote_id}`} className="zr-v2-row">
+        <div className="min-w-0 flex-1">
+          {/* Line 1: name on left, status on right, both inline */}
+          <div className="flex items-baseline gap-3">
+            <span style={{
+              color: "var(--zr-text-primary)",
+              fontSize: "16px",
+              fontWeight: 600,
+              letterSpacing: "-0.015em",
+              lineHeight: 1.25,
+              flex: 1,
+              minWidth: 0,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}>
+              {s.customer_name}
+            </span>
+            <span style={{
+              color: "rgba(60,60,67,0.55)",
+              fontSize: "13px",
+              fontWeight: 500,
+              letterSpacing: "-0.005em",
+              fontVariantNumeric: "tabular-nums",
+              flexShrink: 0,
+            }}>
+              {statusSuffix}
+            </span>
           </div>
-          <div style={{ color: st.fg, fontSize: "13px", fontWeight: 500, lineHeight: 1.25 }}>
-            {st.label}
-          </div>
-          {metaParts.length > 0 && (
-            <div style={{ color: "rgba(60,60,67,0.5)", fontSize: "12px", lineHeight: 1.3 }} className="truncate">
-              {metaParts.join(" · ")}
+          {/* Line 2: single muted meta line */}
+          {meta && (
+            <div style={{
+              color: "rgba(60,60,67,0.45)",
+              fontSize: "13px",
+              letterSpacing: "-0.005em",
+              lineHeight: 1.3,
+              marginTop: "3px",
+            }} className="truncate">
+              {meta}
             </div>
           )}
         </div>
-
-        {/* Anchored right side: package count (only when in-transit) + chevron */}
-        <div className="flex items-center gap-2" style={{ alignSelf: "center" }}>
-          {pkgSummary && s.status === "shipped" && (
-            <span style={{
-              color: "rgba(194,138,14,0.9)",
-              fontSize: "13px",
-              fontWeight: 600,
-              letterSpacing: "-0.01em",
-              fontVariantNumeric: "tabular-nums",
-            }}>
-              {s.received_packages}/{s.expected_packages}
-            </span>
-          )}
-          <Chevron />
-        </div>
+        <Chevron />
       </Link>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2">
-          <span className="zr-v2-section-label" style={{ padding: 0 }}>Shipments & deliveries</span>
-          <span className="zr-v2-pill" style={{ background: "rgba(10,132,255,0.12)", color: "var(--zr-info)" }}>
-            {ordered.length + shipped.length} active
-          </span>
-        </div>
-        <Link href="/warehouse" style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }}>View all ›</Link>
+      <div className="flex items-end justify-between mb-2 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>
+          Shipments · {ordered.length + shipped.length} active
+        </span>
+        <Link href="/warehouse" style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500 }} className="pb-[10px]">
+          View all
+        </Link>
       </div>
 
-      <div className="zr-v2-card">
-        <div className="zr-v2-list">
-          {/* In Transit first — most urgent */}
-          {shipped.map(s => <ShipmentRow key={s.id} s={s} />)}
-          {/* Just delivered */}
-          {justArrived.map(s => <ShipmentRow key={s.id} s={s} />)}
-          {/* Ordered / waiting */}
-          {ordered.slice(0, 5).map(s => <ShipmentRow key={s.id} s={s} />)}
-        </div>
+      <div className="zr-v2-open-list">
+        {/* In Transit first — most urgent */}
+        {shipped.map(s => <ShipmentRow key={s.id} s={s} />)}
+        {/* Just delivered */}
+        {justArrived.map(s => <ShipmentRow key={s.id} s={s} />)}
+        {/* Ordered / waiting */}
+        {ordered.slice(0, 5).map(s => <ShipmentRow key={s.id} s={s} />)}
       </div>
 
       {ordered.length > 5 && (

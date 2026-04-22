@@ -195,14 +195,14 @@ export function NavBar() {
         </div>
 
         {/* ─────────────────────────────────────────────────────────
-            iOS-style horizontal route row. No pills, no filled active
-            states — typography alone carries the hierarchy. Inactive
-            items sit quietly in muted gray; the active route is the
-            brand orange at slightly heavier weight. Reads like Apple
-            Music's "See All" lightweight horizontal scrollers or the
-            Files app's inline path row, not a desktop navbar.
+            Horizontal route row tuned for field use. Typography carries
+            the hierarchy (no pills, no filled active states), but
+            inactive items are strong enough to read in bright sunlight
+            and the active item gets a small indicator bar below it so
+            selection is unmistakable at a glance. Reads like Apple News'
+            category strip: clean, scannable, unambiguous.
             ───────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-2 pl-0.5">
+        <div className="flex-1 overflow-x-auto scrollbar-none flex items-stretch gap-3 pl-0.5">
           {[
             { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
             { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
@@ -223,25 +223,42 @@ export function NavBar() {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
-                className="shrink-0 text-[14px] whitespace-nowrap transition-opacity active:opacity-60"
+                className="shrink-0 whitespace-nowrap transition-opacity active:opacity-60 relative flex flex-col items-center justify-center"
                 style={{
-                  color: active ? "var(--zr-orange)" : "rgba(60,60,67,0.55)",
-                  fontWeight: active ? 600 : 400,
-                  letterSpacing: "-0.01em",
-                  padding: "6px 2px",
+                  color: active ? "var(--zr-orange)" : "rgba(28,28,30,0.72)",
+                  fontWeight: active ? 600 : 500,
+                  fontSize: "15px",
+                  letterSpacing: "-0.012em",
+                  padding: "8px 2px 6px",
                 }}>
                 {label}
+                {/* Active indicator — 3px-tall rounded bar centered beneath
+                    the label. Small enough to stay calm, distinct enough
+                    to read instantly in bright light. */}
+                {active && (
+                  <span style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "60%",
+                    height: 2,
+                    borderRadius: 2,
+                    background: "var(--zr-orange)",
+                  }} />
+                )}
               </Link>
             );
           })}
-          {/* Sign Out — quiet, far right, separated by a slightly wider gap */}
+          {/* Sign Out — quieter, separated by extra gap */}
           <button onClick={signOut}
-            className="shrink-0 text-[14px] whitespace-nowrap transition-opacity active:opacity-60 ml-2"
+            className="shrink-0 whitespace-nowrap transition-opacity active:opacity-60 ml-3"
             style={{
-              color: "rgba(60,60,67,0.4)",
-              fontWeight: 400,
-              letterSpacing: "-0.01em",
-              padding: "6px 2px",
+              color: "rgba(60,60,67,0.5)",
+              fontWeight: 500,
+              fontSize: "15px",
+              letterSpacing: "-0.012em",
+              padding: "8px 2px 6px",
             }}>
             Sign Out
           </button>

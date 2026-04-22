@@ -194,8 +194,15 @@ export function NavBar() {
           )}
         </div>
 
-        {/* Scrollable nav links — Sign Out at the far end */}
-        <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-0.5">
+        {/* ─────────────────────────────────────────────────────────
+            iOS-style horizontal route row. No pills, no filled active
+            states — typography alone carries the hierarchy. Inactive
+            items sit quietly in muted gray; the active route is the
+            brand orange at slightly heavier weight. Reads like Apple
+            Music's "See All" lightweight horizontal scrollers or the
+            Files app's inline path row, not a desktop navbar.
+            ───────────────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-2 pl-0.5">
           {[
             { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
             { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
@@ -216,20 +223,26 @@ export function NavBar() {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
-                className="shrink-0 px-3 py-1.5 rounded-full text-[13px] transition-all whitespace-nowrap relative"
+                className="shrink-0 text-[14px] whitespace-nowrap transition-opacity active:opacity-60"
                 style={{
-                  color: active ? "var(--zr-orange)" : "var(--zr-text-secondary)",
-                  fontWeight: active ? 600 : 500,
-                  background: active ? "rgba(214,90,49,0.08)" : "transparent",
+                  color: active ? "var(--zr-orange)" : "rgba(60,60,67,0.55)",
+                  fontWeight: active ? 600 : 400,
+                  letterSpacing: "-0.01em",
+                  padding: "6px 2px",
                 }}>
                 {label}
               </Link>
             );
           })}
-          {/* Sign Out — softer, far right */}
+          {/* Sign Out — quiet, far right, separated by a slightly wider gap */}
           <button onClick={signOut}
-            className="shrink-0 px-3 py-1.5 rounded-full text-[13px] transition-all whitespace-nowrap ml-1"
-            style={{ color: "rgba(60,60,67,0.5)", fontWeight: 500 }}>
+            className="shrink-0 text-[14px] whitespace-nowrap transition-opacity active:opacity-60 ml-2"
+            style={{
+              color: "rgba(60,60,67,0.4)",
+              fontWeight: 400,
+              letterSpacing: "-0.01em",
+              padding: "6px 2px",
+            }}>
             Sign Out
           </button>
         </div>

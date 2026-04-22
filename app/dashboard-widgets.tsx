@@ -471,14 +471,14 @@ export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string;
   if (focusItems.length === 0) return null;
 
   // Map the legacy Tailwind color class into our Apple-style palette.
-  // Red = overdue, amber = deposits / needs action, blue = waiting /
-  // informational, green = scheduled / positive, else a muted gray.
-  function priorityColor(c: string): { dot: string; text: string | null } {
-    if (c.includes("red"))   return { dot: "#d64545", text: "#b43a3a" }; // only overdue tints the label
-    if (c.includes("amber")) return { dot: "var(--zr-warning)", text: null };
-    if (c.includes("blue"))  return { dot: "var(--zr-info)", text: null };
-    if (c.includes("green")) return { dot: "var(--zr-success)", text: null };
-    return { dot: "rgba(60,60,67,0.3)", text: null };
+  // Color is accent-only — it lives on the leading dot, never the label.
+  // Red is desaturated so overdue reads as "noted" rather than "alarm".
+  function priorityColor(c: string): string {
+    if (c.includes("red"))   return "#c87070"; // muted rose, not alert red
+    if (c.includes("amber")) return "var(--zr-warning)";
+    if (c.includes("blue"))  return "var(--zr-info)";
+    if (c.includes("green")) return "var(--zr-success)";
+    return "rgba(60,60,67,0.3)";
   }
 
   const C_DIVIDER = "rgba(60,60,67,0.08)";
@@ -495,7 +495,7 @@ export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string;
           language as the Shipments list above. */}
       <div>
         {focusItems.map((item, i) => {
-          const p = priorityColor(item.color);
+          const dot = priorityColor(item.color);
           const isLast = i === focusItems.length - 1;
           return (
             <Link
@@ -513,20 +513,20 @@ export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string;
                 transition: "background-color 120ms ease",
               }}
             >
-              {/* Leading priority dot — 7px, aligned with the primary line.
-                  Small enough to read as a marker, not a bullet point. */}
+              {/* Leading priority dot — 5px, aligned with the primary line.
+                  Color is the only accent; the label stays dark. */}
               <span style={{
                 flexShrink: 0,
-                width: 7,
-                height: 7,
+                width: 5,
+                height: 5,
                 borderRadius: "50%",
-                background: p.dot,
-                marginTop: 8,
+                background: dot,
+                marginTop: 9,
               }} />
 
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{
-                  color: p.text || "var(--zr-text-primary)",
+                  color: "var(--zr-text-primary)",
                   fontSize: "16px",
                   fontWeight: 600,
                   letterSpacing: "-0.018em",

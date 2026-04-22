@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../../lib/email";
-import { appointmentReminder, trialReminder3Days, trialReminder1Day } from "../../../../lib/email-templates";
+import { appointmentReminder, trialReminder3Days, trialReminder1Day, materialsShipped, orderReadyForInstall } from "../../../../lib/email-templates";
 import { processAutomationRules, checkStuckLeads, processQueue, getServiceClient } from "../../../../lib/automation";
 
 export const dynamic = "force-dynamic";
@@ -253,9 +253,100 @@ export async function GET(req: NextRequest) {
     trialResults.errors.push(`top-level: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  // ── Shipping notifications ───────────────────────────────────
+  // Scan for materials just flipped to 'shipped' that haven't notified the
+  // customer yet, and quotes where all materials are 'received' that haven't
+  // sent an arrival notification yet.
+  const shipResults: Record<string, any> = { shipped: 0, arrived: 0, errors: [] as string[] };
+  try {
+    const svc = getServiceClient();
+
+    // Shipped-but-not-notified
+    const { data: shippedMats } = await svc
+      .from("quote_materials")
+      .select("id, quote_id, company_id, description, tracking_number, eta, shipped_at")
+      .eq("status", "shipped")
+      .is("customer_ship_notified_at", null)
+      .limit(50);
+
+    for (const mat of shippedMats || []) {
+      try {
+        // Pull quote → customer → email
+        const { data: quote } = await svc
+          .from("quotes").select("customer_id").eq("id", mat.quote_id).single();
+        if (!quote) continue;
+        const { data: customer } = await svc
+          .from("customers").select("first_name, email").eq("id", quote.customer_id).single();
+        if (!customer?.email) {
+          await svc.from("quote_materials").update({ customer_ship_notified_at: new Date().toISOString() }).eq("id", mat.id);
+          continue;
+        }
+        const { data: comp } = await svc
+          .from("company_settings").select("name").eq("company_id", mat.company_id).single();
+        const tpl = materialsShipped({
+          customerFirstName: customer.first_name || "there",
+          companyName: comp?.name || "Your installer",
+          materialDescription: mat.description || "Your order",
+          trackingNumber: mat.tracking_number,
+          eta: mat.eta,
+        });
+        await sendEmail({
+          to: customer.email, subject: tpl.subject, html: tpl.html,
+          type: "custom", companyId: mat.company_id,
+        });
+        await svc.from("quote_materials").update({ customer_ship_notified_at: new Date().toISOString() }).eq("id", mat.id);
+        shipResults.shipped++;
+      } catch (err) {
+        shipResults.errors.push(`ship ${mat.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // Arrived (all materials received for a quote) but not yet notified
+    const { data: pendingArrivalQuotes } = await svc
+      .from("quotes").select("id, company_id, customer_id")
+      .is("customer_arrival_notified_at", null)
+      .in("status", ["approved", "sent"])
+      .limit(50);
+
+    for (const q of pendingArrivalQuotes || []) {
+      try {
+        // Are all of this quote's materials received?
+        const { data: mats } = await svc
+          .from("quote_materials").select("status").eq("quote_id", q.id);
+        if (!mats || mats.length === 0) continue;
+        const allReceived = mats.every(m => m.status === "received" || m.status === "staged");
+        if (!allReceived) continue;
+
+        const { data: customer } = await svc
+          .from("customers").select("first_name, email").eq("id", q.customer_id).single();
+        if (!customer?.email) {
+          await svc.from("quotes").update({ customer_arrival_notified_at: new Date().toISOString() }).eq("id", q.id);
+          continue;
+        }
+        const { data: comp } = await svc
+          .from("company_settings").select("name").eq("company_id", q.company_id).single();
+        const tpl = orderReadyForInstall({
+          customerFirstName: customer.first_name || "there",
+          companyName: comp?.name || "Your installer",
+        });
+        await sendEmail({
+          to: customer.email, subject: tpl.subject, html: tpl.html,
+          type: "custom", companyId: q.company_id,
+        });
+        await svc.from("quotes").update({ customer_arrival_notified_at: new Date().toISOString() }).eq("id", q.id);
+        shipResults.arrived++;
+      } catch (err) {
+        shipResults.errors.push(`arrived ${q.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  } catch (err) {
+    shipResults.errors.push(`top: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   return NextResponse.json({
     reminders: { sent, skipped, errors: errors.length ? errors : undefined, total: needsReminder.length },
     trial: trialResults,
+    shipping: shipResults,
     automation: automationResults,
   });
 }

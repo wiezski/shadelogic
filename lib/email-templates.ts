@@ -276,6 +276,56 @@ export function trialReminder3Days(params: {
 
 // ── 8. Trial Reminder (1 day left) ───────────────────────────
 
+// ── 10. Materials Shipped (customer-facing) ──────────────────
+
+export function materialsShipped(params: {
+  customerFirstName: string;
+  companyName: string;
+  materialDescription: string;
+  trackingNumber?: string | null;
+  eta?: string | null;
+}) {
+  const subject = `Your order has shipped — ${params.companyName}`;
+
+  const html = emailLayout(`
+    <h1>Your order has shipped 📦</h1>
+    <p>Good news, ${params.customerFirstName}! Your <strong>${params.materialDescription}</strong> has left the warehouse and is on its way.</p>
+
+    ${params.trackingNumber ? `
+    <div class="detail">
+      <div class="detail-row"><span class="detail-label">Tracking #</span><span class="detail-value">${params.trackingNumber}</span></div>
+      ${params.eta ? `<div class="detail-row"><span class="detail-label">Estimated arrival</span><span class="detail-value">${params.eta}</span></div>` : ""}
+    </div>
+    ` : ""}
+
+    <p>We'll reach out again as soon as everything's in our hands and we can schedule your install.</p>
+
+    <p class="muted">Questions? Just reply to this email.</p>
+  `, params.companyName);
+
+  return { subject, html };
+}
+
+// ── 11. Order Arrived / Ready for Install (customer-facing) ──
+
+export function orderReadyForInstall(params: {
+  customerFirstName: string;
+  companyName: string;
+}) {
+  const subject = `Your order is in — let's schedule your install`;
+
+  const html = emailLayout(`
+    <h1>Everything's in! 🎉</h1>
+    <p>Hi ${params.customerFirstName}, all of your materials have arrived safely at <strong>${params.companyName}</strong>.</p>
+
+    <p>We're ready to schedule your installation whenever you are. Reply to this email or give us a call with a few dates that work for you.</p>
+
+    <p class="muted">Thanks for your patience through the ordering process — excited to get these installed!</p>
+  `, params.companyName);
+
+  return { subject, html };
+}
+
 // ── 9. Welcome Email (fires on signup) ───────────────────────
 
 export function welcomeEmail(params: {

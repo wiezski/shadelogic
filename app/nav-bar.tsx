@@ -23,11 +23,12 @@ type Notification = {
 const HIDE_NAV_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/forgot-password", "/reset-password"];
 
 // ── Task Modes (imported from shared config) ──────────────────
+// MODE_NAV_FILTER is no longer used — focus modes only filter dashboard
+// widgets now; the nav bar always shows every item the user is entitled to.
 import {
   type TaskMode,
   MODE_LABELS,
   MODE_ICONS,
-  MODE_NAV_FILTER,
 } from "../lib/focus-modes";
 
 export function NavBar() {
@@ -204,14 +205,11 @@ export function NavBar() {
             { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
             { href: "/canvas",    label: "Canvas",    show: features.canvassing && permissions.view_customers },
           ].filter(i => i.show).filter(i => {
-            // Company-level hidden nav (from business type preset)
+            // Company-level hidden nav (from business type preset) still applies.
+            // Focus mode no longer filters the nav — the top bar stays stable
+            // regardless of task mode; focus only affects dashboard widgets.
             if (hiddenNav.length > 0 && hiddenNav.includes(i.href)) return false;
-            // Task-mode filtering
-            const allowed = MODE_NAV_FILTER[taskMode];
-            if (!allowed) return true; // "all" mode shows everything
-            // Always show Settings
-            if (i.href === "/settings") return true;
-            return allowed.includes(i.href);
+            return true;
           }).map(({ href, label }) => (
             <Link key={href} href={href}
               className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"

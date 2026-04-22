@@ -37,6 +37,9 @@ type VisitAgg = {
   leads: number;
   conversations: number;
   last_visited_at: string | null;
+  // rolled up from both canvas_visits (outcome='flyer') + canvas_sweeps.hangers_dropped
+  hangers: number;
+  homes_covered: number; // total from sweeps (hangers + knocks + no-answers) + individual visits
 };
 
 const OUTCOME_LABELS: Record<string, string> = {
@@ -69,9 +72,10 @@ export default function CanvasPage() {
 
   async function load() {
     setLoading(true);
-    const [tRes, vRes, pRes] = await Promise.all([
+    const [tRes, vRes, sRes, pRes] = await Promise.all([
       supabase.from("canvas_territories").select("*").is("archived_at", null).order("created_at", { ascending: false }),
       supabase.from("canvas_visits").select("territory_id, outcome, visited_at"),
+      supabase.from("canvas_sweeps").select("territory_id, hangers_dropped, knocked_count, no_answer_count, walked_at"),
       supabase.from("profiles").select("id, full_name"),
     ]);
 
@@ -81,20 +85,35 @@ export default function CanvasPage() {
     (pRes.data || []).forEach((p: TeamMember) => { nameMap[p.id] = p.full_name || "Unnamed"; });
     setTeamMap(nameMap);
 
-    // Aggregate visit counts per territory
     const byTerritory: Record<string, VisitAgg> = {};
+    const ensure = (tid: string) => {
+      if (!byTerritory[tid]) {
+        byTerritory[tid] = { territory_id: tid, visits: 0, leads: 0, conversations: 0, hangers: 0, homes_covered: 0, last_visited_at: null };
+      }
+      return byTerritory[tid];
+    };
+
+    // Individual visits
     (vRes.data || []).forEach((v: { territory_id: string | null; outcome: string; visited_at: string }) => {
       const tid = v.territory_id || "__unfiled__";
-      if (!byTerritory[tid]) {
-        byTerritory[tid] = { territory_id: tid, visits: 0, leads: 0, conversations: 0, last_visited_at: null };
-      }
-      byTerritory[tid].visits++;
-      if (v.outcome === "lead") byTerritory[tid].leads++;
-      if (v.outcome === "conversation") byTerritory[tid].conversations++;
-      if (!byTerritory[tid].last_visited_at || v.visited_at > byTerritory[tid].last_visited_at!) {
-        byTerritory[tid].last_visited_at = v.visited_at;
-      }
+      const a = ensure(tid);
+      a.visits++;
+      a.homes_covered++;
+      if (v.outcome === "flyer") a.hangers++;
+      if (v.outcome === "lead") a.leads++;
+      if (v.outcome === "conversation") a.conversations++;
+      if (!a.last_visited_at || v.visited_at > a.last_visited_at) a.last_visited_at = v.visited_at;
     });
+
+    // Sweeps (bulk)
+    (sRes.data || []).forEach((s: { territory_id: string | null; hangers_dropped: number | null; knocked_count: number | null; no_answer_count: number | null; walked_at: string }) => {
+      const tid = s.territory_id || "__unfiled__";
+      const a = ensure(tid);
+      a.hangers += s.hangers_dropped || 0;
+      a.homes_covered += (s.hangers_dropped || 0) + (s.knocked_count || 0) + (s.no_answer_count || 0);
+      if (!a.last_visited_at || s.walked_at > a.last_visited_at) a.last_visited_at = s.walked_at;
+    });
+
     setAggs(byTerritory);
     setLoading(false);
   }
@@ -141,11 +160,20 @@ export default function CanvasPage() {
             <span className="text-2xl">🗺️</span>
             <h1 className="text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Canvassing</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
             <Link
-              href="/canvas/visit"
+              href="/canvas/sweep"
               className="rounded px-3 py-1.5 text-xs font-semibold"
               style={{ background: "var(--zr-orange)", color: "#fff" }}
+              title="Log a bulk street sweep (flyers dropped, doors walked)"
+            >
+              + Log Sweep
+            </Link>
+            <Link
+              href="/canvas/visit"
+              className="rounded px-3 py-1.5 text-xs font-medium"
+              style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+              title="Log an individual visit (lead, chat, or do-not-contact)"
             >
               + Log Visit
             </Link>
@@ -154,7 +182,7 @@ export default function CanvasPage() {
               className="rounded px-3 py-1.5 text-xs font-medium"
               style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
             >
-              {showCreate ? "Cancel" : "+ New Territory"}
+              {showCreate ? "Cancel" : "+ Territory"}
             </button>
           </div>
         </div>
@@ -254,9 +282,10 @@ export default function CanvasPage() {
                           <div className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>{t.description}</div>
                         )}
                       </div>
-                      {a && a.visits > 0 && (
+                      {a && a.homes_covered > 0 && (
                         <div className="shrink-0 text-right text-xs" style={{ color: "var(--zr-text-muted)" }}>
-                          <div><strong style={{ color: "var(--zr-text-primary)" }}>{a.visits}</strong> visits</div>
+                          <div><strong style={{ color: "var(--zr-text-primary)" }}>{a.homes_covered}</strong> homes</div>
+                          {a.hangers > 0 && <div>{a.hangers} hangers</div>}
                           {a.leads > 0 && <div style={{ color: "#16a34a" }}>{a.leads} lead{a.leads === 1 ? "" : "s"}</div>}
                           {a.last_visited_at && (
                             <div className="text-[10px] mt-0.5">

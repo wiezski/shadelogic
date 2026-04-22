@@ -37,6 +37,19 @@ type Visit = {
   lng: number | null;
 };
 
+type Sweep = {
+  id: string;
+  street_name: string;
+  section: string | null;
+  hangers_dropped: number;
+  knocked_count: number;
+  no_answer_count: number;
+  notes: string | null;
+  lat: number | null;
+  lng: number | null;
+  walked_at: string;
+};
+
 const OUTCOME_META: Record<string, { label: string; color: string; icon: string }> = {
   not_home:       { label: "Not home",       color: "#9ca3af", icon: "🚪" },
   flyer:          { label: "Flyer left",     color: "#3b82f6", icon: "📋" },
@@ -52,6 +65,7 @@ export default function TerritoryDetailPage() {
 
   const [territory, setTerritory] = useState<Territory | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [sweeps, setSweeps] = useState<Sweep[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,18 +76,23 @@ export default function TerritoryDetailPage() {
 
   async function load() {
     setLoading(true);
-    // Special route /canvas/unfiled renders visits with null territory_id
     if (territoryId === "unfiled") {
       setTerritory({ id: "unfiled", name: "Unfiled visits", description: null, city: null, state: null, zip_codes: null, created_at: "" } as Territory);
-      const { data: vRes } = await supabase.from("canvas_visits").select("*").is("territory_id", null).order("visited_at", { ascending: false }).limit(200);
-      setVisits((vRes || []) as Visit[]);
+      const [vRes, sRes] = await Promise.all([
+        supabase.from("canvas_visits").select("*").is("territory_id", null).order("visited_at", { ascending: false }).limit(200),
+        supabase.from("canvas_sweeps").select("*").is("territory_id", null).order("walked_at", { ascending: false }).limit(200),
+      ]);
+      setVisits((vRes.data || []) as Visit[]);
+      setSweeps((sRes.data || []) as Sweep[]);
     } else {
-      const [tRes, vRes] = await Promise.all([
+      const [tRes, vRes, sRes] = await Promise.all([
         supabase.from("canvas_territories").select("*").eq("id", territoryId).single(),
         supabase.from("canvas_visits").select("*").eq("territory_id", territoryId).order("visited_at", { ascending: false }).limit(200),
+        supabase.from("canvas_sweeps").select("*").eq("territory_id", territoryId).order("walked_at", { ascending: false }).limit(200),
       ]);
       setTerritory(tRes.data as Territory | null);
       setVisits((vRes.data || []) as Visit[]);
+      setSweeps((sRes.data || []) as Sweep[]);
     }
     setLoading(false);
   }
@@ -103,12 +122,19 @@ export default function TerritoryDetailPage() {
     );
   }
 
-  // Stats
-  const totalVisits = visits.length;
+  // Stats — roll up individual visits + sweeps for "real" home coverage
+  const sweepHangers = sweeps.reduce((s, x) => s + (x.hangers_dropped || 0), 0);
+  const sweepKnocks  = sweeps.reduce((s, x) => s + (x.knocked_count || 0), 0);
+  const sweepNoAns   = sweeps.reduce((s, x) => s + (x.no_answer_count || 0), 0);
+  const sweepHomes   = sweepHangers + sweepKnocks + sweepNoAns;
+
+  const individualVisits = visits.length;
   const leads = visits.filter(v => v.outcome === "lead").length;
   const talks = visits.filter(v => v.outcome === "conversation").length;
-  const flyers = visits.filter(v => v.outcome === "flyer").length;
-  const conversionPct = totalVisits > 0 ? ((leads / totalVisits) * 100).toFixed(0) : "0";
+  const flyersFromVisits = visits.filter(v => v.outcome === "flyer").length;
+  const totalHomes = individualVisits + sweepHomes;
+  const totalHangers = flyersFromVisits + sweepHangers;
+  const conversionPct = totalHomes > 0 ? ((leads / totalHomes) * 100).toFixed(1) : "0";
 
   return (
     <main className="min-h-screen p-4" style={{ background: "var(--zr-black)" }}>
@@ -129,13 +155,22 @@ export default function TerritoryDetailPage() {
             )}
           </div>
           {territoryId !== "unfiled" && (
-            <Link
-              href={`/canvas/visit?territory=${territoryId}`}
-              className="shrink-0 rounded px-3 py-1.5 text-xs font-semibold"
-              style={{ background: "var(--zr-orange)", color: "#fff" }}
-            >
-              + Log Visit
-            </Link>
+            <div className="shrink-0 flex flex-col gap-1">
+              <Link
+                href={`/canvas/sweep?territory=${territoryId}`}
+                className="rounded px-3 py-1.5 text-xs font-semibold text-center"
+                style={{ background: "var(--zr-orange)", color: "#fff" }}
+              >
+                + Log Sweep
+              </Link>
+              <Link
+                href={`/canvas/visit?territory=${territoryId}`}
+                className="rounded px-3 py-1.5 text-xs font-medium text-center"
+                style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-secondary)", border: "1px solid var(--zr-border)" }}
+              >
+                + Log Visit
+              </Link>
+            </div>
           )}
         </div>
 
@@ -186,15 +221,48 @@ export default function TerritoryDetailPage() {
 
         {/* Stats */}
         <div className="mt-4 grid grid-cols-4 gap-2">
-          <StatCard label="Visits" value={totalVisits} />
-          <StatCard label="Talks" value={talks} color="#f59e0b" />
+          <StatCard label="Homes" value={totalHomes} />
+          <StatCard label="Hangers" value={totalHangers} color="#3b82f6" />
           <StatCard label="Leads" value={leads} color="#16a34a" />
           <StatCard label="Conv %" value={`${conversionPct}%`} color="var(--zr-orange)" />
         </div>
 
+        {/* Sweeps log */}
+        {sweeps.length > 0 && (
+          <div className="mt-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--zr-text-secondary)" }}>Street sweeps</h2>
+            <div className="space-y-2">
+              {sweeps.map(s => (
+                <div key={s.id} className="rounded-lg p-3 flex items-start gap-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+                  <div className="text-xl shrink-0 mt-0.5">🚶</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm" style={{ color: "var(--zr-text-primary)" }}>
+                      {s.street_name}{s.section ? ` — ${s.section}` : ""}
+                    </div>
+                    <div className="text-xs mt-1 flex flex-wrap gap-2" style={{ color: "var(--zr-text-muted)" }}>
+                      {s.hangers_dropped > 0 && <span>📋 {s.hangers_dropped} hangers</span>}
+                      {s.knocked_count > 0   && <span>🚪 {s.knocked_count} knocked</span>}
+                      {s.no_answer_count > 0 && <span>👻 {s.no_answer_count} no-answer</span>}
+                    </div>
+                    {s.notes && <div className="text-xs mt-1" style={{ color: "var(--zr-text-secondary)" }}>{s.notes}</div>}
+                    <div className="text-[11px] mt-1 flex items-center gap-2" style={{ color: "var(--zr-text-muted)" }}>
+                      <span>{new Date(s.walked_at).toLocaleString()}</span>
+                      {s.lat !== null && s.lng !== null && (
+                        <a href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noopener noreferrer" className="underline">📍 map</a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Visit log */}
         <div className="mt-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--zr-text-secondary)" }}>Visit log</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--zr-text-secondary)" }}>
+            Individual visits
+          </h2>
           {visits.length === 0 ? (
             <div className="rounded-lg p-4 text-center text-sm" style={{ background: "var(--zr-surface-1)", color: "var(--zr-text-muted)", border: "1px dashed var(--zr-border)" }}>
               No visits logged yet. Tap "+ Log Visit" to start.

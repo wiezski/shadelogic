@@ -462,41 +462,98 @@ export function RevenueChartWidget({ revenueByMonth }: { revenueByMonth: { label
   );
 }
 
-// ── 4. Today's Focus — iOS Reminders style ──
-// No card, no border, no colored icons. Just a grouped list on the canvas
-// with the title + a single muted line each. Calm, not urgent.
+// ── 4. Today's Focus — native iOS list, no card wrapper ──
+// Rows sit directly on the page canvas with a hairline divider between
+// them (matches the refined Shipments list). Priority is signaled by a
+// small leading colored dot plus — for overdue items only — a tinted
+// red primary label. No chevron, no card, no alert styling.
 export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string; sub: string; href: string; color: string }[] }) {
   if (focusItems.length === 0) return null;
 
+  // Map the legacy Tailwind color class into our Apple-style palette.
+  // Red = overdue, amber = deposits / needs action, blue = waiting /
+  // informational, green = scheduled / positive, else a muted gray.
+  function priorityColor(c: string): { dot: string; text: string | null } {
+    if (c.includes("red"))   return { dot: "#d64545", text: "#b43a3a" }; // only overdue tints the label
+    if (c.includes("amber")) return { dot: "var(--zr-warning)", text: null };
+    if (c.includes("blue"))  return { dot: "var(--zr-info)", text: null };
+    if (c.includes("green")) return { dot: "var(--zr-success)", text: null };
+    return { dot: "rgba(60,60,67,0.3)", text: null };
+  }
+
+  const C_DIVIDER = "rgba(60,60,67,0.08)";
+
   return (
     <div>
-      <SectionLabel>Today&apos;s focus</SectionLabel>
-      <div className="zr-v2-open-list">
-        {focusItems.map((item, i) => (
-          <Link key={i} href={item.href} className="zr-v2-row">
-            <div className="min-w-0 flex-1">
-              <div style={{
-                color: "var(--zr-text-primary)",
-                fontSize: "16px",
-                fontWeight: 600,
-                letterSpacing: "-0.015em",
-                lineHeight: 1.25,
-              }} className="truncate">
-                {item.label}
+      <div className="flex items-end justify-between mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>
+          Today&apos;s focus
+        </span>
+      </div>
+
+      {/* No card wrapper. Rows sit directly on the page canvas, same
+          language as the Shipments list above. */}
+      <div>
+        {focusItems.map((item, i) => {
+          const p = priorityColor(item.color);
+          const isLast = i === focusItems.length - 1;
+          return (
+            <Link
+              key={i}
+              href={item.href}
+              className="zr-ios-row"
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                textDecoration: "none",
+                color: "inherit",
+                padding: "16px 20px 14px",
+                borderBottom: isLast ? "none" : `0.5px solid ${C_DIVIDER}`,
+                transition: "background-color 120ms ease",
+              }}
+            >
+              {/* Leading priority dot — 7px, aligned with the primary line.
+                  Small enough to read as a marker, not a bullet point. */}
+              <span style={{
+                flexShrink: 0,
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: p.dot,
+                marginTop: 8,
+              }} />
+
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  color: p.text || "var(--zr-text-primary)",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  letterSpacing: "-0.018em",
+                  lineHeight: 1.25,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>
+                  {item.label}
+                </div>
+                <div style={{
+                  color: "rgba(60,60,67,0.55)",
+                  fontSize: "13.5px",
+                  fontWeight: 400,
+                  letterSpacing: "-0.005em",
+                  lineHeight: 1.3,
+                  marginTop: 2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>
+                  {item.sub}
+                </div>
               </div>
-              <div style={{
-                color: "rgba(60,60,67,0.5)",
-                fontSize: "13px",
-                marginTop: "4px",
-                letterSpacing: "-0.005em",
-                lineHeight: 1.3,
-              }} className="truncate">
-                {item.sub}
-              </div>
-            </div>
-            <Chevron />
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

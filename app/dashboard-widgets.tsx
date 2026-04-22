@@ -73,12 +73,131 @@ const stageStyle: Record<string, string> = {
   Lost:      "bg-[rgba(214,58,58,0.10)] text-[#c6443a]",
 };
 
-// ── v2 Section Header — small uppercase label that floats above a card ──
+// ── v2 Section Header — sentence-case label that floats above a card ──
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="zr-v2-section-label">{children}</div>
   );
 }
+
+// ── Chevron — the iOS-style disclosure arrow rendered as inline SVG ──
+function Chevron() {
+  return (
+    <span className="zr-v2-chevron">
+      <svg width="8" height="14" viewBox="0 0 8 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 1L7 7L1 13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+// ── Monogram — initials for a person cell (iOS contacts style) ───────
+function Monogram({ name, tint = "#cbd5e1" }: { name: string; tint?: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(p => p[0]?.toUpperCase())
+    .join("");
+  return (
+    <span className="zr-v2-monogram" style={{ background: `${tint}33`, color: tint }}>
+      {initials || "•"}
+    </span>
+  );
+}
+
+// Hash a string to a stable subtle tint color. Used for customer monograms.
+function tintFor(s: string): string {
+  const palette = ["#5b8def", "#7c3aed", "#d65a31", "#30a46c", "#b8710b", "#0d9488", "#4f46e5"];
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return palette[h % palette.length];
+}
+
+// ── Mini line-icon set — inline SVGs that replace emoji for a calmer look ──
+// Keep icons 18×18, 1.75 stroke, currentColor. Match iOS SF Symbols weight.
+const Icon = {
+  Person: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  Calendar: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  ),
+  Bell: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  ),
+  Box: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path d="M3.3 7L12 12l8.7-5M12 22V12" />
+    </svg>
+  ),
+  Truck: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7" />
+      <circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  ),
+  Check: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
+  Clock: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+    </svg>
+  ),
+  Alert: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 9v4M12 17h.01M10.3 3.86l-8.19 14.19A2 2 0 0 0 3.84 21h16.32a2 2 0 0 0 1.73-2.95L13.7 3.86a2 2 0 0 0-3.4 0z" />
+    </svg>
+  ),
+  Pin: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0z" /><circle cx="12" cy="10" r="3" />
+    </svg>
+  ),
+  Card: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
+    </svg>
+  ),
+  Doc: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  ),
+  Phone: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  ),
+  Install: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 1 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+  ),
+  Ruler: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21.3 15.3L8.7 2.7a1 1 0 0 0-1.4 0L2.7 7.3a1 1 0 0 0 0 1.4l12.6 12.6a1 1 0 0 0 1.4 0l4.6-4.6a1 1 0 0 0 0-1.4zM6 7l1 1M9 5l1.5 1.5M11 9l1 1M14 8l1.5 1.5M13 13l1 1" />
+    </svg>
+  ),
+  Star: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  ),
+};
 
 // ── Widget IDs ────────────────────────────────────────────────
 export const WIDGET_IDS = [
@@ -123,109 +242,115 @@ export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
   warehouse: ["quick_actions", "shipments", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
 };
 
-// ── 1. Quick Actions — tappable tiles on a grid ──────────────
+// ── 1. Quick Actions — tap tiles with line icons, no emoji ──
 export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => void }) {
   const tile = {
     background: "var(--zr-surface-1)",
     boxShadow: "var(--zr-shadow-sm)",
     color: "var(--zr-text-primary)",
   } as const;
+  const iconWrap = {
+    color: "var(--zr-orange)",
+  } as const;
   return (
     <div className="grid grid-cols-3 gap-3">
       <button onClick={onNewCustomer}
         style={tile}
-        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 transition-transform active:scale-95">
-        <span className="text-2xl leading-none">👤</span>
+        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 transition-all active:scale-95">
+        <span style={iconWrap}><Icon.Person /></span>
         <span>New customer</span>
       </button>
       <Link href="/schedule"
         style={tile}
-        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 text-center transition-transform active:scale-95">
-        <span className="text-2xl leading-none">📅</span>
+        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 text-center transition-all active:scale-95">
+        <span style={iconWrap}><Icon.Calendar /></span>
         <span>Schedule</span>
       </Link>
       <Link href="/reminders"
         style={tile}
-        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 text-center transition-transform active:scale-95">
-        <span className="text-2xl leading-none">🔔</span>
+        className="rounded-2xl py-5 text-[13px] font-medium flex flex-col items-center gap-2 text-center transition-all active:scale-95">
+        <span style={iconWrap}><Icon.Bell /></span>
         <span>Reminders</span>
       </Link>
     </div>
   );
 }
 
-// ── 2. KPI Strip — clean stat blocks, big numbers, soft shadow ──
+// ── 2. KPI Strip — one card, four stats, hairline dividers ──
+// Consolidating the four KPIs into a single card removes the card-on-canvas
+// boxing. Big tabular numbers; trends are small muted hints, not highlights.
 export function KPIStripWidget({ totalRevenue, revenueTrend, revenueByMonth, totalLeads, leadTrend, activityByWeek, closeRate }: {
   totalRevenue: number; revenueTrend: number; revenueByMonth: { label: string; value: number }[];
   totalLeads: number; leadTrend: number; activityByWeek: number[]; closeRate: number;
 }) {
-  const statCard = {
-    background: "var(--zr-surface-1)",
-    borderRadius: "var(--zr-radius-lg)",
-    boxShadow: "var(--zr-shadow-sm)",
-    padding: "16px",
-  } as const;
-  const kpiLabel = {
-    fontSize: "12px",
-    color: "var(--zr-text-muted)",
+  const label = { fontSize: "12px", color: "rgba(60,60,67,0.55)", fontWeight: 500 } as const;
+  const value = { fontSize: "26px", fontWeight: 700, color: "var(--zr-text-primary)", letterSpacing: "-0.025em", lineHeight: 1 } as const;
+  const trend = (delta: number) => ({
+    fontSize: "11px",
+    color: delta === 0 ? "rgba(60,60,67,0.45)" : (delta > 0 ? "var(--zr-success)" : "rgba(214,58,58,0.75)"),
     fontWeight: 500,
-    letterSpacing: "-0.005em",
-  } as const;
-  const kpiValue = {
-    fontSize: "24px",
-    fontWeight: 700,
-    color: "var(--zr-text-primary)",
-    letterSpacing: "-0.02em",
-    lineHeight: 1.1,
-  } as const;
+    marginTop: "6px",
+    display: "flex",
+    alignItems: "center",
+    gap: "3px",
+  } as const);
+  const cell = "flex flex-col py-4 px-4";
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div style={statCard}>
-        <div style={kpiLabel}>Revenue · MTD</div>
-        <div className="flex items-end justify-between mt-2">
-          <span style={kpiValue}>
-            ${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toLocaleString()}
-          </span>
-          {revenueByMonth.length >= 2 && (
-            <Sparkline data={revenueByMonth.map(b => b.value)} width={56} height={22} color={revenueTrend >= 0 ? "var(--zr-success)" : "var(--zr-error)"} fillColor={revenueTrend >= 0 ? "var(--zr-success)" : "var(--zr-error)"} />
-          )}
-        </div>
-        {revenueTrend !== 0 && (
-          <div style={{ fontSize: "12px", color: revenueTrend > 0 ? "var(--zr-success)" : "var(--zr-error)", fontWeight: 500, marginTop: "4px" }}>
-            {revenueTrend > 0 ? "↑" : "↓"} {Math.abs(revenueTrend).toFixed(0)}% vs last mo
+    <div className="zr-v2-card">
+      <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: "1px", background: "var(--zr-hairline)" }}>
+        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
+          <div style={label}>Revenue · MTD</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span style={value}>
+              ${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue.toLocaleString()}
+            </span>
+            {revenueByMonth.length >= 2 && (
+              <Sparkline data={revenueByMonth.map(b => b.value)} width={48} height={18}
+                color={revenueTrend >= 0 ? "var(--zr-success)" : "rgba(214,58,58,0.7)"}
+                fillColor={revenueTrend >= 0 ? "var(--zr-success)" : "rgba(214,58,58,0.7)"} />
+            )}
           </div>
-        )}
-      </div>
-      <div style={statCard}>
-        <div style={kpiLabel}>New leads · MTD</div>
-        <div className="flex items-end justify-between mt-2">
-          <span style={kpiValue}>{totalLeads}</span>
-          {activityByWeek.length >= 2 && (
-            <Sparkline data={activityByWeek} width={56} height={22} color="var(--zr-info)" fillColor="var(--zr-info)" />
+          {revenueTrend !== 0 && (
+            <div style={trend(revenueTrend)}>
+              <span>{revenueTrend > 0 ? "↑" : "↓"}</span>
+              <span>{Math.abs(revenueTrend).toFixed(0)}% vs last mo</span>
+            </div>
           )}
         </div>
-        {leadTrend !== 0 && (
-          <div style={{ fontSize: "12px", color: leadTrend > 0 ? "var(--zr-success)" : "var(--zr-error)", fontWeight: 500, marginTop: "4px" }}>
-            {leadTrend > 0 ? "↑" : "↓"} {Math.abs(leadTrend).toFixed(0)}% vs last mo
+        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
+          <div style={label}>New leads · MTD</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span style={value}>{totalLeads}</span>
+            {activityByWeek.length >= 2 && (
+              <Sparkline data={activityByWeek} width={48} height={18} color="var(--zr-info)" fillColor="var(--zr-info)" />
+            )}
           </div>
-        )}
-      </div>
-      <div style={statCard}>
-        <div style={kpiLabel}>Close rate</div>
-        <div className="flex items-end justify-between mt-2">
-          <span style={kpiValue}>{closeRate.toFixed(0)}%</span>
-          <DonutChart value={closeRate} size={40} strokeWidth={5} color={closeRate >= 50 ? "var(--zr-success)" : closeRate >= 30 ? "var(--zr-warning)" : "var(--zr-error)"} />
-        </div>
-      </div>
-      <div style={statCard}>
-        <div style={kpiLabel}>Activity · 8wk</div>
-        <div className="flex items-end justify-between mt-2">
-          <span style={kpiValue}>{activityByWeek.reduce((a, b) => a + b, 0)}</span>
-          {activityByWeek.length >= 2 && (
-            <Sparkline data={activityByWeek} width={56} height={22} color="var(--zr-orange)" fillColor="var(--zr-orange)" />
+          {leadTrend !== 0 && (
+            <div style={trend(leadTrend)}>
+              <span>{leadTrend > 0 ? "↑" : "↓"}</span>
+              <span>{Math.abs(leadTrend).toFixed(0)}% vs last mo</span>
+            </div>
           )}
         </div>
-        <div style={{ fontSize: "12px", color: "var(--zr-text-muted)", marginTop: "4px" }}>calls, texts, emails</div>
+        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
+          <div style={label}>Close rate</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span style={value}>{closeRate.toFixed(0)}%</span>
+            <DonutChart value={closeRate} size={36} strokeWidth={4}
+              color={closeRate >= 50 ? "var(--zr-success)" : closeRate >= 30 ? "var(--zr-warning)" : "rgba(214,58,58,0.7)"} />
+          </div>
+        </div>
+        <div className={cell} style={{ background: "var(--zr-surface-1)" }}>
+          <div style={label}>Activity · 8wk</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span style={value}>{activityByWeek.reduce((a, b) => a + b, 0)}</span>
+            {activityByWeek.length >= 2 && (
+              <Sparkline data={activityByWeek} width={48} height={18} color="var(--zr-orange)" fillColor="var(--zr-orange)" />
+            )}
+          </div>
+          <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.45)", marginTop: "6px" }}>calls, texts, emails</div>
+        </div>
       </div>
     </div>
   );
@@ -248,30 +373,19 @@ export function RevenueChartWidget({ revenueByMonth }: { revenueByMonth: { label
   );
 }
 
-// ── 4. Today's Focus — clean grouped list, no scary border ───
+// ── 4. Today's Focus — iOS Reminders style: tiny dot + clean row ──
+// Removed the icon tile entirely; a single 10px colored dot carries the
+// status. Calmer, more readable. Colors live in text or dot only.
 export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string; sub: string; href: string; color: string }[] }) {
   if (focusItems.length === 0) return null;
 
-  // Emoji glyph per item (derived from text) for leading icon tile
-  function glyph(label: string): string {
-    const s = label.toLowerCase();
-    if (s.includes("overdue")) return "⏰";
-    if (s.includes("deposit")) return "💳";
-    if (s.includes("quote")) return "📄";
-    if (s.includes("call") || s.includes("contact")) return "📞";
-    if (s.includes("install")) return "🔧";
-    if (s.includes("measure")) return "📐";
-    return "★";
-  }
-  // Tint color for the icon tile — derived from the item's existing tailwind
-  // text color so overdue=red, deposits=amber, etc., without a loud border.
-  function tileStyle(colorClass: string) {
-    if (colorClass.includes("red"))    return { background: "rgba(214,58,58,0.12)", color: "#c6443a" };
-    if (colorClass.includes("amber")) return { background: "rgba(224,138,0,0.12)", color: "#b8710b" };
-    if (colorClass.includes("orange")) return { background: "rgba(214,90,49,0.14)", color: "#c25a2f" };
-    if (colorClass.includes("blue")) return { background: "rgba(10,132,255,0.12)", color: "#0a84ff" };
-    if (colorClass.includes("green")) return { background: "rgba(48,164,108,0.14)", color: "#288a58" };
-    return { background: "var(--zr-surface-3)", color: "var(--zr-text-secondary)" };
+  function dotColor(colorClass: string): string {
+    if (colorClass.includes("red"))    return "#d6443a";
+    if (colorClass.includes("amber"))  return "#c28a0e";
+    if (colorClass.includes("orange")) return "#c25a2f";
+    if (colorClass.includes("blue"))   return "#0a84ff";
+    if (colorClass.includes("green"))  return "#288a58";
+    return "rgba(60,60,67,0.35)";
   }
 
   return (
@@ -279,23 +393,20 @@ export function TodaysFocusWidget({ focusItems }: { focusItems: { label: string;
       <SectionLabel>Today&apos;s focus</SectionLabel>
       <div className="zr-v2-card">
         <div className="zr-v2-list">
-          {focusItems.map((item, i) => {
-            const ts = tileStyle(item.color);
-            return (
-              <Link key={i} href={item.href} className="zr-v2-row">
-                <span className="zr-v2-icon-tile" style={ts}>{glyph(item.label)}</span>
-                <div className="min-w-0 flex-1">
-                  <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">
-                    {item.label}
-                  </div>
-                  <div style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "2px" }} className="truncate">
-                    {item.sub}
-                  </div>
+          {focusItems.map((item, i) => (
+            <Link key={i} href={item.href} className="zr-v2-row">
+              <span className="zr-v2-dot" style={{ background: dotColor(item.color) }} />
+              <div className="min-w-0 flex-1">
+                <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3 }} className="truncate">
+                  {item.label}
                 </div>
-                <span className="zr-v2-chevron">›</span>
-              </Link>
-            );
-          })}
+                <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", marginTop: "3px", lineHeight: 1.35 }} className="truncate">
+                  {item.sub}
+                </div>
+              </div>
+              <Chevron />
+            </Link>
+          ))}
         </div>
       </div>
     </div>
@@ -394,7 +505,7 @@ export function SalesPipelineWidget({ customers, pipelineValue, selectedStage, s
                       )}
                     </div>
                     {c.heat_score && <span className={`zr-v2-pill ${heatStyle[c.heat_score]}`}>{c.heat_score}</span>}
-                    <span className="zr-v2-chevron">›</span>
+                    <Chevron />
                   </Link>
                 );
               })}
@@ -490,7 +601,7 @@ export function OperationsWidget({ measuresToSchedule, measuresDone, installsToS
                       </span>
                     )}
                   </div>
-                  <span className="zr-v2-chevron">›</span>
+                  <Chevron />
                 </Link>
               ))}
             </div>
@@ -590,7 +701,7 @@ export function WorkQueueWidget({ workQueue, workQueueLoading, currentUserId, qu
                 <span className="zr-v2-pill" style={priorityStyle(w.priority)}>
                   {w.priority === 1 ? "Now" : w.priority === 2 ? "Today" : "Soon"}
                 </span>
-                <span className="zr-v2-chevron">›</span>
+                <Chevron />
               </Link>
             ))}
           </div>
@@ -624,16 +735,16 @@ export function ReadyToInstallWidget({ readyToInstall }: { readyToInstall: { id:
         <div className="zr-v2-list">
           {readyToInstall.map(c => (
             <Link key={c.id} href={`/customers/${c.id}`} className="zr-v2-row">
-              <span className="zr-v2-icon-tile" style={{ background: "rgba(48,164,108,0.14)", color: "var(--zr-success)" }}>✓</span>
+              <span style={{ color: "var(--zr-success)" }}><Icon.Check /></span>
               <div className="min-w-0 flex-1">
-                <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">
+                <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3 }} className="truncate">
                   {c.name}
                 </div>
-                <div style={{ color: "var(--zr-success)", fontSize: "13px", marginTop: "2px", fontWeight: 500 }}>
+                <div style={{ color: "var(--zr-success)", fontSize: "13px", marginTop: "3px", fontWeight: 500, lineHeight: 1.3 }}>
                   Schedule install
                 </div>
               </div>
-              <span className="zr-v2-chevron">›</span>
+              <Chevron />
             </Link>
           ))}
         </div>
@@ -697,36 +808,27 @@ export function TodaysAppointmentsWidget({ todayAppts }: { todayAppts: TodayAppt
             return (
               <Link key={a.id} href={`/customers/${a.customer_id}`}
                 className="zr-v2-row"
-                style={isNext ? { background: "rgba(10,132,255,0.05)" } : undefined}>
-                <div className="min-w-0 flex-1">
+                style={{ alignItems: "flex-start", paddingTop: "16px", paddingBottom: "16px", ...(isNext ? { background: "rgba(10,132,255,0.035)" } : {}) }}>
+                {/* Time is the leading column — iOS Calendar pattern */}
+                <div className="shrink-0 text-left" style={{ width: "60px" }}>
+                  <div style={{ color: isNext ? "var(--zr-info)" : "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.2 }}>
+                    {timeStr}
+                  </div>
                   {isNext && (
-                    <div style={{ color: "var(--zr-info)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "4px" }}>
+                    <div style={{ color: "var(--zr-info)", fontSize: "11px", fontWeight: 500, marginTop: "3px" }}>
                       Next up
                     </div>
                   )}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">
-                      {a.customer_name}
-                    </span>
-                    <span className={`zr-v2-pill ${typeColors[a.type] ?? "bg-gray-100 text-gray-600"}`}>
-                      {typeLabels[a.type] ?? a.type}
-                    </span>
-                  </div>
-                  {a.address && (
-                    <div style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "2px" }} className="truncate">
-                      📍 {a.address}
-                    </div>
-                  )}
                 </div>
-                <div className="shrink-0 text-right">
-                  <div style={{ color: isNext ? "var(--zr-info)" : "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }}>
-                    {timeStr}
+                <div className="min-w-0 flex-1" style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.25 }} className="truncate">
+                    {a.customer_name}
                   </div>
-                  <div style={{ fontSize: "12px", marginTop: "2px" }}
-                    className={a.status === "confirmed" ? "text-[#0a84ff]" : a.status === "completed" ? "text-[#30a46c]" : a.status === "scheduled" ? "text-[#b8710b]" : "text-[#9ca3af]"}>
-                    {a.status}
+                  <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", lineHeight: 1.3 }} className="truncate">
+                    {typeLabels[a.type] ?? a.type}{a.address ? ` · ${a.address}` : ""}
                   </div>
                 </div>
+                <Chevron />
               </Link>
             );
           })}
@@ -752,27 +854,16 @@ export function TasksDueWidget({ tasksDue }: { tasksDue: TaskDue[] }) {
             const overdue = t.due_date && t.due_date < today;
             return (
               <Link key={t.id} href={`/customers/${t.customer_id}`} className="zr-v2-row">
-                <span className="zr-v2-icon-tile" style={overdue
-                  ? { background: "rgba(214,58,58,0.12)", color: "#c6443a" }
-                  : { background: "rgba(224,138,0,0.12)", color: "#b8710b" }}>
-                  {overdue ? "!" : "●"}
-                </span>
+                <span className="zr-v2-dot" style={{ background: overdue ? "#d6443a" : "#c28a0e" }} />
                 <div className="min-w-0 flex-1">
-                  <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">
+                  <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3 }} className="truncate">
                     {t.title}
                   </div>
-                  <div style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "2px" }} className="truncate">
-                    {t.customer_name}
+                  <div style={{ color: "rgba(60,60,67,0.55)", fontSize: "13px", marginTop: "3px", lineHeight: 1.3 }} className="truncate">
+                    {t.customer_name}{t.due_date ? (overdue ? " · Overdue" : " · Today") : ""}
                   </div>
                 </div>
-                {t.due_date && (
-                  <span className="zr-v2-pill" style={overdue
-                    ? { background: "rgba(214,58,58,0.12)", color: "#c6443a" }
-                    : { background: "rgba(224,138,0,0.12)", color: "#b8710b" }}>
-                    {overdue ? "Overdue" : "Today"}
-                  </span>
-                )}
-                <span className="zr-v2-chevron">›</span>
+                <Chevron />
               </Link>
             );
           })}
@@ -822,55 +913,68 @@ export function ShipmentTrackingWidget({ shipments, loading }: { shipments: Ship
     return null;
   }
 
-  // Apple-style soft status tokens: tinted background + firm label color.
-  // The leading icon tile carries the color so we can drop per-row borders.
-  const statusStyle: Record<string, { icon: string; label: string; bg: string; fg: string }> = {
-    ordered:  { icon: "🔄", label: "Ordered",    bg: "rgba(10,132,255,0.12)",  fg: "#0a84ff" },
-    shipped:  { icon: "🚚", label: "In transit", bg: "rgba(224,138,0,0.12)",   fg: "#b8710b" },
-    received: { icon: "✅", label: "Delivered",  bg: "rgba(48,164,108,0.14)",  fg: "#288a58" },
-    staged:   { icon: "📦", label: "Staged",     bg: "rgba(60,60,67,0.08)",    fg: "#3c3c43" },
+  // Muted status tokens — color is accent-only, not saturated highlight.
+  // Icon is a line-SVG in the same color; no tinted tile background.
+  const statusStyle: Record<string, { icon: React.ReactNode; label: string; fg: string }> = {
+    ordered:  { icon: <Icon.Box />,   label: "Ordered",    fg: "#5b8def" },
+    shipped:  { icon: <Icon.Truck />, label: "In transit", fg: "#c28a0e" },
+    received: { icon: <Icon.Check />, label: "Delivered",  fg: "#30a46c" },
+    staged:   { icon: <Icon.Box />,   label: "Staged",     fg: "rgba(60,60,67,0.55)" },
   };
 
   function ShipmentRow({ s }: { s: ShipmentItem }) {
-    // Customer → packages arrived → warehouse location → ship date. These are
-    // what the installer actually needs; product moves to the secondary row.
+    // Clear 3-line hierarchy per Steve's spec: name → status → details.
+    // No icon tile background, no per-row separators fighting the content.
+    // The right-side 2/3 badge is anchored vertically with the chevron.
     const st = statusStyle[s.status];
-    const pkgSummary = s.expected_packages ? `${s.received_packages}/${s.expected_packages} arrived` : null;
+    const pkgSummary = s.expected_packages ? `${s.received_packages}/${s.expected_packages} packages` : null;
     const shipDate = s.shipped_at ? new Date(s.shipped_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
     const etaFmt = s.eta ? `ETA ${s.eta}` : null;
     const dateChip = shipDate ? `Shipped ${shipDate}` : etaFmt;
 
+    // Build the meta line from just the essentials — location and timing.
+    // Package count moves out of this line into the right-anchored badge.
+    const metaParts: string[] = [];
+    if (s.storage_location) metaParts.push(s.storage_location);
+    if (dateChip) metaParts.push(dateChip);
+
     return (
-      <Link href={`/quotes/${s.quote_id}`} className="zr-v2-row">
-        <span className="zr-v2-icon-tile" style={{ background: st.bg, color: st.fg }}>
+      <Link href={`/quotes/${s.quote_id}`} className="zr-v2-row" style={{ alignItems: "flex-start", paddingTop: "16px", paddingBottom: "16px" }}>
+        {/* Leading line icon in accent color — no tile background */}
+        <span style={{ color: st.fg, marginTop: "2px" }}>
           {st.icon}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }} className="truncate">
-              {s.customer_name}
-            </span>
-            <span className="zr-v2-pill" style={{ background: st.bg, color: st.fg }}>
-              {st.label}
-            </span>
+
+        {/* Name → status → details */}
+        <div className="min-w-0 flex-1" style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          <div style={{ color: "var(--zr-text-primary)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.25 }} className="truncate">
+            {s.customer_name}
           </div>
-          <div style={{ color: "var(--zr-text-secondary)", fontSize: "13px", marginTop: "3px" }} className="flex items-center gap-2 flex-wrap">
-            {pkgSummary && (
-              <span style={{ color: "var(--zr-text-primary)", fontWeight: 500 }}>📦 {pkgSummary}</span>
-            )}
-            {s.storage_location && <span>· 📍 {s.storage_location}</span>}
-            {dateChip && <span>· {dateChip}</span>}
-            {s.tracking_number && <span>· #{s.tracking_number.slice(-6)}</span>}
-            {s.description && <span style={{ opacity: 0.7 }}>· {s.description}</span>}
+          <div style={{ color: st.fg, fontSize: "13px", fontWeight: 500, lineHeight: 1.25 }}>
+            {st.label}
           </div>
+          {metaParts.length > 0 && (
+            <div style={{ color: "rgba(60,60,67,0.5)", fontSize: "12px", lineHeight: 1.3 }} className="truncate">
+              {metaParts.join(" · ")}
+            </div>
+          )}
         </div>
-        {s.status === "shipped" && s.expected_packages && s.expected_packages > 0 && (
-          <div className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(224,138,0,0.12)", color: "#b8710b", fontSize: "13px", fontWeight: 700, letterSpacing: "-0.02em" }}>
-            {s.received_packages}/{s.expected_packages}
-          </div>
-        )}
-        <span className="zr-v2-chevron">›</span>
+
+        {/* Anchored right side: package count (only when in-transit) + chevron */}
+        <div className="flex items-center gap-2" style={{ alignSelf: "center" }}>
+          {pkgSummary && s.status === "shipped" && (
+            <span style={{
+              color: "rgba(194,138,14,0.9)",
+              fontSize: "13px",
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {s.received_packages}/{s.expected_packages}
+            </span>
+          )}
+          <Chevron />
+        </div>
       </Link>
     );
   }

@@ -702,13 +702,16 @@ export default function HomePage() {
         {/* ── Large iOS-style page title + action row ──────────────── */}
         <div className="mb-5 flex items-end justify-between">
           <div>
-            <h1 style={{ color: "var(--zr-text-primary)", letterSpacing: "-0.03em" }} className="text-3xl font-bold leading-tight">
+            <h1 style={{ color: "var(--zr-text-primary)", letterSpacing: "-0.03em" }} className="text-[34px] font-bold leading-[1.1]">
               Dashboard
             </h1>
             <Link href="/analytics"
               style={{ color: "var(--zr-orange)" }}
-              className="text-[15px] font-medium mt-1 inline-flex items-center gap-1">
-              Analytics <span>›</span>
+              className="text-[15px] font-medium mt-1.5 inline-flex items-center gap-1">
+              Analytics
+              <svg width="7" height="12" viewBox="0 0 8 14" fill="none" style={{ marginLeft: "2px" }}>
+                <path d="M1 1L7 7L1 13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </Link>
           </div>
           {tab === "dashboard" && (

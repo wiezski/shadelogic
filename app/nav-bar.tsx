@@ -145,29 +145,33 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-40 shrink-0"
-      style={{ background: "var(--zr-surface-1)", borderBottom: "1px solid var(--zr-border)" }}>
-      <div className="flex items-center gap-0 px-2 py-2">
+      style={{
+        background: "rgba(255,255,255,0.88)",
+        backdropFilter: "saturate(180%) blur(20px)",
+        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        borderBottom: "0.5px solid rgba(60,60,67,0.1)",
+      }}>
+      <div className="flex items-center gap-1 px-3 py-2.5">
         {/* Icon only — no wordmark on nav */}
-        <Link href="/" className="shrink-0 mr-1 no-underline">
+        <Link href="/" className="shrink-0 no-underline mr-1 transition-opacity active:opacity-60">
           <ZRLogo size="sm" iconOnly />
         </Link>
 
-        {/* Task Mode Selector */}
-        <div ref={modeRef} className="relative shrink-0 mr-1">
+        {/* Task Mode Selector — lighter chip, no hard border */}
+        <div ref={modeRef} className="relative shrink-0 mr-1.5">
           <button onClick={() => setModeOpen(!modeOpen)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all active:scale-95"
             style={{
-              background: taskMode === "all" ? "transparent" : "rgba(234,88,12,0.12)",
-              border: taskMode === "all" ? "1px solid var(--zr-border)" : "1px solid rgba(234,88,12,0.3)",
+              background: taskMode === "all" ? "rgba(60,60,67,0.06)" : "rgba(214,90,49,0.1)",
               color: taskMode === "all" ? "var(--zr-text-secondary)" : "var(--zr-orange)",
             }}>
-            <span>{MODE_ICONS[taskMode]}</span>
+            <span style={{ fontSize: "13px" }}>{MODE_ICONS[taskMode]}</span>
             <span className="hidden sm:inline">{MODE_LABELS[taskMode]}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           {modeOpen && (
-            <div className="absolute left-0 top-full mt-1 w-44 rounded-lg shadow-xl z-50 overflow-hidden"
-              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+            <div className="absolute left-0 top-full mt-2 w-48 rounded-2xl z-50 overflow-hidden"
+              style={{ background: "var(--zr-surface-1)", boxShadow: "var(--zr-shadow-lg)" }}>
               <div className="px-3 py-1.5" style={{ borderBottom: "1px solid var(--zr-border)" }}>
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-muted)" }}>Focus Mode</span>
               </div>
@@ -191,7 +195,7 @@ export function NavBar() {
         </div>
 
         {/* Scrollable nav links — Sign Out at the far end */}
-        <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-0">
+        <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-0.5">
           {[
             { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
             { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
@@ -205,52 +209,54 @@ export function NavBar() {
             { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
             { href: "/canvas",    label: "Canvas",    show: features.canvassing && permissions.view_customers },
           ].filter(i => i.show).filter(i => {
-            // Company-level hidden nav (from business type preset) still applies.
-            // Focus mode no longer filters the nav — the top bar stays stable
-            // regardless of task mode; focus only affects dashboard widgets.
+            // Company-level hidden nav still applies. Focus mode doesn't.
             if (hiddenNav.length > 0 && hiddenNav.includes(i.href)) return false;
             return true;
-          }).map(({ href, label }) => (
-            <Link key={href} href={href}
-              className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap relative"
-              style={{ color: pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)", fontWeight: pathname === href ? "600" : "normal" }}
-              onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; e.currentTarget.style.background = "var(--zr-surface-2)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = pathname === href ? "var(--zr-text-primary)" : "var(--zr-text-secondary)"; e.currentTarget.style.background = "transparent"; }}>
-              {label}
-            </Link>
-          ))}
-          {/* Sign Out — scrolled to far right, only visible if you scroll all the way */}
+          }).map(({ href, label }) => {
+            const active = pathname === href;
+            return (
+              <Link key={href} href={href}
+                className="shrink-0 px-3 py-1.5 rounded-full text-[13px] transition-all whitespace-nowrap relative"
+                style={{
+                  color: active ? "var(--zr-orange)" : "var(--zr-text-secondary)",
+                  fontWeight: active ? 600 : 500,
+                  background: active ? "rgba(214,90,49,0.08)" : "transparent",
+                }}>
+                {label}
+              </Link>
+            );
+          })}
+          {/* Sign Out — softer, far right */}
           <button onClick={signOut}
-            className="shrink-0 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap ml-1"
-            style={{ color: "var(--zr-text-muted)" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "var(--zr-text-primary)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "var(--zr-text-muted)"; }}>
+            className="shrink-0 px-3 py-1.5 rounded-full text-[13px] transition-all whitespace-nowrap ml-1"
+            style={{ color: "rgba(60,60,67,0.5)", fontWeight: 500 }}>
             Sign Out
           </button>
         </div>
 
         {/* Pinned right: Bell — always visible */}
-        <div ref={bellRef} className="relative shrink-0 ml-1">
+        <div ref={bellRef} className="relative shrink-0 ml-1.5">
           <button onClick={() => setBellOpen(!bellOpen)}
-            className="relative p-1.5 rounded transition-colors"
-            style={{ color: totalBellCount > 0 ? "var(--zr-orange)" : "var(--zr-text-muted)" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "var(--zr-surface-2)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            className="relative p-2 rounded-full transition-all active:scale-95"
+            style={{
+              color: totalBellCount > 0 ? "var(--zr-orange)" : "rgba(60,60,67,0.55)",
+              background: totalBellCount > 0 ? "rgba(214,90,49,0.08)" : "transparent",
+            }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             {totalBellCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 text-white rounded-full min-w-[16px] h-4 flex items-center justify-center leading-none font-bold px-1"
-                style={{ background: "var(--zr-error)", fontSize: "9px" }}>
+              <span className="absolute top-0.5 right-0.5 text-white rounded-full min-w-[17px] h-[17px] flex items-center justify-center leading-none font-semibold px-1"
+                style={{ background: "#d6443a", fontSize: "10px", letterSpacing: "-0.02em" }}>
                 {totalBellCount > 99 ? "99+" : totalBellCount}
               </span>
             )}
           </button>
 
           {bellOpen && (
-            <div className="absolute right-0 top-full mt-1 w-80 rounded-lg shadow-xl z-50 overflow-hidden"
-              style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+            <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl z-50 overflow-hidden"
+              style={{ background: "var(--zr-surface-1)", boxShadow: "var(--zr-shadow-lg)" }}>
               <div className="flex items-center justify-between px-3 py-2"
                 style={{ borderBottom: "1px solid var(--zr-border)" }}>
                 <span className="text-sm font-semibold" style={{ color: "var(--zr-text-primary)" }}>Notifications</span>

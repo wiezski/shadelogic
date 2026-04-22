@@ -63,11 +63,11 @@ html:root {
   --zr-radius-xl:    28px;
   --zr-radius-full:  9999px;
 
-  /* ── Shadows (soft, layered) ──────────────────────────── */
-  --zr-shadow-sm:   0 1px 2px rgba(0,0,0,0.04);
-  --zr-shadow-md:   0 2px 8px rgba(17,24,39,0.05), 0 1px 2px rgba(17,24,39,0.04);
-  --zr-shadow-lg:   0 10px 30px rgba(17,24,39,0.08), 0 2px 6px rgba(17,24,39,0.04);
-  --zr-shadow-glow: 0 0 0 1px rgba(214,90,49,0.2), 0 6px 20px rgba(214,90,49,0.15);
+  /* ── Shadows (whisper-soft; rely on spacing, not elevation) ── */
+  --zr-shadow-sm:   0 1px 1px rgba(0,0,0,0.02);
+  --zr-shadow-md:   0 1px 3px rgba(17,24,39,0.035), 0 1px 1px rgba(17,24,39,0.025);
+  --zr-shadow-lg:   0 8px 24px rgba(17,24,39,0.06), 0 2px 4px rgba(17,24,39,0.03);
+  --zr-shadow-glow: 0 0 0 1px rgba(214,90,49,0.18), 0 4px 14px rgba(214,90,49,0.12);
 
   /* ── Motion ───────────────────────────────────────────── */
   --zr-transition:      160ms cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -139,23 +139,22 @@ body {
    the design stays consistent across widgets.
    ============================================================ */
 
-/* A section label: the small uppercase caption that sits ABOVE
-   a grouped list (iOS Settings pattern). */
+/* A section label: sentence-case caption that sits ABOVE a grouped list.
+   iOS 17 uses sentence case (Apple deprecated uppercase section labels). */
 .zr-v2-section-label {
-  color: var(--zr-text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  padding: 0 4px 8px 4px;
+  color: rgba(60, 60, 67, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 0 6px 10px 6px;
   font-family: var(--zr-font-body);
 }
 
-/* A card — the primary visual unit. Soft shadow, no border. */
+/* A card — the primary visual unit. Whisper shadow, no border. */
 .zr-v2-card {
   background: var(--zr-surface-1);
   border-radius: var(--zr-radius-lg);
-  box-shadow: var(--zr-shadow-md);
+  box-shadow: var(--zr-shadow-sm);
   overflow: hidden;
 }
 
@@ -180,41 +179,66 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 18px;
+  padding: 18px 18px;
   background: var(--zr-surface-1);
   color: var(--zr-text-primary);
   text-decoration: none;
   transition: background var(--zr-transition);
-  min-height: 56px; /* comfortable tap target */
+  min-height: 62px; /* comfortable tap target — matches iOS 44pt + padding */
 }
 .zr-v2-row:hover {
-  background: var(--zr-surface-2);
+  background: rgba(60,60,67,0.03);
 }
 .zr-v2-row:active {
-  background: var(--zr-surface-3);
+  background: rgba(60,60,67,0.06);
   transition-duration: 40ms;
 }
 
-/* Right-aligned chevron indicator (›) for tappable rows */
+/* Right-aligned chevron indicator — inline SVG for perfect alignment.
+   Rendered via the <Chevron /> component; this class sets container only. */
 .zr-v2-chevron {
   flex-shrink: 0;
-  color: var(--zr-text-muted);
-  font-size: 18px;
-  font-weight: 400;
-  margin-left: 4px;
+  color: rgba(60, 60, 67, 0.3);
+  margin-left: 2px;
+  display: flex;
+  align-items: center;
 }
 
-/* Subtle soft pill/badge. Use sparingly. */
+/* A small leading colored dot — iOS Mail / Reminders style status indicator.
+   Replaces heavy emoji icon tiles for a calmer, lighter feel. */
+.zr-v2-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  align-self: center;
+}
+
+/* A monogram / initial — slightly larger, used for people cells */
+.zr-v2-monogram {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Subtle soft pill/badge. Use sparingly — color is accent, not highlight. */
 .zr-v2-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: var(--zr-radius-full);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
   white-space: nowrap;
 }
 

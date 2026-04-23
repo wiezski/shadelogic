@@ -134,7 +134,8 @@ function pickTopThree(findings: Finding[]): Finding[] {
 
 // Build 3-5 short quick-insight one-liners for Layer 1.
 // Direct, outcome-focused. No vague "has gaps" phrasing.
-function buildQuickInsights(findings: Finding[], score: number, domain: string): string[] {
+// Exported so cached-scan responses can regenerate insights from stored findings.
+export function buildQuickInsights(findings: Finding[], score: number, domain: string): string[] {
   const insights: string[] = [];
 
   // Opening line — calibrated to the score band, outcome-focused.

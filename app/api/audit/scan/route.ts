@@ -8,7 +8,8 @@
 // is called with an email (Layer 2).
 
 import { NextRequest, NextResponse } from "next/server";
-import { scanUrl, normalizeUrl } from "@/lib/audit/scanner";
+import { scanUrl, normalizeUrl, buildQuickInsights } from "@/lib/audit/scanner";
+import type { Finding } from "@/lib/audit/types";
 import { getAuditAdminClient } from "@/lib/audit/db";
 
 export const runtime = "nodejs";
@@ -122,32 +123,35 @@ export async function POST(req: NextRequest) {
   if (cached && cached.findings) {
     // Reuse cached scan but create a new submission row so we track each
     // unique visitor's intent (they'll unlock under their own row).
+    const grade = (cached.score >= 80
+      ? "Strong"
+      : cached.score >= 60
+        ? "Solid"
+        : cached.score >= 40
+          ? "Needs Work"
+          : "Critical Gaps") as Awaited<ReturnType<typeof scanUrl>>["grade"];
+
+    const cachedFindings = cached.findings as Finding[];
+    let topThree = cached.top_three as Finding[] | null;
+    if (!topThree || topThree.length === 0) {
+      topThree = cachedFindings
+        .filter((f) => f.severity !== "pass")
+        .sort((a, b) => (b.maxPoints - b.score) - (a.maxPoints - a.score))
+        .slice(0, 3);
+    }
+
     report = {
       score: cached.score,
-      grade: (cached.score >= 80
-        ? "Strong"
-        : cached.score >= 60
-          ? "Solid"
-          : cached.score >= 40
-            ? "Needs Work"
-            : "Critical Gaps") as Awaited<ReturnType<typeof scanUrl>>["grade"],
+      grade,
       domain: cached.domain,
       url: cached.url,
       pageTitle: null,
-      findings: cached.findings,
-      topThree: cached.top_three || [],
-      quickInsights: [],
+      findings: cachedFindings,
+      topThree,
+      // Recompute insights so cached scans still show fresh outcome copy.
+      quickInsights: buildQuickInsights(cachedFindings, cached.score, cached.domain),
       scannedAt: cached.created_at,
     };
-    // Regenerate topThree / quickInsights fresh from cached findings so we
-    // don't rely on old shape. But if they're there, keep them.
-    if (!report.topThree || report.topThree.length === 0) {
-      // Fallback: recompute from findings
-      report.topThree = (cached.findings as typeof report.findings)
-        .filter((f) => f.severity !== "pass")
-        .sort((a, b) => b.maxPoints - b.score - (a.maxPoints - a.score))
-        .slice(0, 3);
-    }
   } else {
     try {
       report = await scanUrl(rawUrl);

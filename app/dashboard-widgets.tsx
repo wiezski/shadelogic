@@ -237,7 +237,11 @@ export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
   sales: ["quick_actions", "todays_focus", "work_queue", "todays_appointments", "tasks_due", "sales_pipeline", "kpi_strip", "shipments", "operations", "revenue_chart", "ready_to_install"],
   office: ["quick_actions", "todays_appointments", "tasks_due", "shipments", "operations", "work_queue", "ready_to_install", "kpi_strip", "sales_pipeline", "revenue_chart", "todays_focus"],
   scheduler: ["quick_actions", "todays_appointments", "shipments", "operations", "ready_to_install", "tasks_due", "work_queue", "kpi_strip", "sales_pipeline", "revenue_chart", "todays_focus"],
-  installer: ["quick_actions", "todays_appointments", "shipments", "operations", "ready_to_install", "tasks_due", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
+  // Contract installers see ONLY what's relevant to their work: their
+  // schedule, shipments for their jobs, what's staged and ready to
+  // install, and any tasks assigned to them. No financials, no sales
+  // pipeline, no work queue (that's owner/sales territory).
+  installer: ["quick_actions", "todays_appointments", "ready_to_install", "shipments", "tasks_due"],
   accounting: ["quick_actions", "kpi_strip", "revenue_chart", "tasks_due", "operations", "shipments", "work_queue", "sales_pipeline", "todays_appointments", "ready_to_install", "todays_focus"],
   warehouse: ["quick_actions", "shipments", "operations", "ready_to_install", "tasks_due", "todays_appointments", "kpi_strip", "work_queue", "sales_pipeline", "revenue_chart", "todays_focus"],
 };
@@ -249,7 +253,8 @@ export const ROLE_LAYOUTS: Record<string, WidgetId[]> = {
 // staying calm — the fills are ~10-12% alpha, not saturated.
 // No card wrapper around the group; tiles sit directly on the page canvas,
 // matching the same no-box language as the refined Shipments list.
-export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => void }) {
+export function QuickActionsWidget({ onNewCustomer, role }: { onNewCustomer: () => void; role?: string }) {
+  const isInstaller = role === "installer";
   // Per-action identity. Tint fills are soft so the row reads calm;
   // glyph colors are the saturated variant for clear affordance.
   type Action = {
@@ -270,29 +275,55 @@ export function QuickActionsWidget({ onNewCustomer }: { onNewCustomer: () => voi
   // still unmistakable at a glance, but the fill reads as "tinted paper"
   // rather than a colored surface. Glyph hue is held saturated so the icon
   // sits cleanly on top of its own tile.
-  const actions: Action[] = [
-    {
-      label: "New customer",
-      tintBg: "rgba(10,132,255,0.09)",
-      tintFg: "#0a7cff",
-      icon: <Icon.Person {...glyph} />,
-      onClick: onNewCustomer,
-    },
-    {
-      label: "Schedule",
-      tintBg: "rgba(214,90,49,0.09)",
-      tintFg: "var(--zr-orange)",
-      icon: <Icon.Calendar {...glyph} />,
-      href: "/schedule",
-    },
-    {
-      label: "Reminders",
-      tintBg: "rgba(48,164,108,0.10)",
-      tintFg: "#228b5b",
-      icon: <Icon.Bell {...glyph} />,
-      href: "/reminders",
-    },
-  ];
+  // Contract installers see "New measure" as their primary intake tile
+  // rather than "New customer" — that's owner/sales territory.
+  const actions: Action[] = isInstaller
+    ? [
+        {
+          label: "New measure",
+          tintBg: "rgba(10,132,255,0.09)",
+          tintFg: "#0a7cff",
+          icon: <Icon.Ruler {...glyph} />,
+          href: "/measure-jobs/new",
+        },
+        {
+          label: "Schedule",
+          tintBg: "rgba(214,90,49,0.09)",
+          tintFg: "var(--zr-orange)",
+          icon: <Icon.Calendar {...glyph} />,
+          href: "/schedule",
+        },
+        {
+          label: "Reminders",
+          tintBg: "rgba(48,164,108,0.10)",
+          tintFg: "#228b5b",
+          icon: <Icon.Bell {...glyph} />,
+          href: "/reminders",
+        },
+      ]
+    : [
+        {
+          label: "New customer",
+          tintBg: "rgba(10,132,255,0.09)",
+          tintFg: "#0a7cff",
+          icon: <Icon.Person {...glyph} />,
+          onClick: onNewCustomer,
+        },
+        {
+          label: "Schedule",
+          tintBg: "rgba(214,90,49,0.09)",
+          tintFg: "var(--zr-orange)",
+          icon: <Icon.Calendar {...glyph} />,
+          href: "/schedule",
+        },
+        {
+          label: "Reminders",
+          tintBg: "rgba(48,164,108,0.10)",
+          tintFg: "#228b5b",
+          icon: <Icon.Bell {...glyph} />,
+          href: "/reminders",
+        },
+      ];
 
   // The tile is the action affordance. 60pt tall, 14pt radius — tighter
   // and less pillowy than before. Proportions now read as intentional

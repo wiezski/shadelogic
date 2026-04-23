@@ -31,7 +31,8 @@ import {
 } from "../lib/focus-modes";
 
 export function NavBar() {
-  const { user, signOut, permissions, features, hiddenNav } = useAuth();
+  const { user, signOut, permissions, features, hiddenNav, role } = useAuth();
+  const isInstaller = role === "installer";
   const pathname = usePathname();
   const [reminderCount, setReminderCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -230,9 +231,12 @@ export function NavBar() {
             { href: "/warehouse", label: "Warehouse", show: true },
             { href: "/settings",  label: "Settings",  show: permissions.access_settings },
             { href: "/payroll",   label: "Payroll",   show: permissions.view_financials },
-            { href: "/manufacturers", label: "Specs", show: permissions.create_quotes },
-            { href: "/builders",  label: "Builders",  show: features.builder_portal && permissions.view_customers },
-            { href: "/canvas",    label: "Canvas",    show: features.canvassing && permissions.view_customers },
+            // Installers see Specs (read-only reference for products they
+            // install). Normally gated by create_quotes.
+            { href: "/manufacturers", label: "Specs", show: permissions.create_quotes || isInstaller },
+            // Canvas and Builders are sales/owner surfaces — hide from installers
+            { href: "/builders",  label: "Builders",  show: !isInstaller && features.builder_portal && permissions.view_customers },
+            { href: "/canvas",    label: "Canvas",    show: !isInstaller && features.canvassing && permissions.view_customers },
           ].filter(i => i.show).filter(i => {
             // Company-level hidden nav still applies. Focus mode doesn't.
             if (hiddenNav.length > 0 && hiddenNav.includes(i.href)) return false;

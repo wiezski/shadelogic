@@ -670,7 +670,7 @@ export default function HomePage() {
   function renderWidget(id: WidgetId) {
     switch (id) {
       case "quick_actions":
-        return <QuickActionsWidget onNewCustomer={() => { setTab("customers"); setShowForm(true); }} />;
+        return <QuickActionsWidget role={role} onNewCustomer={() => { setTab("customers"); setShowForm(true); }} />;
       case "kpi_strip":
         return <KPIStripWidget totalRevenue={totalRevenue} revenueTrend={revenueTrend} revenueByMonth={revenueByMonth} totalLeads={totalLeads} leadTrend={leadTrend} activityByWeek={activityByWeek} closeRate={closeRate} />;
       case "revenue_chart":

@@ -60,25 +60,25 @@ export const checkPhoneVisibility: CheckFn = (ctx) => {
     severity = "important";
     detail = "Phone is visible in the header, but it isn’t a tappable tel: link — which means mobile visitors have to memorize it or copy-paste.";
     recommendation =
-      "Wrap the header phone number in a tel: link. On mobile, that turns it into one-tap call — the number-one action homeowners take before booking a measure.";
+      "Make your phone number one-tap callable on mobile. This is the #1 action homeowners take before booking, and friction here directly costs you calls.";
   } else if (telLinks > 0) {
     score = 6;
     severity = "important";
     detail = `There are ${telLinks} click-to-call link(s) on the page, but not in the header where homeowners look first.`;
     recommendation =
-      "Move the phone number into the main site header so it’s on every page, above the fold, on mobile. The easier you make it to call, the more jobs you book.";
+      "Get your phone number into the header, above the fold, on every page. Homeowners look there first — if it’s not there, they leave.";
   } else if (phoneAnywhere) {
     score = 3;
     severity = "critical";
     detail = "Your phone number is on the page somewhere, but it isn’t prominent and isn’t tappable. That’s costing you calls.";
     recommendation =
-      "Put a click-to-call phone number in the site header. When homeowners are ready to book a measure, they want to dial — don’t make them hunt. This is the single biggest conversion fix for a local installer site.";
+      "Your phone number needs to be prominent, clickable, and in the header. Motivated buyers are hunting for a way to reach you right now — and bouncing when they can’t find it fast.";
   } else {
     score = 0;
     severity = "critical";
     detail = "We couldn’t find a phone number on this page. Most homeowners shopping for blinds or shutters want to call before they book — if they can’t, they bounce.";
     recommendation =
-      "Add your phone number to the site header as a tappable tel: link. Without it, you’re sending your warmest leads to whichever competitor makes it easy.";
+      "A visible, one-tap-callable phone number in the header is the single biggest conversion lever for a local installer site. Without it, your warmest leads go to whoever makes it easy.";
   }
 
   return {
@@ -129,24 +129,24 @@ export const checkCityPages: CheckFn = (ctx) => {
     score = 12;
     severity = "pass";
     detail = `You have ${count} city-specific pages on this site. When someone Googles “blinds in [their town],” you have a page to rank for it.`;
-    recommendation = "Keep adding one per month. Make sure each page has real local content — photos of installs in that city, a review from a homeowner there — not copy-paste.";
+    recommendation = "Keep expanding your service-area coverage. Just make sure each page reads like it was written for a homeowner in that specific town — not a template.";
   } else if (count >= 3) {
     score = 7;
     severity = "important";
     detail = `You have ${count} city pages — a start. But the national brands (Sunburst, 3 Day Blinds, Bumble Bee) run 10+ per metro, and they’re taking the searches you could own.`;
-    recommendation = `Fill in the rest of your service area. A homeowner in Mapleton or Spanish Fork shouldn’t land on your generic homepage — they should land on a page that says “Blinds & Shutters in Mapleton.” Each page needs unique content: photos, reviews, local references.`;
+    recommendation = `Fill in the rest of your service area. Every town you skip is a shot at “blinds in [that town]” you’re handing to national competitors. Each page needs to feel local — not a template.`;
   } else if (count === 1 || count === 2) {
     score = 3;
     severity = "critical";
     detail = `Only ${count} city page detected. For a local installer, this is where you lose the most traffic to national competitors.`;
     recommendation =
-      "Build 5–7 city landing pages, one for each town you serve. A homeowner Googling “shutters Provo” won’t rank you — they’ll find the national brand that did. This is the single highest-ROI page type you can add.";
+      "Build a page for every town you serve. A homeowner Googling “shutters Provo” should find your Provo page, not the national brand that built one first. This is the highest-ROI content you can produce.";
   } else {
     score = 0;
     severity = "critical";
     detail = "No city-specific pages detected. When homeowners in your service area search for blinds or shutters, they’re not finding you — they’re finding whoever built city pages first.";
     recommendation =
-      "Build pages for your top service cities — Provo, Orem, Lehi, Mapleton, Springville, Spanish Fork, American Fork. This is how local installers show up for “blinds near me” searches instead of losing them to Bumble Bee or 3 Day Blinds.";
+      "Your biggest SEO opportunity is a page per city you serve. Homeowners search by town. Google rewards the specificity. And the slot is wide open for most local operators — but only for a little while longer.";
   }
 
   return {
@@ -204,25 +204,25 @@ export const checkProductCategories: CheckFn = (ctx) => {
       .map((c) => c.key)
       .join(", ")}). A homeowner shopping for any of them lands on a page that matches.`;
     recommendation =
-      "Make each category page substantial — real install photos, brand names you carry, a starting price range, a review quote. Stubs cost you leads.";
+      "Make each category page earn its rank — real install photos, brands you carry, a starting price, a review quote. Stubs don’t convert.";
   } else if (present.length >= 3 && categoryNavLinks.length < 3) {
     score = 5;
     severity = "important";
     detail = `You mention the products in your copy, but only ${categoryNavLinks.length} category(ies) have their own page. Homeowners Google by product type — and they click the result that looks specialized in what they want.`;
     recommendation =
-      "Split each major category (blinds, shades, shutters, drapery) into its own page. A homeowner shopping for shutters is willing to pay 2–3x more than the blinds-only customer — don’t let your site look like a blinds shop.";
+      "Each major product line should feel like its own shop. A shutter buyer spends 2–3x the blinds-only buyer — don’t let your site read like a blinds-only shop.";
   } else if (present.length >= 1) {
     score = 3;
     severity = "important";
     detail = `Only ${present.length} product category is clearly represented. Visitors can’t tell in 2 seconds whether you sell what they came looking for.`;
     recommendation =
-      "If you sell more than what shows on the homepage, add it — with its own page. Most shutter leads go to the site that looks like a shutter shop, not the site that buries shutters three clicks deep.";
+      "Make the products you actually sell obvious. Most shutter leads go to the site that looks like a shutter shop — not the site that buries shutters three clicks deep.";
   } else {
     score = 0;
     severity = "critical";
     detail = "We couldn’t tell which window treatment products you actually sell. A homeowner shopping for blinds (or shutters, or shades) will leave and click the next result.";
     recommendation =
-      "Add obvious category pages (Blinds / Shades / Shutters / Drapery) to your main navigation. Homeowners choose based on “they sell what I want” before anything else — make that answer visible in 2 seconds.";
+      "Homeowners decide “they sell what I want” in the first 2 seconds. Make the product lines you carry — blinds, shades, shutters, drapery — instantly visible.";
   }
 
   return {
@@ -265,25 +265,25 @@ export const checkMotorization: CheckFn = (ctx) => {
     severity = "pass";
     detail =
       "Motorization has its own spot on the site. That’s where the highest-margin jobs come from — the customers with 3–5x the average ticket.";
-    recommendation = "Make the page earn its rank: real install photos (not brochure stills), a “starts at” price, and the brands you carry (PowerView, Lutron, Somfy).";
+    recommendation = "Keep showing real installed motorized work — actual homes, the brands you carry. That’s what closes the high-ticket buyer.";
   } else if (matches.length >= 2) {
     score = 5;
     severity = "important";
     detail = "You mention motorization, but it doesn’t have its own page in navigation. Motorization buyers are the best leads you can get — whole-home jobs, higher tickets, repeat customers.";
     recommendation =
-      "Give motorization its own page with photos, a starting-at price range, and the brands you carry. The homeowners shopping for this product know exactly what they want — they find the site that takes it seriously.";
+      "Motorized buyers are the best-paying customers in this business. They need a dedicated page that shows you take this product line seriously — otherwise they click to someone who does.";
   } else if (matches.length === 1) {
     score = 2;
     severity = "important";
     detail = "Motorization shows up once on the page, in passing. That’s not enough for the homeowners who came specifically to ask about it.";
     recommendation =
-      "Homeowners Googling “motorized shades near me” have the highest purchase intent in the industry. A dedicated page is one of the highest-return additions you can make.";
+      "Homeowners Googling “motorized shades” are ready to spend. A passing mention isn’t enough — they need to feel you actually do this work, at volume.";
   } else {
     score = 0;
     severity = "critical";
     detail = "Motorization isn’t on the site at all. These are the best leads in the business — whole-home jobs, bigger tickets — and right now you’re not showing up for them.";
     recommendation =
-      "If you sell motorization, put it on the site prominently — dedicated page, brand partnerships, photos. If you don’t sell it yet, start. This is the product line modern homeowners want to ask about and you’re invisible for it.";
+      "Motorization is where the biggest tickets live. Right now you’re invisible for that search — and those are the easiest leads to win once you show up for them at all.";
   }
 
   return {
@@ -334,8 +334,8 @@ export const checkTrustSignals: CheckFn = (ctx) => {
         : `We only found ${count} of ${signals.length} trust signals on the page (${signals.filter((s) => s.found).map((s) => s.name).join(", ") || "none"}). Homeowners choose based on trust, not price — every missing signal is a reason to click someone else.`,
     recommendation:
       missing.length > 0
-        ? `Add the missing signals above the fold: ${missing.join(", ")}. Homeowners are scanning for reasons to trust you in the first 5 seconds — reviews, years in business, Hunter Douglas Gallery Dealer status, warranty. The competitor who shows these wins the call.`
-        : "Keep them visible above the fold, especially on mobile. That’s the first thing homeowners see.",
+        ? `Homeowners scan for reasons to trust you in the first 5 seconds. Every missing signal (${missing.join(", ")}) is a reason to click someone else. These should be visible above the fold — not buried on an About page.`
+        : "Keep these visible above the fold, especially on mobile. That’s the first thing homeowners see.",
     score,
     maxPoints: weight,
   };
@@ -395,8 +395,8 @@ export const checkMobileUsability: CheckFn = (ctx) => {
         : `Mobile issues detected: ${issues.join("; ")}. Most homeowners shop for blinds and shutters from their phone — a slow or un-tappable site loses them.`,
     recommendation:
       issues.length === 0
-        ? "Run a real-device Lighthouse check to catch tap-target and layout issues we can’t see from HTML alone."
-        : "Fix the basics: a responsive viewport meta, a tappable phone number, and trim the scripts/images loaded on the homepage. Over 70% of your buyers are on mobile — this is their first impression.",
+        ? "Run a real-device test every few months. What looks fine on desktop can trip up a thumb on mobile."
+        : "Over 70% of your buyers are shopping on mobile. Your site needs to be responsive, fast, and one-tap-friendly — that’s their first impression of you.",
     score,
     maxPoints: 8,
   };
@@ -414,8 +414,8 @@ export const checkHttps: CheckFn = (ctx) => {
     title: "Site served over HTTPS",
     detail: passing ? "Site is served over a secure HTTPS connection." : "Site is NOT served over HTTPS.",
     recommendation: passing
-      ? "Keep your certificate up to date; most hosts auto-renew."
-      : "Add SSL immediately. Chrome warns visitors about insecure sites and Google demotes them in search.",
+      ? "Keep the certificate current — most hosts auto-renew, but check annually."
+      : "An insecure site gets flagged by Chrome and demoted by Google. This is table-stakes — you can’t compete without it fixed.",
     score: passing ? 3 : 0,
     maxPoints: 3,
   };
@@ -434,22 +434,22 @@ export const checkTitleTag: CheckFn = (ctx) => {
     score = 0;
     severity = "critical";
     detail = "No <title> tag found.";
-    recommendation = "Every page needs a title. It's what shows in the browser tab and in Google results.";
+    recommendation = "This page needs a title. It’s what Google shows in search results and what the browser tab reads — it’s the most-seen copy on your site, and it’s missing.";
   } else if (len < 20) {
     score = 1;
     severity = "important";
     detail = `Title is only ${len} characters: "${title}".`;
-    recommendation = `Write a 30-60 character title that includes your service and city, e.g. "Blinds, Shades & Shutters in [City] | [Business Name]".`;
+    recommendation = `Your homepage title is wasted real estate. It should clearly say what you do, where you serve, and include your business name. This is what gets clicked in Google results.`;
   } else if (len > 70) {
     score = 2;
     severity = "important";
     detail = `Title is ${len} characters — Google will truncate it: "${title}".`;
-    recommendation = "Trim the title to 50-60 characters so the full text appears in search results.";
+    recommendation = "Your title gets cut off mid-sentence in search results. Tighten it so the part that matters shows up on the first pass.";
   } else {
     score = 4;
     severity = "pass";
     detail = `Title is ${len} characters — well-sized. "${title}".`;
-    recommendation = "Make sure it also mentions a city or region for local intent.";
+    recommendation = "Make sure it mentions a city or region — that’s where local search intent lives.";
   }
 
   return { id: "title_tag", category: "technical_seo", severity, title: "Homepage title tag", detail, recommendation, score, maxPoints: 4 };
@@ -469,17 +469,17 @@ export const checkMetaDescription: CheckFn = (ctx) => {
     severity = "important";
     detail = "No meta description set.";
     recommendation =
-      "Write a 140-160 character description that includes your service, city, and a call to action. This is often what people read in Google results.";
+      "Without a meta description, Google picks a random sentence from your homepage to show searchers. That’s a coin flip you can stop flipping — this is the pitch that earns the click.";
   } else if (len < 80 || len > 200) {
     score = 1;
     severity = "important";
     detail = `Meta description is ${len} characters — outside the ideal 140-160 range.`;
-    recommendation = "Aim for a crisp 140-160 character sentence that gives a reason to click.";
+    recommendation = "Your meta description is the pitch Google shows to searchers before they click. It deserves more attention than it’s getting.";
   } else {
     score = 3;
     severity = "pass";
     detail = `Meta description is ${len} characters — good length.`;
-    recommendation = "Review it every year to make sure it still reflects your current positioning.";
+    recommendation = "Refresh it annually to reflect your current positioning.";
   }
 
   return { id: "meta_description", category: "technical_seo", severity, title: "Meta description", detail, recommendation, score, maxPoints: 3 };
@@ -500,22 +500,22 @@ export const checkH1: CheckFn = (ctx) => {
     score = 0;
     severity = "important";
     detail = "No <h1> tag found on the page.";
-    recommendation = "Every page needs exactly one H1 that states what the page is about in plain language.";
+    recommendation = "Every page needs one clear main heading. Without it, the page reads as unfocused to both visitors and search engines.";
   } else if (count > 1) {
     score = 1;
     severity = "important";
     detail = `Multiple H1 tags (${count}) on the page.`;
-    recommendation = "Use exactly one H1 per page for clarity — use H2/H3 for supporting headings.";
+    recommendation = "Pick one clear main heading. Multiple H1s confuse search engines about what the page is actually about.";
   } else if (first.length < 8) {
     score = 1;
     severity = "important";
     detail = `H1 is very short: "${first}".`;
-    recommendation = "Write a meaningful H1 that tells visitors what the page covers in 5-10 words.";
+    recommendation = "Your main heading isn’t telling visitors — or Google — what this page is about. Make it say it clearly, in plain English.";
   } else {
     score = 2;
     severity = "pass";
     detail = `Single clear H1: "${first}".`;
-    recommendation = "Good. Mention your product + city if it's natural.";
+    recommendation = "Good. Mention your product + city if it reads naturally.";
   }
 
   return { id: "h1", category: "technical_seo", severity, title: "Heading structure (H1)", detail, recommendation, score, maxPoints: 2 };
@@ -546,25 +546,25 @@ export const checkLocalBusinessSchema: CheckFn = (ctx) => {
     score = 8;
     severity = "pass";
     detail = "LocalBusiness + review schema are in place. Google can show your stars and service area directly in search results — that’s extra clicks with zero extra ad spend.";
-    recommendation = "Check Search Console every few weeks for structured-data errors and fix anything flagged.";
+    recommendation = "Keep an eye on Search Console for structured-data errors. That’s where Google tells you if anything’s broken.";
   } else if (hasLocalBusiness) {
     score = 5;
     severity = "important";
     detail = "You have LocalBusiness schema but no reviews schema. That means Google knows who you are, but it isn’t showing your stars in search results.";
     recommendation =
-      "Add Review + AggregateRating schema. Star ratings next to your listing in search results typically boost clicks by 20–30% — same search position, more leads.";
+      "Your search listing could be showing star ratings — it isn’t. That’s a 20–30% click-through boost you’re leaving on the table at the same search position.";
   } else if (hasOrganization) {
     score = 2;
     severity = "important";
     detail = "You have basic Organization schema but not LocalBusiness. Google can’t tell it’s a local service business in your area — so it can’t put you in the Map Pack.";
     recommendation =
-      "Upgrade to LocalBusiness (or HomeAndConstructionBusiness) schema with address, phone, service area, and hours. This is what gets you into the local map pack that homeowners actually click.";
+      "Google can’t recognize you as a local service business without the right structured data. That’s the difference between showing up in the map pack homeowners actually click — and being invisible.";
   } else {
     score = 0;
     severity = "critical";
     detail = "No LocalBusiness structured data. Google has no machine-readable signal that you serve this area — so it favors the competitors that do.";
     recommendation =
-      "Add LocalBusiness JSON-LD with your name, address, phone, hours, service area, and a link to your Google Business Profile. Small technical lift, big visibility win — especially for Map Pack rankings.";
+      "Without the structured data signals, Google treats you as a generic website instead of a local service business. This is what keeps you out of the map pack — where homeowners actually book from.";
   }
 
   return {
@@ -600,23 +600,23 @@ export const checkAltText: CheckFn = (ctx) => {
     score = 3;
     severity = "minor";
     detail = "No images found on this page.";
-    recommendation = "For a visual business, add before/after photos, installed-in-a-home shots, or a product gallery.";
+    recommendation = "For a visual business, your homepage needs project photos — before/afters, installed-in-a-home shots.";
   } else if (pct >= 90) {
     score = 4;
     severity = "pass";
     detail = `${pct}% of images (${withAlt}/${total}) have alt text.`;
-    recommendation = "Keep it up. Quality matters too — descriptive alt text beats 'image1.jpg'.";
+    recommendation = "Keep descriptive alt text — “Roman shades in a Provo master bedroom” beats “shade2.jpg” every time.";
   } else if (pct >= 60) {
     score = 2;
     severity = "important";
     detail = `${pct}% of images have alt text. ${total - withAlt} images are missing descriptions.`;
-    recommendation = "Fill in descriptive alt text on the remaining images. Good for accessibility and image search.";
+    recommendation = "Fill in the rest. Good alt text helps accessibility AND image search — your project photos could be ranking on their own.";
   } else {
     score = 0;
     severity = "important";
     detail = `Only ${pct}% of images have alt text.`;
     recommendation =
-      "Add descriptive alt text to every image (especially project photos — 'Roman shades in a Provo master bedroom' beats 'shade2.jpg').";
+      "Your images aren’t working for you. Alt text is what makes photos findable in Google image search, and it’s what homeowners on screen readers rely on.";
   }
 
   return { id: "alt_text", category: "technical_seo", severity, title: "Image alt text coverage", detail, recommendation, score, maxPoints: 4 };
@@ -648,24 +648,24 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
     score = 4;
     severity = "pass";
     detail = "Online booking is integrated (Calendly or similar). Homeowners can schedule a measure without waiting for a callback — huge for conversion.";
-    recommendation = "Confirm the booking link shows real-time availability, not just a contact form. The win is instant scheduling.";
+    recommendation = "Make sure it shows real-time availability, not just a contact form. The win is instant scheduling.";
   } else if (hasForm && textHasBooking) {
     score = 3;
     severity = "pass";
     detail = "Quote/consultation form is present and called out in the page copy. Homeowners know how to convert.";
     recommendation =
-      "Upgrade to a real-time calendar-picker when you can (Calendly, Acuity). Form-only flows lose roughly 30% of would-be bookings to the wait for a callback.";
+      "Real-time scheduling beats a form every time. Form-only flows lose roughly 30% of would-be bookings to the wait for a callback.";
   } else if (hasForm) {
     score = 2;
     severity = "important";
     detail = "A form exists but there’s no obvious “book” or “request quote” call to action. Visitors don’t know what the next step is.";
-    recommendation = "Rename the CTA to something action-oriented: “Book a Free Measure” or “Get My Quote.” Homeowners don’t fill out forms labeled “Contact Us.”";
+    recommendation = "Your form needs a clear job. Homeowners don’t fill out anything labeled “Contact Us” — make the next step obvious and action-oriented.";
   } else {
     score = 0;
     severity = "critical";
     detail = "No form or online booking flow on this page. Homeowners who are ready to book (often at 9 PM after dinner) can’t — so they try the next site that lets them.";
     recommendation =
-      "Add a quote-request form or (better) a real-time booking tool. Converting the 9 PM browser into tomorrow’s measure appointment is how local installers double their lead volume without spending a dollar on ads.";
+      "Converting the 9 PM browser into tomorrow’s measure is how local installers double their lead volume without spending a dollar on ads. Right now, that conversion doesn’t happen on your site.";
   }
 
   return { id: "online_booking", category: "content_conversion", severity, title: "Online booking / quote request", detail, recommendation, score, maxPoints: 4 };
@@ -692,19 +692,19 @@ export const checkGallery: CheckFn = (ctx) => {
     score = 2;
     severity = "important";
     detail = `${imgCount} images on the page but no dedicated gallery. Homeowners scrolling for inspiration can’t find more — so they leave to find it elsewhere.`;
-    recommendation = "Build a /gallery page with categorized before/after photos — filter by product type (blinds / shades / shutters) or by room. Your best closing tool is the photo of a room that looks like theirs.";
+    recommendation = "Homeowners looking for inspiration need a place to keep scrolling. Your best closing tool is the photo of a room that looks like theirs.";
   } else if (instaLinks > 0) {
     score = 1;
     severity = "important";
     detail = "You link to Instagram but there’s no gallery on the site itself. Most visitors won’t click off to Instagram — but they’ll scroll 30 photos if they’re already on your site.";
     recommendation =
-      "Pull your Instagram photos into an on-site gallery. Same content, but now it keeps visitors on your site and builds visual trust right where they’ll decide to book.";
+      "Your Instagram work belongs on your own site. Visitors rarely click off to follow — but they’ll scroll your gallery if it’s right where they already are.";
   } else {
     score = 0;
     severity = "critical";
     detail = "No gallery, portfolio, or visual proof of installed work. Window treatments are a visual purchase — without photos, the biggest objection (“will it look right in my home?”) never gets answered.";
     recommendation =
-      "Add a photo gallery of real installs. You probably already have these on your phone — put them on the site. This is the single most effective lead-closer for a window treatment business.";
+      "Window treatments are a visual purchase. Without proof of work, the biggest objection — “will it look right in my home?” — never gets answered, and the sale doesn’t happen.";
   }
 
   return { id: "gallery", category: "content_conversion", severity, title: "Gallery / visual proof", detail, recommendation, score, maxPoints: 3 };
@@ -728,13 +728,13 @@ export const checkBlog: CheckFn = (ctx) => {
     severity = "pass";
     detail = "Blog or resource section linked.";
     recommendation =
-      "Keep posting. Once a month, 400-600 words on a real customer question ('How do I pick blinds for a west-facing window in Utah?') is plenty.";
+      "Keep publishing. The compounding matters more than the cadence — once a month on a real customer question is plenty.";
   } else {
     score = 0;
     severity = "important";
     detail = "No blog, guides, or content-marketing section detected.";
     recommendation =
-      "Add a blog — even 6 posts total answering the questions you hear at the measure appointment (insulation, motorization, child safety, warranty). Content compounds; ads don't.";
+      "Content compounds; ads don’t. Answering the questions you hear at every measure appointment — insulation, motorization, child safety — becomes evergreen lead flow once it’s live.";
   }
 
   return { id: "blog", category: "content_conversion", severity, title: "Blog / content marketing", detail, recommendation, score, maxPoints: 3 };

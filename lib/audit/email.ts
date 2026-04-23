@@ -203,14 +203,14 @@ export function renderFullReportHtml(report: AuditReport): string {
     }
 
     <div style="margin-top:36px;padding:24px;background:#fafaf9;border-radius:16px;">
-      <div style="font-size:19px;font-weight:700;color:#1c1c1e;margin-bottom:8px;letter-spacing:-0.015em;">Want me to walk through this with you?</div>
-      <div style="font-size:14.5px;color:#374151;line-height:1.55;margin-bottom:16px;">
-        I've seen exactly where businesses like yours lose leads — I can show you what actually moves the needle.
-        Twenty minutes, no pitch.
+      <div style="font-size:19px;font-weight:700;color:#1c1c1e;margin-bottom:10px;letter-spacing:-0.015em;">One more thing</div>
+      <div style="font-size:14.5px;color:#374151;line-height:1.6;margin-bottom:16px;">
+        If you want, I can walk through your site and show you what I’d fix first —
+        based on what actually drives leads. Twenty minutes, no pitch.
       </div>
       <a href="https://zeroremake.com/audit?book=${encodeURIComponent(report.domain)}"
         style="display:inline-block;background:#d65a31;color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;text-decoration:none;">
-        Book the walkthrough call
+        Book the walkthrough
       </a>
     </div>
 

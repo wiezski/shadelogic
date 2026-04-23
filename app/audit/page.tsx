@@ -292,6 +292,21 @@ export default function AuditPage() {
           {summary && stage !== "input" && stage !== "scanning" && (
             <>
               <ScoreBlock summary={summary} />
+
+              {/* Primary capture, above the fold — catches the user at
+                  the peak emotional moment (right after seeing the
+                  score and the lost-revenue line). The detailed version
+                  further down is kept as a second chance for users who
+                  scroll past. */}
+              {stage === "results" && (
+                <CompactEmailGate
+                  email={email}
+                  setEmail={setEmail}
+                  onSubmit={unlockReport}
+                  error={error}
+                />
+              )}
+
               <ScanMeta summary={summary} onRescan={rescan} />
               <TopThree findings={summary.topThree} />
               <QuickInsights insights={summary.quickInsights} />
@@ -314,8 +329,8 @@ export default function AuditPage() {
               )}
               {unlockStatus === "failed" && (
                 <UnlockBanner kind="error">
-                  Something went wrong sending the email. Try again, or reply
-                  to <a href="mailto:support@zeroremake.com" style={{ color: "inherit", textDecoration: "underline" }}>support@zeroremake.com</a> and I&apos;ll get it to you directly.
+                  Something went wrong sending the email. Try again, or email me
+                  at <a href="mailto:steve@zeroremake.com" style={{ color: "inherit", textDecoration: "underline" }}>steve@zeroremake.com</a> and I&apos;ll get it to you directly.
                 </UnlockBanner>
               )}
               {unlockStatus === "sending" && stage === "unlocked" && (
@@ -943,6 +958,18 @@ function TopThree({ findings }: { findings: FindingLite[] }) {
   return (
     <div style={{ marginTop: 24 }}>
       <SectionLabel>Top 3 things I&apos;d fix first</SectionLabel>
+      <div
+        style={{
+          fontSize: 13.5,
+          color: TEXT_SECONDARY,
+          letterSpacing: "-0.003em",
+          lineHeight: 1.5,
+          marginBottom: 6,
+          paddingLeft: 4,
+        }}
+      >
+        This is what I&apos;d tackle first if this were my business.
+      </div>
       <div>
         {findings.map((f, i) => (
           <div
@@ -1036,6 +1063,87 @@ function QuickInsights({ insights }: { insights: string[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// ─── Layer 2: compact inline email capture (above the fold) ──────
+
+function CompactEmailGate({
+  email,
+  setEmail,
+  onSubmit,
+  error,
+}: {
+  email: string;
+  setEmail: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  error: string | null;
+}) {
+  return (
+    <form onSubmit={onSubmit} style={{ marginTop: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          background: INPUT_FILL,
+          padding: 5,
+          borderRadius: 999,
+          alignItems: "stretch",
+        }}
+      >
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your email — get the full report"
+          autoComplete="email"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            padding: "9px 14px",
+            fontSize: 14.5,
+            color: TEXT_PRIMARY,
+            letterSpacing: "-0.012em",
+          }}
+        />
+        <button
+          type="submit"
+          style={{
+            background: ORANGE,
+            color: "#fff",
+            fontSize: 13.5,
+            fontWeight: 600,
+            padding: "9px 18px",
+            borderRadius: 999,
+            border: "none",
+            cursor: "pointer",
+            letterSpacing: "-0.012em",
+            whiteSpace: "nowrap",
+          }}
+          className="active:scale-[0.97]"
+        >
+          Send my full report →
+        </button>
+      </div>
+      {error && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: "8px 12px",
+            background: "rgba(214,68,58,0.08)",
+            color: "#c6443a",
+            fontSize: 13,
+            borderRadius: 10,
+            letterSpacing: "-0.005em",
+          }}
+        >
+          {error}
+        </div>
+      )}
+    </form>
   );
 }
 

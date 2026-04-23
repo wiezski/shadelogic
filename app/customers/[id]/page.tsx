@@ -691,42 +691,61 @@ export default function CustomerPage() {
 
   return (
     <PermissionGate require="view_customers">
-      <main style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }} className="min-h-screen p-4 pb-12">
-        <div className="mx-auto max-w-2xl">
-        <Link href="/" className="mb-4 inline-block text-sm hover:underline" style={{ color: "var(--zr-orange)" }}>← Back</Link>
+      <main style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }} className="min-h-screen pt-2 pb-24">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+        {/* iOS back */}
+        <div className="mb-3">
+          <Link href="/" style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Customers
+          </Link>
+        </div>
 
-        {/* ── Header ──────────────────────────────────────── */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold">{fullName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        {/* ── Header — big Apple-style name + calm meta row ── */}
+        <div className="mb-5 px-1">
+          <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)", lineHeight: 1.15 }}>{fullName}</h1>
+          <div style={{ marginTop: 4, fontSize: "13px", color: "rgba(60,60,67,0.55)", display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
             {speedToLeadHours !== null && (
-              <span className={`font-medium ${speedToLeadHours <= 1 ? "text-green-600" : speedToLeadHours <= 24 ? "text-amber-600" : "text-red-500"}`}>
-                Speed-to-lead: {formatSpeedToLead(speedToLeadHours)}
+              <span style={{ color: speedToLeadHours <= 1 ? "var(--zr-success)" : speedToLeadHours <= 24 ? "var(--zr-warning)" : "#c6443a", fontWeight: 500 }}>
+                Speed-to-lead {formatSpeedToLead(speedToLeadHours)}
               </span>
             )}
             {isStuck && (
-              <span className="font-medium text-amber-600">
-                No activity in {daysSinceActivity}d — follow up?
+              <span style={{ color: "var(--zr-warning)", fontWeight: 500 }}>
+                No activity in {daysSinceActivity}d
               </span>
             )}
           </div>
         </div>
 
-        {/* ── Next Action ─────────────────────────────────── */}
-        <div className="mb-4 rounded p-3" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-warning)" }}>Next Action Required</label>
+        {/* ── Next Action — calm inline field with contextual action chips ── */}
+        <div className="mb-5">
+          <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 6, paddingLeft: 4 }}>
+            Next action
+          </div>
           <input
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
-            className="w-full rounded px-3 py-2 text-sm"
+            style={{
+              width: "100%",
+              background: "rgba(60,60,67,0.06)",
+              color: "var(--zr-text-primary)",
+              fontSize: "14px",
+              letterSpacing: "-0.012em",
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "none",
+              outline: "none",
+            }}
             value={customer.next_action || ""}
             onChange={(e) => updateLocal("next_action", e.target.value)}
             onBlur={(e) => saveField("next_action", e.target.value || null)}
-            placeholder="e.g. Call to follow up on quote, Schedule measure..."
+            placeholder="e.g. Call to follow up on quote, Schedule measure"
           />
-          {/* Stage-based suggestion */}
           {!customer.next_action && customer.lead_status && STAGE_NEXT_ACTION[customer.lead_status] && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-xs text-amber-600">Suggested:</span>
+            <div className="mt-1.5 flex items-center gap-2 px-1">
+              <span style={{ fontSize: "12px", color: "rgba(60,60,67,0.5)" }}>Suggested:</span>
               <button
                 type="button"
                 onClick={() => {
@@ -734,25 +753,28 @@ export default function CustomerPage() {
                   updateLocal("next_action", suggestion);
                   saveField("next_action", suggestion);
                 }}
-                style={{ color: "var(--zr-warning)" }}
-                className="text-xs underline hover:opacity-80"
+                style={{ color: "var(--zr-orange)", fontSize: "12px", fontWeight: 500 }}
+                className="transition-opacity active:opacity-60"
               >
                 {STAGE_NEXT_ACTION[customer.lead_status]}
               </button>
             </div>
           )}
-          {/* Quick follow-up actions based on current stage */}
+
+          {/* Contextual action bar — only the relevant next step(s) for
+              the current stage. Reads as one primary "next step" +
+              quieter alternates. No emojis. */}
           {(() => {
             const stage = customer.lead_status;
-            const actions: { label: string; icon: string; action: () => void }[] = [];
+            const actions: { label: string; primary?: boolean; action: () => void }[] = [];
             if (stage === "New" || stage === "Contacted") {
-              actions.push({ label: "Schedule Consult", icon: "📅", action: () => { saveLeadStatus("Consult Scheduled"); } });
+              actions.push({ label: "Schedule consult", primary: true, action: () => { saveLeadStatus("Consult Scheduled"); } });
             }
             if (stage === "Consult Scheduled" || stage === "Contacted") {
-              actions.push({ label: "Schedule Measure", icon: "📐", action: () => { saveLeadStatus("Measure Scheduled"); } });
+              actions.push({ label: "Schedule measure", primary: !actions.length, action: () => { saveLeadStatus("Measure Scheduled"); } });
             }
             if (stage === "Measured") {
-              actions.push({ label: "Create Quote", icon: "💰", action: async () => {
+              actions.push({ label: "Create quote", primary: true, action: async () => {
                 setCreatingQuote(true);
                 const { data } = await supabase.from("quotes")
                   .insert([{ customer_id: customerId, title: `Quote for ${[customer.first_name, customer.last_name].filter(Boolean).join(" ")}`, status: "draft" }])
@@ -762,22 +784,34 @@ export default function CustomerPage() {
               }});
             }
             if (stage === "Quoted") {
-              actions.push({ label: "Mark as Sold", icon: "🎉", action: () => { saveLeadStatus("Sold"); } });
+              actions.push({ label: "Mark as sold", primary: true, action: () => { saveLeadStatus("Sold"); } });
             }
             if (stage === "Sold" || stage === "Contact for Install") {
-              actions.push({ label: "Schedule Install", icon: "🔧", action: () => { saveLeadStatus("Contact for Install"); } });
+              actions.push({ label: "Schedule install", primary: true, action: () => { saveLeadStatus("Contact for Install"); } });
             }
             if (stage === "Installed") {
-              actions.push({ label: "Mark Complete", icon: "✓", action: () => { saveLeadStatus("Complete"); } });
+              actions.push({ label: "Mark complete", primary: true, action: () => { saveLeadStatus("Complete"); } });
             }
             if (actions.length === 0) return null;
             return (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {actions.map(a => (
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
+                {actions.map((a, i) => a.primary && i === 0 ? (
                   <button key={a.label} onClick={a.action}
-                    className="flex items-center gap-1 rounded px-2.5 py-1.5 text-xs font-medium transition-colors"
-                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
-                    <span>{a.icon}</span> {a.label}
+                    className="transition-all active:scale-[0.97]"
+                    style={{
+                      background: "var(--zr-orange)", color: "#fff",
+                      fontSize: "14px", fontWeight: 600,
+                      padding: "9px 16px",
+                      borderRadius: 999,
+                      letterSpacing: "-0.012em",
+                    }}>
+                    {a.label}
+                  </button>
+                ) : (
+                  <button key={a.label} onClick={a.action}
+                    className="transition-opacity active:opacity-60"
+                    style={{ color: "var(--zr-orange)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}>
+                    {a.label}
                   </button>
                 ))}
               </div>
@@ -785,29 +819,46 @@ export default function CustomerPage() {
           })()}
         </div>
 
-        {/* ── Lead Status + Heat Score ─────────────────── */}
-        <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Lead Status</h2>
+        {/* ── Lead Status + Heat Score — canvas rows, no bordered card ── */}
+        <div className="mb-5">
+          <div className="mb-2 flex items-center justify-between gap-4 px-1">
+            <span style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>Lead status</span>
             <div className="flex gap-1">
-              {HEAT_SCORES.map((h) => (
-                <button key={h} onClick={() => saveHeatScore(h)}
-                  className={`rounded px-2.5 py-1 text-xs font-semibold ${customer.heat_score === h ? heatStyle[h] : "bg-gray-100 text-gray-500"}`}>
-                  {h}
-                </button>
-              ))}
+              {HEAT_SCORES.map((h) => {
+                const active = customer.heat_score === h;
+                return (
+                  <button key={h} onClick={() => saveHeatScore(h)}
+                    className={active ? heatStyle[h] : ""}
+                    style={{
+                      padding: "3px 10px",
+                      borderRadius: 999,
+                      fontSize: "11px",
+                      fontWeight: active ? 600 : 500,
+                      background: active ? undefined : "rgba(60,60,67,0.06)",
+                      color: active ? undefined : "rgba(60,60,67,0.55)",
+                    }}>
+                    {h}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 px-1" style={{ scrollbarWidth: "none" }}>
             {LEAD_STAGES.map((stage) => {
               const isActive = customer.lead_status === stage;
               return (
                 <button key={stage} onClick={() => saveLeadStatus(stage)}
-                  style={isActive ? {} : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-                  className={`shrink-0 rounded border px-3 py-1.5 text-xs font-medium transition-all ${
-                    isActive ? stageStyle[stage] + " border-current font-semibold"
-                    : ""
-                  }`}>
+                  className={`shrink-0 transition-all active:scale-[0.97] ${isActive ? stageStyle[stage] : ""}`}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    fontSize: "13px",
+                    fontWeight: isActive ? 600 : 500,
+                    letterSpacing: "-0.012em",
+                    background: isActive ? undefined : "rgba(60,60,67,0.06)",
+                    color: isActive ? undefined : "rgba(60,60,67,0.7)",
+                    whiteSpace: "nowrap",
+                  }}>
                   {stage}
                 </button>
               );
@@ -816,7 +867,7 @@ export default function CustomerPage() {
         </div>
 
         {/* ── Tags + Lead Source ───────────────────────── */}
-        <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+        <div className="mb-5">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Tags & Source</h2>
           <div className="mb-3">
             <label className="mb-1.5 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Tags</label>
@@ -881,7 +932,7 @@ export default function CustomerPage() {
                 updateLocal("lead_source", val);
                 await supabase.from("customers").update({ lead_source: val }).eq("id", customerId);
               }}
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+              style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
               className="w-full rounded px-2 py-1.5 text-sm">
               <option value="">— Not set —</option>
               {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -891,7 +942,7 @@ export default function CustomerPage() {
 
         {/* ── Assigned To ──────────────────────────────── */}
         {teamMembers.length > 0 && (
-          <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
+          <div className="mb-5">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Assigned To</h2>
             {permissions.assign_to_others ? (
               <select
@@ -901,7 +952,7 @@ export default function CustomerPage() {
                   updateLocal("assigned_to", val);
                   await supabase.from("customers").update({ assigned_to: val }).eq("id", customerId);
                 }}
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                 className="w-full rounded px-2 py-1.5 text-sm">
                 <option value="">— Unassigned —</option>
                 {teamMembers.map(m => (
@@ -918,20 +969,20 @@ export default function CustomerPage() {
           </div>
         )}
 
-        {/* ── Contact Info ─────────────────────────────── */}
-        <div className="mb-5 rounded p-4" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Contact Info</h2>
+        {/* ── Contact Info — no bordered card, calm section on canvas ── */}
+        <div className="mb-5">
+          <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 10, paddingLeft: 4 }}>Contact info</div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>First Name</label>
-              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={customer.first_name || ""}
+              <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" value={customer.first_name || ""}
                 onChange={(e) => updateLocal("first_name", e.target.value)}
                 onBlur={(e) => saveField("first_name", e.target.value || null)} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Last Name</label>
-              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={customer.last_name || ""}
+              <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" value={customer.last_name || ""}
                 onChange={(e) => updateLocal("last_name", e.target.value)}
                 onBlur={(e) => saveField("last_name", e.target.value || null)} />
             </div>
@@ -939,24 +990,24 @@ export default function CustomerPage() {
 
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Street Address</label>
-            <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={street}
+            <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" value={street}
               onChange={(e) => setStreet(e.target.value)} onBlur={saveAddress} placeholder="123 Main St" />
           </div>
           <div className="mt-3 grid grid-cols-[1fr_64px_96px] gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>City</label>
-              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={city}
+              <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" value={city}
                 onChange={(e) => setCity(e.target.value)} onBlur={saveAddress} placeholder="Salt Lake City" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>State</label>
-              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm uppercase" value={addrState}
+              <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm uppercase" value={addrState}
                 onChange={(e) => setAddrState(e.target.value.toUpperCase())} onBlur={saveAddress}
                 placeholder="UT" maxLength={2} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Zip</label>
-              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" value={zip}
+              <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" value={zip}
                 onChange={(e) => setZip(e.target.value)} onBlur={saveAddress} placeholder="84101" />
             </div>
           </div>
@@ -986,13 +1037,13 @@ export default function CustomerPage() {
                       className={`h-3 w-3 shrink-0 rounded-full border-2 ${p.is_primary ? "border-blue-500 bg-blue-500" : "border-gray-300 bg-white"}`} />
                     {/* Label */}
                     <select value={p.label} onChange={(e) => updatePhoneField(p.id, "label", e.target.value)}
-                      style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                      style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                       className="rounded px-2 py-1.5 text-xs w-24">
                       {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
                       <option value={p.label}>{PHONE_LABELS.includes(p.label as typeof PHONE_LABELS[number]) ? "" : p.label}</option>
                     </select>
                     {/* Phone input */}
-                    <input type="tel" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-1.5 text-sm"
+                    <input type="tel" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="flex-1 rounded px-3 py-1.5 text-sm"
                       value={p.phone}
                       onChange={(e) => setPhones((prev) => prev.map((ph) => ph.id === p.id ? { ...ph, phone: e.target.value } : ph))}
                       onBlur={(e) => updatePhoneField(p.id, "phone", e.target.value)}
@@ -1017,7 +1068,7 @@ export default function CustomerPage() {
                   {/* SMS composer inline */}
                   {composer === `sms-${p.id}` && (
                     <div className="mt-2 rounded p-3" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)" }}>
-                      <textarea style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" rows={4}
+                      <textarea style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" rows={4}
                         value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)}
                         placeholder="Type your message..." autoFocus />
                       <div className="mt-2 flex gap-2">
@@ -1027,7 +1078,7 @@ export default function CustomerPage() {
                           Open in Messages
                         </button>
                         <button onClick={() => setComposer(null)}
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                          style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                           className="rounded px-3 py-1.5 text-sm">Cancel</button>
                       </div>
                     </div>
@@ -1039,11 +1090,11 @@ export default function CustomerPage() {
             {/* Add phone form */}
             <form onSubmit={addPhone} className="mt-2 flex gap-2">
               <select value={newPhoneLabel} onChange={(e) => setNewPhoneLabel(e.target.value)}
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                 className="rounded px-2 py-1.5 text-xs w-24">
                 {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
               </select>
-              <input type="tel" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-1.5 text-sm"
+              <input type="tel" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="flex-1 rounded px-3 py-1.5 text-sm"
                 value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Add phone number" />
               <button type="submit" disabled={addingPhone || !newPhone.trim()}
                 style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
@@ -1057,7 +1108,7 @@ export default function CustomerPage() {
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Email</label>
             <div className="flex gap-2">
-              <input type="email" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-2 text-sm"
+              <input type="email" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="flex-1 rounded px-3 py-2 text-sm"
                 value={customer.email || ""}
                 onChange={(e) => updateLocal("email", e.target.value)}
                 onBlur={(e) => saveField("email", e.target.value || null)}
@@ -1075,9 +1126,9 @@ export default function CustomerPage() {
           {/* Email composer */}
           {composer === "email" && customer.email && (
             <div className="mt-2 rounded p-3" style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)" }}>
-              <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="mb-2 w-full rounded px-3 py-2 text-sm" placeholder="Subject"
+              <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="mb-2 w-full rounded px-3 py-2 text-sm" placeholder="Subject"
                 value={composerSubject} onChange={(e) => setComposerSubject(e.target.value)} autoFocus />
-              <textarea style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm" rows={6}
+              <textarea style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" rows={6}
                 value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)} />
               <div className="mt-2 flex gap-2">
                 <button onClick={() => sendEmail(customer.email!)} disabled={!composerMsg.trim()}
@@ -1086,7 +1137,7 @@ export default function CustomerPage() {
                   Open in Mail
                 </button>
                 <button onClick={() => setComposer(null)}
-                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                  style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                   className="rounded px-3 py-1.5 text-sm">Cancel</button>
               </div>
             </div>
@@ -1095,7 +1146,7 @@ export default function CustomerPage() {
           {/* ── Preferred Contact ──────────────────────── */}
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Preferred Contact Method / Notes</label>
-            <input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 text-sm"
+            <input style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm"
               value={customer.preferred_contact || ""}
               onChange={(e) => updateLocal("preferred_contact", e.target.value)}
               onBlur={(e) => saveField("preferred_contact", e.target.value || null)}
@@ -1139,7 +1190,7 @@ export default function CustomerPage() {
                     ))}
                   </div>
                   <div className="relative">
-                    <textarea style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 pr-10 text-sm" rows={2}
+                    <textarea style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 pr-10 text-sm" rows={2}
                       placeholder={`Log a ${actType.toLowerCase()}...`}
                       value={actNotes} onChange={(e) => setActNotes(e.target.value)} />
                     {/* Voice-to-text mic button */}
@@ -1178,10 +1229,10 @@ export default function CustomerPage() {
             {crmTab === "tasks" && (
               <>
                 <form onSubmit={addTask} className="mb-4 flex gap-2">
-                  <input ref={taskInputRef} style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="flex-1 rounded px-3 py-2 text-sm"
+                  <input ref={taskInputRef} style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="flex-1 rounded px-3 py-2 text-sm"
                     placeholder="Add a follow-up task..." value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)} />
-                  <input type="date" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="rounded px-2 py-2 text-sm"
+                  <input type="date" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="rounded px-2 py-2 text-sm"
                     value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
                   <button type="submit" disabled={savingTask || !taskTitle.trim()}
                     style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}

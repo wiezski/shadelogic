@@ -1270,23 +1270,32 @@ export default function MeasureJobPage() {
 
   return (
     <PermissionGate require="view_customers">
-      <main className="p-3 text-sm" style={{ background: "var(--zr-black)", color: "var(--zr-text-primary)" }}>
-        <div className="mx-auto max-w-7xl">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Link href={`/customers/${job.customer_id}`} style={{ color: "var(--zr-orange)" }} className="hover:underline">
-              ← Back to customer
+      <main className="pt-2 pb-24 text-sm" style={{ background: "var(--zr-canvas)", color: "var(--zr-text-primary)" }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        {/* iOS back + secondary Duplicate text action */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-4 flex-wrap">
+            <Link href={`/customers/${job.customer_id}`}
+              style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+              className="transition-opacity active:opacity-60">
+              <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+                <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Customer
             </Link>
             {job.install_mode && job.linked_measure_id && (
-              <Link href={`/measure-jobs/${job.linked_measure_id}`} style={{ color: "var(--zr-orange)" }} className="hover:underline text-xs">
-                View measurements →
+              <Link href={`/measure-jobs/${job.linked_measure_id}`}
+                style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                className="transition-opacity active:opacity-60">
+                View measurements
               </Link>
             )}
           </div>
           {!job.install_mode && (
             <button onClick={duplicateJob} disabled={duplicating}
-              className="text-xs rounded px-2.5 py-1 disabled:opacity-50" style={{ border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)", background: "transparent" }}>
-              {duplicating ? "Copying…" : "⎘ Duplicate Job"}
+              style={{ color: "rgba(60,60,67,0.7)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+              className="transition-opacity active:opacity-60">
+              {duplicating ? "Copying…" : "Duplicate"}
             </button>
           )}
         </div>
@@ -1305,7 +1314,7 @@ export default function MeasureJobPage() {
           </div>
         )}
 
-        <h1 className="mb-2 mt-1 text-xl font-bold">{job.title}</h1>
+        <h1 className="mb-3 mt-1 px-1" style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)", lineHeight: 1.15 }}>{job.title}</h1>
 
         {loadError && (
           <div className="mb-3 rounded p-3 text-xs" style={{ border: "1px solid var(--zr-warning)", background: "rgba(245, 158, 11, 0.1)", color: "var(--zr-warning)" }}>
@@ -1389,7 +1398,7 @@ export default function MeasureJobPage() {
                 <input
                   type="date"
                   className="w-full rounded px-2 py-1"
-                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                  style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                   value={job.scheduled_at ? job.scheduled_at.slice(0, 10) : ""}
                   onChange={(e) => updateJobLocal("scheduled_at", e.target.value)}
                   onBlur={(e) => saveJobField("scheduled_at", e.target.value || null)}
@@ -1401,7 +1410,7 @@ export default function MeasureJobPage() {
                   <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Measured By</label>
                   <input
                     className="w-32 rounded px-2 py-1"
-                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                    style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                     value={job.measured_by || ""}
                     onChange={(e) => updateJobLocal("measured_by", e.target.value)}
                     onBlur={(e) => saveJobField("measured_by", e.target.value || null)}
@@ -1417,7 +1426,7 @@ export default function MeasureJobPage() {
                   <input
                     ref={tallestWindowRef}
                     className="w-32 rounded px-2 py-1"
-                    style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                    style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                     value={job.tallest_window || ""}
                     onChange={(e) => handleTallestWindowChange(e.target.value)}
                     onBlur={(e) => handleTallestWindowBlur(e.target.value)}
@@ -1431,7 +1440,7 @@ export default function MeasureJobPage() {
               <label className="mb-1 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Notes</label>
               <textarea
                 className="h-24 w-full rounded px-2 py-1"
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                 value={job.overall_notes || ""}
                 onChange={(e) => updateJobLocal("overall_notes", e.target.value)}
                 onBlur={(e) => saveJobField("overall_notes", e.target.value || null)}
@@ -1440,20 +1449,39 @@ export default function MeasureJobPage() {
           </div>
         </div>
 
+        {/* Add Room — pill input with inline primary action, iOS-native */}
         {mode === "measure" && (
-        <div className="mb-3 flex gap-2">
-          <button onClick={addRoom} className="rounded px-3 py-1 text-white" style={{ background: "var(--zr-orange)" }}>
-            Add Room
-          </button>
-
+        <div className="mb-4 flex gap-2">
           <input
-            className="flex-1 rounded px-2 py-1"
-            style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+            className="flex-1"
+            style={{
+              background: "rgba(60,60,67,0.06)",
+              color: "var(--zr-text-primary)",
+              fontSize: "14px",
+              letterSpacing: "-0.012em",
+              padding: "10px 14px",
+              borderRadius: 999,
+              border: "none",
+              outline: "none",
+            }}
             value={newRoomName}
             onChange={(e) => setNewRoomName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRoom(); } }}
-            placeholder="Room name (press Enter to add)"
+            placeholder="Room name"
           />
+          <button onClick={addRoom}
+            className="transition-all active:scale-[0.97]"
+            style={{
+              background: "var(--zr-orange)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 600,
+              padding: "10px 20px",
+              borderRadius: 999,
+              letterSpacing: "-0.012em",
+            }}>
+            Add room
+          </button>
         </div>
         )}
 
@@ -1461,14 +1489,22 @@ export default function MeasureJobPage() {
           const roomWindows = windows.filter((w) => w.room_id === room.id);
 
           return (
-            <div key={room.id} className="mb-3 rounded p-2" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-              <div className="mb-1 flex items-center gap-2">
+            <div key={room.id} className="mb-4 rounded-[14px]" style={{ background: "var(--zr-surface-1)", padding: "10px 12px" }}>
+              <div className="mb-2 flex items-center gap-3">
                 <button
                   onClick={() => addWindow(room.id)}
-                  className="rounded px-2 py-1 text-xs text-white"
-                  style={{ background: "var(--zr-orange)" }}
+                  className="transition-all active:scale-[0.97]"
+                  style={{
+                    background: "rgba(214,90,49,0.10)",
+                    color: "var(--zr-orange)",
+                    fontSize: "12.5px",
+                    fontWeight: 600,
+                    padding: "5px 12px",
+                    borderRadius: 999,
+                    letterSpacing: "-0.012em",
+                  }}
                 >
-                  Add Window
+                  + Add window
                 </button>
 
                 <input
@@ -1482,7 +1518,7 @@ export default function MeasureJobPage() {
 
               <textarea
                 className="mb-2 h-12 w-full rounded px-2 py-1"
-                style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                 placeholder="Room notes"
                 value={room.room_notes || ""}
                 onChange={(e) => updateRoomLocal(room.id, "room_notes", e.target.value)}
@@ -1542,7 +1578,7 @@ export default function MeasureJobPage() {
                         ref={(el) => { measureInputRefs.current[`${w.id}-width`] = el; }}
                         placeholder="Width"
                         className="w-full rounded px-2 py-1"
-                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                         value={w.width || ""}
                         onChange={(e) => handleMeasurementChange(w.id, "width", e.target.value)}
                         onBlur={(e) => handleMeasurementBlur(w.id, "width", e.target.value)}
@@ -1552,45 +1588,40 @@ export default function MeasureJobPage() {
                         ref={(el) => { measureInputRefs.current[`${w.id}-height`] = el; }}
                         placeholder="Height"
                         className="w-full rounded px-2 py-1"
-                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                         value={w.height || ""}
                         onChange={(e) => handleMeasurementChange(w.id, "height", e.target.value)}
                         onBlur={(e) => handleMeasurementBlur(w.id, "height", e.target.value)}
                       />
 
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-1">
-                          <input
-                            type="radio"
-                            name={`mount-${w.id}`}
-                            checked={w.mount_type === "IM"}
-                            onChange={() => {
-                              updateWindowLocal(w.id, "mount_type", "IM");
-                              saveWindowField(w.id, "mount_type", "IM");
-                            }}
-                          />
-                          IM
-                        </label>
-
-                        <label className="flex items-center gap-1">
-                          <input
-                            type="radio"
-                            name={`mount-${w.id}`}
-                            checked={w.mount_type === "OM"}
-                            onChange={() => {
-                              updateWindowLocal(w.id, "mount_type", "OM");
-                              saveWindowField(w.id, "mount_type", "OM");
-                            }}
-                          />
-                          OM
-                        </label>
+                      {/* Mount type — iOS segmented pill, large tap target for field use */}
+                      <div className="grid grid-cols-2 p-1 rounded-full" style={{ background: "var(--zr-surface-3)" }}>
+                        {[
+                          { key: "IM", label: "Inside" },
+                          { key: "OM", label: "Outside" },
+                        ].map(opt => {
+                          const active = w.mount_type === opt.key;
+                          return (
+                            <button key={opt.key} type="button"
+                              onClick={() => {
+                                updateWindowLocal(w.id, "mount_type", opt.key as "IM" | "OM");
+                                saveWindowField(w.id, "mount_type", opt.key);
+                              }}
+                              className="py-2 text-[13px] font-semibold rounded-full transition-all"
+                              style={active
+                                ? { background: "var(--zr-surface-1)", color: "var(--zr-text-primary)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }
+                                : { background: "transparent", color: "var(--zr-text-secondary)" }}>
+                              {opt.label}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <input
                         ref={(el) => { measureInputRefs.current[`${w.id}-casing_depth`] = el; }}
                         placeholder="Casing Depth"
                         className="w-full rounded px-2 py-1"
-                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                         value={w.casing_depth || ""}
                         onChange={(e) =>
                           handleMeasurementChange(w.id, "casing_depth", e.target.value)
@@ -1605,7 +1636,7 @@ export default function MeasureJobPage() {
                       <input
                         placeholder="Product"
                         className="w-full rounded px-2 py-1"
-                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                         value={w.product || ""}
                         onChange={(e) => updateWindowLocal(w.id, "product", e.target.value)}
                         onBlur={(e) => saveWindowField(w.id, "product", e.target.value || null)}
@@ -1614,7 +1645,7 @@ export default function MeasureJobPage() {
                       <input
                         placeholder="Lift System"
                         className="w-full rounded px-2 py-1"
-                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                         value={w.lift_system || ""}
                         onChange={(e) => updateWindowLocal(w.id, "lift_system", e.target.value)}
                         onBlur={(e) =>
@@ -1669,7 +1700,7 @@ export default function MeasureJobPage() {
                             ? "block min-h-[98px]"
                             : "hidden min-h-[98px] sm:block"
                         }`}
-                        style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                         value={w.notes || ""}
                         onChange={(e) => updateWindowLocal(w.id, "notes", e.target.value)}
                         onBlur={(e) => saveWindowField(w.id, "notes", e.target.value || null)}
@@ -2119,7 +2150,7 @@ export default function MeasureJobPage() {
                                 <textarea
                                   placeholder="Add notes..."
                                   className="mb-1 h-12 w-full rounded px-2 py-1 text-xs"
-                                  style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}
+                                  style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
                                   value={issue.notes || ""}
                                   onChange={(e) => updateIssueNotes(issue.id, e.target.value)}
                                 />
@@ -2190,7 +2221,7 @@ export default function MeasureJobPage() {
                   <div>
                     <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Customer Name</label>
                     <input value={signOffName} onChange={e => setSignOffName(e.target.value)}
-                      placeholder="Full name" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                      placeholder="Full name" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} />
                   </div>
 
                   <div>

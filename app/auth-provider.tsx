@@ -23,6 +23,7 @@ const PUBLIC_ROUTES = [
   "/i/",
   "/b/",
   "/audit", // public lead magnet — must work in incognito / logged out
+  "/admin", // internal admin page — has its own cookie-based gate
 ];
 
 export type TenantBranding = {

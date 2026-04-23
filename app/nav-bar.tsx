@@ -31,6 +31,7 @@ const HIDE_NAV_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/audit", // public lead magnet — owns its own nav
+  "/admin", // internal admin page — owns its own shell
 ];
 
 // ── Task Modes (imported from shared config) ──────────────────

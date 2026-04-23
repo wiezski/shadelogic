@@ -1,11 +1,23 @@
 // POST /api/audit/scan
 //
-// The Layer 1 endpoint for the /audit lead magnet. Takes a URL, runs
-// the scanner, inserts a row in audit_requests, and returns the
-// public-safe summary (score + top 3 + quick insights).
+// Layer 1 endpoint for the /audit lead magnet. Takes a URL, runs the
+// scanner (or returns a cached result), inserts a row in audit_requests,
+// and returns score + full findings + quickInsights.
 //
-// The full findings list stays server-side until /api/audit/unlock
-// is called with an email (Layer 2).
+// Rate limiting is SOFT by design:
+//   • no hard block — every scan is allowed through
+//   • above SOFT_NOTICE_THRESHOLD scans/IP/day we include `softLimit: true`
+//     so the client can display a subtle, non-blocking notice after results
+//   • above HARD_SLOWDOWN_THRESHOLD we add a small artificial delay to
+//     discourage bots, but STILL return real results
+//
+// Admin bypass — all limits and cache checks are skipped if:
+//   • client IP is in AUDIT_WHITELIST_IPS (comma-separated env var), OR
+//   • cookie zr_admin matches AUDIT_ADMIN_TOKEN env var
+//
+// Cache — default behavior is to reuse a recent (24h) scan for the same
+// domain. Client can force a fresh scan by sending `force: true` in the
+// request body ("Re-scan site" button).
 
 import { NextRequest, NextResponse } from "next/server";
 import { scanUrl, normalizeUrl, buildQuickInsights } from "@/lib/audit/scanner";
@@ -13,11 +25,11 @@ import type { Finding } from "@/lib/audit/types";
 import { getAuditAdminClient } from "@/lib/audit/db";
 
 export const runtime = "nodejs";
-// Allow up to 20s (scan itself is capped to ~10s + sidecar fetches + DB).
 export const maxDuration = 20;
 
 interface ScanBody {
   url: string;
+  force?: boolean;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -26,8 +38,15 @@ interface ScanBody {
   referer?: string;
 }
 
-const RATE_LIMIT_PER_IP_PER_DAY = 10;
+// Soft-notice kicks in above this many scans/IP in 24h. We still serve
+// every request — this is just a hint so the UI can show a subtle note.
+const SOFT_NOTICE_THRESHOLD = 15;
+// Above this level, we add a small artificial delay to discourage bots
+// without degrading the real-user experience.
+const HARD_SLOWDOWN_THRESHOLD = 60;
 const CACHE_WINDOW_HOURS = 24;
+
+// ── Helpers ─────────────────────────────────────────────────────────
 
 function getClientIp(req: NextRequest): string | null {
   const xff = req.headers.get("x-forwarded-for");
@@ -37,11 +56,38 @@ function getClientIp(req: NextRequest): string | null {
   return null;
 }
 
-function summarize(report: Awaited<ReturnType<typeof scanUrl>>) {
-  // Public payload for Layer 1. We include the full findings array so
-  // the client can render a dimmed/blurred preview behind the email gate
-  // (the findings aren't sensitive — they're checks on a public URL). The
-  // email capture is a psychological unlock, not a data gate.
+function getCookie(req: NextRequest, name: string): string | null {
+  const header = req.headers.get("cookie");
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [k, ...rest] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(rest.join("="));
+  }
+  return null;
+}
+
+function isAdminRequest(req: NextRequest, ip: string | null): boolean {
+  // IP allow-list
+  const whitelist = (process.env.AUDIT_WHITELIST_IPS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (ip && whitelist.includes(ip)) return true;
+
+  // Cookie-based admin token
+  const token = process.env.AUDIT_ADMIN_TOKEN;
+  if (token) {
+    const cookieVal = getCookie(req, "zr_admin");
+    if (cookieVal && cookieVal === token) return true;
+  }
+
+  return false;
+}
+
+function summarize(
+  report: Awaited<ReturnType<typeof scanUrl>>,
+  opts: { fromCache: boolean; softLimit?: boolean; rateLimitNote?: string | null },
+) {
   return {
     score: report.score,
     grade: report.grade,
@@ -56,10 +102,21 @@ function summarize(report: Awaited<ReturnType<typeof scanUrl>>) {
     })),
     quickInsights: report.quickInsights,
     scannedAt: report.scannedAt,
-    // Count of non-top-3 findings — used for copy like "N total issues"
     additionalFindings: Math.max(0, report.findings.length - report.topThree.length),
+    fromCache: opts.fromCache,
+    softLimit: opts.softLimit ?? false,
+    rateLimitNote: opts.rateLimitNote ?? null,
   };
 }
+
+function gradeFor(score: number): Awaited<ReturnType<typeof scanUrl>>["grade"] {
+  if (score >= 80) return "Strong";
+  if (score >= 60) return "Solid";
+  if (score >= 40) return "Needs Work";
+  return "Critical Gaps";
+}
+
+// ── Handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   let body: ScanBody;
@@ -77,7 +134,7 @@ export async function POST(req: NextRequest) {
   const normalized = normalizeUrl(rawUrl);
   if (!normalized) {
     return NextResponse.json(
-      { error: "That doesn't look like a valid public website URL." },
+      { error: "That doesn’t look like a valid public website URL." },
       { status: 400 },
     );
   }
@@ -85,52 +142,54 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   const userAgent = req.headers.get("user-agent") || null;
   const admin = getAuditAdminClient();
+  const isAdmin = isAdminRequest(req, ip);
+  const forceFresh = body.force === true || isAdmin;
 
-  // Rate limit by IP (skip if we couldn't resolve one)
-  if (ip) {
+  // Soft-limit check — NEVER blocks. Only used to flag the response so
+  // the UI can display a subtle note.
+  let softLimit = false;
+  let rateLimitNote: string | null = null;
+  let scanCountToday = 0;
+
+  if (ip && !isAdmin) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count } = await admin
       .from("audit_requests")
       .select("id", { count: "exact", head: true })
       .eq("ip", ip)
       .gte("created_at", since);
-    if ((count ?? 0) >= RATE_LIMIT_PER_IP_PER_DAY) {
-      return NextResponse.json(
-        {
-          error:
-            "You've hit the daily scan limit. Try again tomorrow or reach out directly — we can run a deeper check for you.",
-        },
-        { status: 429 },
-      );
+    scanCountToday = count ?? 0;
+
+    if (scanCountToday >= SOFT_NOTICE_THRESHOLD) {
+      softLimit = true;
+      rateLimitNote =
+        "You’ve run several scans today — still open, but full reports may be limited.";
+    }
+    // Bot mitigation: high-volume IPs get a small delay. Still resolves
+    // normally — we just slow them down.
+    if (scanCountToday >= HARD_SLOWDOWN_THRESHOLD) {
+      await new Promise((r) => setTimeout(r, 1200));
     }
   }
 
-  // Cache window: if this same domain was scanned recently (regardless of
-  // who asked), return that result instead of hitting the site again. Keeps
-  // us from hammering any one site and from paying for duplicate work.
+  // Cache lookup — only when not forcing a fresh scan.
   const cacheSince = new Date(Date.now() - CACHE_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const { data: cached } = await admin
-    .from("audit_requests")
-    .select("id, score, findings, top_three, url, domain, created_at")
-    .eq("domain", normalized.domain)
-    .gte("created_at", cacheSince)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: cached } = forceFresh
+    ? { data: null as null }
+    : await admin
+        .from("audit_requests")
+        .select("id, score, findings, top_three, url, domain, created_at")
+        .eq("domain", normalized.domain)
+        .gte("created_at", cacheSince)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
   let report: Awaited<ReturnType<typeof scanUrl>>;
+  let fromCache = false;
 
   if (cached && cached.findings) {
-    // Reuse cached scan but create a new submission row so we track each
-    // unique visitor's intent (they'll unlock under their own row).
-    const grade = (cached.score >= 80
-      ? "Strong"
-      : cached.score >= 60
-        ? "Solid"
-        : cached.score >= 40
-          ? "Needs Work"
-          : "Critical Gaps") as Awaited<ReturnType<typeof scanUrl>>["grade"];
-
+    fromCache = true;
     const cachedFindings = cached.findings as Finding[];
     let topThree = cached.top_three as Finding[] | null;
     if (!topThree || topThree.length === 0) {
@@ -142,13 +201,12 @@ export async function POST(req: NextRequest) {
 
     report = {
       score: cached.score,
-      grade,
+      grade: gradeFor(cached.score),
       domain: cached.domain,
       url: cached.url,
       pageTitle: null,
       findings: cachedFindings,
       topThree,
-      // Recompute insights so cached scans still show fresh outcome copy.
       quickInsights: buildQuickInsights(cachedFindings, cached.score, cached.domain),
       scannedAt: cached.created_at,
     };
@@ -161,8 +219,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Insert submission row — one per scan, each prospect gets their own row
-  // even if the underlying findings are cached.
+  // Insert submission row (admin scans also get logged so you can still
+  // see what was tested — feature, not a leak).
   const insertRow = {
     url: normalized.url,
     domain: normalized.domain,
@@ -186,14 +244,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (insertErr || !inserted) {
-    // We have a valid report — don't fail the user-facing response just
-    // because we couldn't log. Return the report with a warning.
     console.error("[audit/scan] insert failed:", insertErr);
-    return NextResponse.json(summarize(report));
+    return NextResponse.json(summarize(report, { fromCache, softLimit, rateLimitNote }));
   }
 
   return NextResponse.json({
     id: inserted.id,
-    ...summarize(report),
+    ...summarize(report, { fromCache, softLimit, rateLimitNote }),
   });
 }

@@ -43,6 +43,9 @@ interface Layer1Summary {
   quickInsights: string[];
   additionalFindings: number;
   scannedAt: string;
+  fromCache?: boolean;
+  softLimit?: boolean;
+  rateLimitNote?: string | null;
 }
 
 type Stage =
@@ -89,14 +92,30 @@ export default function AuditPage() {
   // instead of — or in addition to — the email unlock).
   const [showBookingForm, setShowBookingForm] = useState(false);
 
-  // Prefill booking domain if they came back via the emailed CTA (?book=domain)
+  // Prefill booking domain if they came back via the emailed CTA (?book=domain).
+  // Also: support setting an admin bypass cookie via ?admin=TOKEN so Steve
+  // can run unlimited scans from any device without editing env vars.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const bookDomain = params.get("book");
+    const adminToken = params.get("admin");
+
     if (bookDomain && stage === "input") {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time prefill from URL param
       setUrl(bookDomain);
+    }
+
+    if (adminToken) {
+      // 30-day cookie, path=/ so every /api/audit/* route sees it. The
+      // server checks this against AUDIT_ADMIN_TOKEN; mismatched tokens
+      // just fall through to normal user behavior.
+      document.cookie = `zr_admin=${encodeURIComponent(adminToken)}; max-age=2592000; path=/; SameSite=Lax`;
+      // Clean the token out of the URL so it doesn't leak if the user
+      // shares the page. Keep any other params (utm, book) intact.
+      params.delete("admin");
+      const clean = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (clean ? `?${clean}` : ""));
     }
   }, [stage]);
 
@@ -120,9 +139,17 @@ export default function AuditPage() {
 
   async function runScan(e: React.FormEvent) {
     e.preventDefault();
+    await performScan(url.trim(), { force: false });
+  }
+
+  async function rescan() {
+    if (!summary) return;
+    await performScan(summary.domain, { force: true });
+  }
+
+  async function performScan(rawUrl: string, opts: { force: boolean }) {
     setError(null);
-    const trimmed = url.trim();
-    if (!trimmed) {
+    if (!rawUrl) {
       setError("Paste the URL of the site you want to check.");
       return;
     }
@@ -135,7 +162,8 @@ export default function AuditPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: trimmed,
+          url: rawUrl,
+          force: opts.force,
           utm_source: utm.get("utm_source") || undefined,
           utm_medium: utm.get("utm_medium") || undefined,
           utm_campaign: utm.get("utm_campaign") || undefined,
@@ -146,8 +174,11 @@ export default function AuditPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        // Scan couldn't reach site / invalid URL / etc. Stay friendly.
         setError(data.error || "Something went wrong running the scan.");
-        setStage("input");
+        // Re-scan failures shouldn't wipe existing results — only fail back
+        // to the input stage if we never had results.
+        setStage(summary && opts.force ? "results" : "input");
         return;
       }
       setSummary(data as Layer1Summary);
@@ -155,7 +186,7 @@ export default function AuditPage() {
       setTimeout(() => setStage("results"), 300);
     } catch (err) {
       setError((err as Error).message || "Network error. Try again in a moment.");
-      setStage("input");
+      setStage(summary && opts.force ? "results" : "input");
     }
   }
 
@@ -250,6 +281,7 @@ export default function AuditPage() {
           {summary && stage !== "input" && stage !== "scanning" && (
             <>
               <ScoreBlock summary={summary} />
+              <ScanMeta summary={summary} onRescan={rescan} />
               <TopThree findings={summary.topThree} />
               <QuickInsights insights={summary.quickInsights} />
 
@@ -301,6 +333,10 @@ export default function AuditPage() {
               )}
               {stage === "booking" && <LoadingRow label="Sending your request…" />}
               {stage === "booked" && <BookedThankYou domain={summary.domain} />}
+
+              {summary.softLimit && summary.rateLimitNote && (
+                <SoftLimitNote>{summary.rateLimitNote}</SoftLimitNote>
+              )}
 
               <RestartRow
                 onRestart={() => {
@@ -1724,6 +1760,99 @@ function LoadingRow({ label }: { label: string }) {
       }}
     >
       {label}
+    </div>
+  );
+}
+
+// ─── Scan meta row — shows cache age + Re-scan link ───────────────
+
+function ScanMeta({
+  summary,
+  onRescan,
+}: {
+  summary: Layer1Summary;
+  onRescan: () => void;
+}) {
+  const [, force] = useState(0);
+  // Tick once a minute so "scanned X min ago" updates live without a full rerender.
+  useEffect(() => {
+    const t = setInterval(() => force((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const relative = relativeTime(summary.scannedAt);
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        marginBottom: 4,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 6px",
+        fontSize: 12.5,
+        color: TEXT_MUTED,
+        letterSpacing: "-0.003em",
+      }}
+    >
+      <span>
+        {summary.fromCache ? "Cached" : "Scanned"} {relative}
+      </span>
+      <button
+        type="button"
+        onClick={onRescan}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: ORANGE,
+          fontSize: 12.5,
+          fontWeight: 500,
+          letterSpacing: "-0.003em",
+          cursor: "pointer",
+          padding: 4,
+        }}
+        className="transition-opacity active:opacity-60"
+      >
+        Re-scan site
+      </button>
+    </div>
+  );
+}
+
+function relativeTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!isFinite(t)) return "";
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (s < 30) return "just now";
+  if (s < 90) return "a minute ago";
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+}
+
+// ─── Soft rate-limit notice (subtle, non-blocking) ────────────────
+
+function SoftLimitNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        marginTop: 24,
+        padding: "12px 16px",
+        background: "rgba(60,60,67,0.04)",
+        borderRadius: 12,
+        fontSize: 12.5,
+        color: TEXT_SECONDARY,
+        letterSpacing: "-0.003em",
+        lineHeight: 1.5,
+        textAlign: "center",
+      }}
+      role="note"
+    >
+      {children}
     </div>
   );
 }

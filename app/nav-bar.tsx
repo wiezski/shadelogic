@@ -19,8 +19,19 @@ type Notification = {
   created_at: string;
 };
 
-// Routes where the nav bar should never appear (public-facing portals)
-const HIDE_NAV_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/forgot-password", "/reset-password"];
+// Routes where the nav bar should never appear (public-facing portals
+// and marketing pages). These have their own chrome / nav / footer.
+const HIDE_NAV_ROUTES = [
+  "/b/",
+  "/q/",
+  "/i/",
+  "/intake",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/audit", // public lead magnet — owns its own nav
+];
 
 // ── Task Modes (imported from shared config) ──────────────────
 // MODE_NAV_FILTER is no longer used — focus modes only filter dashboard

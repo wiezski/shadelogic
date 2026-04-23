@@ -17,6 +17,12 @@ const OVERLAY_ALLOW_PATHS = [
   "/reset-password",
 ];
 
+// Paths that are public marketing pages — TrialGate should never render
+// any UI on these (no banner, no overlay). A trial countdown banner on
+// a public lead magnet would leak private billing state to visitors and
+// break the marketing shell.
+const PUBLIC_MARKETING_PATHS = ["/audit"];
+
 /**
  * TrialGate — SaaS trial enforcement.
  *
@@ -51,6 +57,10 @@ export function TrialGate() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
 
+  // Never render anything on public marketing pages, even for signed-in
+  // trial users visiting /audit.
+  const onPublicMarketing = PUBLIC_MARKETING_PATHS.some(p => pathname.startsWith(p));
+
   // Pull plan + trial_ends_at separately from the AuthProvider's own fetch so
   // we always see the current value (AuthProvider doesn't expose trial_ends_at).
   useEffect(() => {
@@ -67,6 +77,7 @@ export function TrialGate() {
 
   // Don't render on public / not-logged-in / still-loading states — the
   // AuthProvider handles those branches itself.
+  if (onPublicMarketing) return null;
   if (loading || !user || !companyId || !billing) return null;
 
   // If the user has upgraded to any paid plan, they're fine regardless of

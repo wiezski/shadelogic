@@ -13,8 +13,8 @@ const CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
-// Hide on public-facing portals
-const HIDE_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup"];
+// Hide on public-facing portals and marketing pages.
+const HIDE_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/audit"];
 
 export function FeedbackWidget() {
   const { user } = useAuth();

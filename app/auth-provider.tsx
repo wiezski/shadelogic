@@ -8,8 +8,22 @@ import { resolveFeatures, type Features } from "../lib/features";
 import { registerDeviceSession, heartbeatSession, removeDeviceSession } from "../lib/device-session";
 import type { User } from "@supabase/supabase-js";
 
-// Routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/signup", "/onboarding", "/q/", "/intake", "/forgot-password", "/reset-password", "/i/", "/b/"];
+// Routes that don't require authentication.
+// IMPORTANT: These routes bypass the auth gate entirely — they render
+// immediately (no loading spinner, no redirect to /login) regardless of
+// whether the visitor is signed in.
+const PUBLIC_ROUTES = [
+  "/login",
+  "/signup",
+  "/onboarding",
+  "/q/",
+  "/intake",
+  "/forgot-password",
+  "/reset-password",
+  "/i/",
+  "/b/",
+  "/audit", // public lead magnet — must work in incognito / logged out
+];
 
 export type TenantBranding = {
   slug: string | null;
@@ -208,8 +222,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }
 
-  // Show loading spinner while checking session
-  if (loading) {
+  // Show loading spinner while checking session — but ONLY on protected
+  // routes. Public routes (landing page, /audit, /q/[token], /b/[token],
+  // etc.) should render immediately without waiting on a session check so
+  // marketing pages feel fast and don't flash a black loading screen.
+  if (loading && !isPublic) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--zr-black)" }}>
         <div style={{ color: "var(--zr-text-muted)", fontSize: "14px" }}>Loading...</div>

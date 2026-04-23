@@ -29,17 +29,17 @@ const FEATURES = [
   {
     icon: "📅",
     title: "Scheduling & Installs",
-    desc: "Schedule measures and installs with calendar sync. Your crew sees their jobs, customers get reminders, and you see the full picture.",
+    desc: "Calendar for measures and installs. Your crew sees their jobs, customers get reminders, and nobody shows up to an install that isn't ready.",
   },
   {
     icon: "💰",
     title: "Invoicing & Payments",
-    desc: "Generate invoices, collect deposits, and get paid online with Stripe. Track who owes what and automate payment reminders.",
+    desc: "Generate invoices, collect deposits, and get paid online with Stripe. Track who owes you what and stop chasing balances over text.",
   },
   {
     icon: "📊",
     title: "Analytics Dashboard",
-    desc: "See your close rate, revenue trends, pipeline value, and team performance at a glance. Know what's working and what needs attention.",
+    desc: "Close rate, pipeline value, revenue trends, and team performance — the numbers that actually tell you if things are working, not buried in spreadsheets.",
   },
 ];
 
@@ -213,25 +213,31 @@ export function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="px-4 pt-16 pb-20 text-center">
+      <section className="px-4 pt-16 pb-14 text-center">
         <div className="mx-auto max-w-3xl">
           <div
-            className="mb-4 inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest"
+            className="mb-5 inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest"
             style={{ background: "#fef2f2", color: "var(--zr-orange)", letterSpacing: "2px" }}
           >
             Built for window treatment pros
           </div>
           <h1
-            className="text-4xl font-black leading-tight sm:text-5xl lg:text-6xl"
-            style={{ fontFamily: "var(--zr-font-display)", color: "#111827" }}
+            className="text-4xl font-black leading-[1.08] sm:text-5xl lg:text-6xl"
+            style={{ fontFamily: "var(--zr-font-display)", color: "#111827", letterSpacing: "-0.02em" }}
           >
-            Run your blinds business
+            Stop losing jobs, orders,
             <br />
-            <span style={{ color: "var(--zr-orange)" }}>from your phone.</span>
+            and customers in the chaos.
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg" style={{ color: "#6b7280", lineHeight: 1.7 }}>
-            CRM, quoting, scheduling, order tracking, and invoicing — everything a solo installer
-            or small team needs to go from sale to install without the chaos.
+          <h2
+            className="mt-3 text-2xl font-black sm:text-3xl lg:text-4xl"
+            style={{ fontFamily: "var(--zr-font-display)", color: "var(--zr-orange)", letterSpacing: "-0.02em", lineHeight: 1.15 }}
+          >
+            Run your entire blinds business from your phone.
+          </h2>
+          <p className="mx-auto mt-6 max-w-xl text-lg" style={{ color: "#4b5563", lineHeight: 1.6 }}>
+            Leads, measures, quotes, orders, installs, and invoices —
+            all in one place, all from your pocket.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
@@ -250,9 +256,21 @@ export function LandingPage() {
             </Link>
           </div>
           <p className="mt-4 text-xs" style={{ color: "#9ca3af" }}>
-            Works on iPhone, Android & desktop. No app download needed.
+            Works on iPhone, Android &amp; desktop. No app download needed.
           </p>
         </div>
+      </section>
+
+      {/* ── Operator positioning line — credibility bridge between hero and rest of page ── */}
+      <section className="px-4 pb-16 pt-2 text-center">
+        <p
+          className="mx-auto max-w-2xl text-base leading-relaxed sm:text-[17px]"
+          style={{ color: "#374151", fontStyle: "italic" }}
+        >
+          Built from real audits of window treatment businesses — by someone
+          who&apos;s run installs, managed teams, and fixed the problems
+          you&apos;re dealing with.
+        </p>
       </section>
 
       {/* ── Social Proof Banner ── */}
@@ -280,42 +298,59 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Pain Point ── */}
-      <section className="px-4 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-2xl font-bold sm:text-3xl" style={{ fontFamily: "var(--zr-font-display)" }}>
-            Sound familiar?
-          </h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 text-left">
-            {[
-              "Tracking leads in a notebook (or your head)",
-              "Texting your spouse measurements from the job site",
-              "Losing track of which orders shipped and which didn't",
-              "Hunting through the garage for the right boxes before an install",
-              "Manually writing up quotes and chasing down deposits",
-              "No idea what your close rate or pipeline looks like",
-            ].map((pain, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-lg p-4"
-                style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
-              >
-                <span className="mt-0.5 text-base" style={{ color: "var(--zr-orange)" }}>✗</span>
-                <span className="text-sm font-medium" style={{ color: "#991b1b" }}>{pain}</span>
-              </div>
-            ))}
-          </div>
-          <div
-            className="mt-8 rounded-xl p-6"
-            style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}
+      {/* ── Pain Point — plain list, not a grid of UI cards ── */}
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-2xl">
+          <h2
+            className="text-2xl font-bold sm:text-3xl text-center"
+            style={{ fontFamily: "var(--zr-font-display)", letterSpacing: "-0.02em" }}
           >
-            <p className="text-lg font-bold" style={{ color: "#166534" }}>
-              ZeroRemake replaces all of that with one app.
-            </p>
-            <p className="mt-1 text-sm" style={{ color: "#15803d" }}>
-              Built specifically for window treatment pros — not generic contractor software that doesn't understand your workflow.
-            </p>
-          </div>
+            If this sounds like your day…
+          </h2>
+          <ul className="mt-10 space-y-5 text-left">
+            {[
+              "You’re tracking leads in your head or a notebook",
+              "You’ve lost track of orders or shipments",
+              "You’re texting measurements from the job site",
+              "You’re digging through the garage for the right boxes",
+            ].map((pain, i, arr) => (
+              <li
+                key={i}
+                className="flex items-start gap-4 pb-5"
+                style={{
+                  borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none",
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="mt-[11px] shrink-0"
+                  style={{
+                    display: "inline-block",
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: "var(--zr-orange)",
+                  }}
+                />
+                <span
+                  className="text-[17px] leading-relaxed"
+                  style={{ color: "#1f2937" }}
+                >
+                  {pain}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p
+            className="mt-10 text-center text-xl font-bold sm:text-2xl"
+            style={{
+              fontFamily: "var(--zr-font-display)",
+              color: "#111827",
+              letterSpacing: "-0.015em",
+            }}
+          >
+            That&apos;s exactly what ZeroRemake fixes.
+          </p>
         </div>
       </section>
 
@@ -324,7 +359,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <h2 className="text-2xl font-bold sm:text-3xl" style={{ fontFamily: "var(--zr-font-display)" }}>
-              Everything you need, nothing you don't
+              Everything you need, nothing you don&apos;t
             </h2>
             <p className="mt-3 text-base" style={{ color: "#6b7280" }}>
               Sale to install, all in your pocket.
@@ -354,9 +389,9 @@ export function LandingPage() {
           </h2>
           <div className="grid gap-8 sm:grid-cols-3">
             {[
-              { step: "1", title: "Sign Up", desc: "Create your account in 30 seconds. No app download needed." },
-              { step: "2", title: "Add Your First Lead", desc: "Enter a customer and start tracking. Save to your phone's home screen for the app experience." },
-              { step: "3", title: "Measure, Quote, Install", desc: "Use ZeroRemake for the full workflow. See the difference on your very first job." },
+              { step: "1", title: "Sign up", desc: "Create your account in 30 seconds. No app store, no download — it runs in your browser." },
+              { step: "2", title: "Add your first lead", desc: "Type in a customer and you’re rolling. Save it to your phone’s home screen and it acts like a native app." },
+              { step: "3", title: "Measure, quote, install", desc: "Run one real job through it. You’ll know by the end of the day whether it belongs in your business." },
             ].map((s, i) => (
               <div key={i} className="flex flex-col items-center">
                 <div
@@ -387,7 +422,7 @@ export function LandingPage() {
                 style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}
               >
                 <p className="text-sm leading-relaxed mb-4" style={{ color: "#374151", fontStyle: "italic" }}>
-                  "{t.quote}"
+                  &ldquo;{t.quote}&rdquo;
                 </p>
                 <div className="flex items-center gap-3">
                   <div

@@ -52,10 +52,21 @@ export async function POST(req: NextRequest) {
   // ── 1. Demo workspace ─────────────────────────────────────────────
 
   try {
-    // Find or create auth user
-    const { data: existing, error: lookupErr } = await admin.auth.admin.listUsers();
-    if (lookupErr) throw new Error(`listUsers failed: ${lookupErr.message}`);
-    let demoUserId = existing?.users?.find((u) => u.email?.toLowerCase() === DEMO_EMAIL)?.id;
+    // Find-or-create the demo auth user. We look up by email via a
+    // SECURITY DEFINER RPC (get_auth_user_id_by_email) instead of the
+    // auth.admin.listUsers() API, which can intermittently fail with
+    // "Database error finding users" on Supabase even when the service
+    // role is correct.
+    let demoUserId: string | undefined;
+    const { data: existingUserId, error: lookupErr } = await admin.rpc(
+      "get_auth_user_id_by_email",
+      { p_email: DEMO_EMAIL },
+    );
+    if (lookupErr) {
+      console.warn("[admin/bootstrap] get_auth_user_id_by_email RPC failed:", lookupErr.message);
+    } else if (existingUserId) {
+      demoUserId = existingUserId as string;
+    }
 
     if (!demoUserId) {
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -63,9 +74,21 @@ export async function POST(req: NextRequest) {
         password: DEMO_PASSWORD,
         email_confirm: true,
       });
-      if (createErr) throw new Error(`createUser failed: ${createErr.message}`);
-      demoUserId = created.user?.id;
-      if (!demoUserId) throw new Error("createUser returned no user id");
+      if (createErr) {
+        // Possibly a race where the user got created between the
+        // RPC lookup and now. Retry the RPC once before giving up.
+        const { data: retryId } = await admin.rpc("get_auth_user_id_by_email", {
+          p_email: DEMO_EMAIL,
+        });
+        if (retryId) {
+          demoUserId = retryId as string;
+        } else {
+          throw new Error(`createUser failed: ${createErr.message}`);
+        }
+      } else {
+        demoUserId = created.user?.id;
+        if (!demoUserId) throw new Error("createUser returned no user id");
+      }
     }
 
     // Find or create company

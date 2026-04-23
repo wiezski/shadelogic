@@ -1025,61 +1025,97 @@ export default function CustomerPage() {
             </div>
           )}
 
-          {/* ── Phone Numbers ──────────────────────────── */}
+          {/* ── Phone Numbers — two rows on every width so Call/Text
+              never clip on mobile. Row 1: primary dot + label + input +
+              × delete. Row 2: Call · Text as plain iOS-style text
+              actions (never clip, match DESIGN.md share-sheet pattern). */}
           <div className="mt-4">
-            <label className="mb-2 block text-xs font-medium" style={{ color: "var(--zr-text-secondary)" }}>Phone Numbers</label>
-            <div className="space-y-2">
+            <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 8, paddingLeft: 4 }}>
+              Phone numbers
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {phones.map((p) => (
                 <div key={p.id}>
+                  {/* Row 1: number editor */}
                   <div className="flex items-center gap-2">
-                    {/* Primary dot */}
                     <button onClick={() => setPrimary(p.id)} title="Set as primary"
-                      className={`h-3 w-3 shrink-0 rounded-full border-2 ${p.is_primary ? "border-blue-500 bg-blue-500" : "border-gray-300 bg-white"}`} />
-                    {/* Label */}
+                      aria-label={p.is_primary ? "Primary number" : "Set as primary"}
+                      className="shrink-0 transition-opacity active:opacity-60"
+                      style={{
+                        width: 14, height: 14, borderRadius: "50%",
+                        background: p.is_primary ? "var(--zr-orange)" : "transparent",
+                        border: p.is_primary ? "none" : "1.5px solid rgba(60,60,67,0.25)",
+                      }} />
                     <select value={p.label} onChange={(e) => updatePhoneField(p.id, "label", e.target.value)}
-                      style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
-                      className="rounded px-2 py-1.5 text-xs w-24">
+                      style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em", fontSize: "13px", padding: "8px 10px", width: 82 }}
+                      className="shrink-0">
                       {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
                       <option value={p.label}>{PHONE_LABELS.includes(p.label as typeof PHONE_LABELS[number]) ? "" : p.label}</option>
                     </select>
-                    {/* Phone input */}
-                    <input type="tel" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="flex-1 rounded px-3 py-1.5 text-sm"
+                    <input type="tel"
+                      style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em", fontSize: "14px", padding: "8px 12px", minWidth: 0 }}
+                      className="flex-1"
                       value={p.phone}
                       onChange={(e) => setPhones((prev) => prev.map((ph) => ph.id === p.id ? { ...ph, phone: e.target.value } : ph))}
                       onBlur={(e) => updatePhoneField(p.id, "phone", e.target.value)}
                       placeholder="801-555-1234" />
-                    {/* Call */}
-                    <button onClick={() => handleCall(p.phone)}
-                      style={{ background: "var(--zr-success)", color: "#fff", border: `1px solid var(--zr-success)` }}
-                      className="rounded px-2.5 py-1.5 text-xs font-medium">
-                      Call
-                    </button>
-                    {/* Text */}
-                    <button onClick={() => openSmsComposer(p.id)}
-                      style={composer === `sms-${p.id}` ? { background: "var(--zr-info)", color: "#fff", border: `1px solid var(--zr-info)` } : { background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-secondary)" }}
-                      className={`rounded px-2.5 py-1.5 text-xs font-medium`}>
-                      Text
-                    </button>
-                    {/* Delete */}
                     <button onClick={() => deletePhone(p.id)}
-                      className="text-xs text-gray-300 hover:text-red-400">✕</button>
+                      aria-label="Delete phone"
+                      className="shrink-0 transition-opacity active:opacity-60"
+                      style={{ color: "rgba(60,60,67,0.4)", fontSize: "18px", lineHeight: 1, padding: "4px 6px" }}>
+                      ×
+                    </button>
                   </div>
+                  {/* Row 2: Call + Text as iOS-style inline actions.
+                      paddingLeft aligns with the phone input column
+                      (dot 14 + gap 8 + label 82 + gap 8 = 112). */}
+                  {p.phone && (
+                    <div className="flex items-center gap-6 mt-1.5" style={{ paddingLeft: 112 }}>
+                      <button onClick={() => handleCall(p.phone)}
+                        className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
+                        style={{ color: "var(--zr-success)", fontSize: "13px", fontWeight: 600, letterSpacing: "-0.012em" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                        Call
+                      </button>
+                      <button onClick={() => openSmsComposer(p.id)}
+                        className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
+                        style={{
+                          color: composer === `sms-${p.id}` ? "var(--zr-info)" : "var(--zr-orange)",
+                          fontSize: "13px", fontWeight: 600, letterSpacing: "-0.012em",
+                        }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Text
+                      </button>
+                    </div>
+                  )}
 
-                  {/* SMS composer inline */}
+                  {/* SMS composer — calm canvas treatment, no blue box */}
                   {composer === `sms-${p.id}` && (
-                    <div className="mt-2 rounded p-3" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)" }}>
-                      <textarea style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="w-full rounded px-3 py-2 text-sm" rows={4}
+                    <div className="mt-2" style={{ paddingLeft: 22 }}>
+                      <textarea
+                        style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 12, letterSpacing: "-0.012em", fontSize: "14px", padding: "10px 14px", resize: "vertical", fontFamily: "inherit" }}
+                        className="w-full" rows={3}
                         value={composerMsg} onChange={(e) => setComposerMsg(e.target.value)}
-                        placeholder="Type your message..." autoFocus />
-                      <div className="mt-2 flex gap-2">
+                        placeholder="Type your message" autoFocus />
+                      <div className="mt-2 flex items-center justify-end gap-4">
+                        <button onClick={() => setComposer(null)}
+                          style={{ color: "rgba(60,60,67,0.7)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                          className="transition-opacity active:opacity-60">Cancel</button>
                         <button onClick={() => sendSms(p.phone)} disabled={!composerMsg.trim()}
-                          style={{ background: "var(--zr-info)", color: "#fff", border: "none" }}
-                          className="rounded px-4 py-1.5 text-sm disabled:opacity-40">
+                          className="transition-all active:scale-[0.97]"
+                          style={{
+                            background: "var(--zr-orange)", color: "#fff",
+                            fontSize: "13px", fontWeight: 600,
+                            padding: "7px 16px", borderRadius: 999,
+                            letterSpacing: "-0.012em",
+                            opacity: !composerMsg.trim() ? 0.4 : 1,
+                          }}>
                           Open in Messages
                         </button>
-                        <button onClick={() => setComposer(null)}
-                          style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
-                          className="rounded px-3 py-1.5 text-sm">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -1088,17 +1124,25 @@ export default function CustomerPage() {
             </div>
 
             {/* Add phone form */}
-            <form onSubmit={addPhone} className="mt-2 flex gap-2">
+            <form onSubmit={addPhone} className="mt-3 flex gap-2">
               <select value={newPhoneLabel} onChange={(e) => setNewPhoneLabel(e.target.value)}
-                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }}
-                className="rounded px-2 py-1.5 text-xs w-24">
+                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em", fontSize: "13px", padding: "8px 10px", width: 82 }}
+                className="shrink-0">
                 {PHONE_LABELS.map((l) => <option key={l}>{l}</option>)}
               </select>
-              <input type="tel" style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em" }} className="flex-1 rounded px-3 py-1.5 text-sm"
+              <input type="tel"
+                style={{ background: "rgba(60,60,67,0.06)", border: "none", color: "var(--zr-text-primary)", borderRadius: 10, letterSpacing: "-0.012em", fontSize: "14px", padding: "8px 12px", minWidth: 0 }}
+                className="flex-1"
                 value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Add phone number" />
               <button type="submit" disabled={addingPhone || !newPhone.trim()}
-                style={{ background: "var(--zr-orange)", color: "#fff", border: "none" }}
-                className="rounded px-3 py-1.5 text-xs disabled:opacity-40">
+                className="shrink-0 transition-all active:scale-[0.97]"
+                style={{
+                  background: "var(--zr-orange)", color: "#fff",
+                  fontSize: "13px", fontWeight: 600,
+                  padding: "8px 16px", borderRadius: 999,
+                  letterSpacing: "-0.012em",
+                  opacity: addingPhone || !newPhone.trim() ? 0.4 : 1,
+                }}>
                 Add
               </button>
             </form>

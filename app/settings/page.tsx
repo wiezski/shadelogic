@@ -10,7 +10,7 @@ import { PLAN_LABELS, PLAN_FEATURES, PLAN_USER_LIMITS, FEATURE_LABELS, type Plan
 import { ROLES, ROLE_LABELS, ROLE_DEFAULTS, PERM_LABELS, resolvePermissions, type Role, type PermKey } from "../../lib/permissions";
 import { WIDGET_IDS, WIDGET_LABELS, ROLE_LAYOUTS, type WidgetId } from "../dashboard-widgets";
 import { BUSINESS_PRESETS, BUSINESS_TYPE_LIST, type BusinessType } from "../../lib/business-presets";
-import { MODE_LABELS, MODE_ICONS, MODE_WIDGETS, getModeWidgets, saveModeWidgets, resetModeWidgets, type TaskMode } from "../../lib/focus-modes";
+import { MODE_LABELS, MODE_WIDGETS, getModeWidgets, saveModeWidgets, resetModeWidgets, type TaskMode } from "../../lib/focus-modes";
 
 type WarehouseLocation = { name: string; notes: string };
 
@@ -2013,55 +2013,94 @@ function FocusModeWidgetsSection() {
   const currentWidgets = modeWidgets[activeMode] || MODE_WIDGETS[activeMode];
 
   return (
-    <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--zr-text-secondary)" }}>Focus Mode Widgets</h2>
-        {saved && <span className="text-xs" style={{ color: "#22c55e" }}>Saved!</span>}
+    <div>
+      {/* Section header */}
+      <div className="flex items-baseline justify-between mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>Focus mode widgets</span>
+        {saved && <span style={{ fontSize: "12px", color: "var(--zr-success)", fontWeight: 500, paddingBottom: 10 }}>Saved</span>}
       </div>
-      <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>
-        Choose which dashboard widgets appear in each focus mode. When you switch modes from the nav bar, the dashboard shows only these widgets.
+      <p style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginBottom: 14, letterSpacing: "-0.005em", lineHeight: 1.4, paddingLeft: 20, paddingRight: 20 }}>
+        Pick which dashboard widgets appear in each focus mode. Switching modes from the nav bar shows only these widgets.
       </p>
 
-      {/* Mode tabs */}
-      <div className="flex gap-1">
-        {modes.map(mode => (
-          <button key={mode} onClick={() => setActiveMode(mode)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
-            style={{
-              background: activeMode === mode ? "var(--zr-orange)" : "var(--zr-surface-2)",
-              color: activeMode === mode ? "#fff" : "var(--zr-text-secondary)",
-              border: "1px solid " + (activeMode === mode ? "var(--zr-orange)" : "var(--zr-border)"),
-            }}>
-            <span>{MODE_ICONS[mode]}</span>
-            <span>{MODE_LABELS[mode]}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Widget toggles for selected mode */}
-      <div className="space-y-1">
-        {(WIDGET_IDS as readonly WidgetId[]).map(id => {
-          const isOn = currentWidgets.includes(id);
+      {/* Mode tabs — clean text-only, no emoji, no pill chips */}
+      <div className="flex items-center gap-4 overflow-x-auto px-5 mb-4" style={{ scrollbarWidth: "none" }}>
+        {modes.map(mode => {
+          const active = activeMode === mode;
           return (
-            <div key={id} className="flex items-center gap-2.5 py-1.5 px-2 rounded"
-              style={{ background: isOn ? "var(--zr-surface-2)" : "transparent", border: "1px solid var(--zr-border)", opacity: isOn ? 1 : 0.5 }}>
-              <button onClick={() => toggleWidget(activeMode, id)} className="relative w-8 h-[18px] rounded-full transition-colors"
-                style={{ background: isOn ? "var(--zr-orange)" : "var(--zr-border)" }}>
-                <span className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all"
-                  style={{ left: isOn ? "14px" : "2px" }} />
-              </button>
-              <span className="text-xs font-medium" style={{ color: isOn ? "var(--zr-text-primary)" : "var(--zr-text-muted)" }}>
-                {WIDGET_LABELS[id]}
-              </span>
-            </div>
+            <button key={mode} onClick={() => setActiveMode(mode)}
+              className="shrink-0 transition-opacity active:opacity-60 relative flex flex-col items-center"
+              style={{
+                color: active ? "var(--zr-orange)" : "rgba(28,28,30,0.7)",
+                fontSize: "14px",
+                fontWeight: active ? 600 : 500,
+                letterSpacing: "-0.012em",
+                padding: "6px 2px",
+              }}>
+              {MODE_LABELS[mode]}
+              {active && (
+                <span style={{
+                  position: "absolute", bottom: 0, left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "60%", height: 2, borderRadius: 2,
+                  background: "var(--zr-orange)",
+                }} />
+              )}
+            </button>
           );
         })}
       </div>
 
-      <button onClick={() => resetMode(activeMode)} className="text-xs px-2 py-1 rounded"
-        style={{ color: "var(--zr-text-muted)", border: "1px solid var(--zr-border)" }}>
-        Reset {MODE_LABELS[activeMode]} to Default
-      </button>
+      {/* Widget rows — canvas list, iOS toggle switches on the right */}
+      <div>
+        {(WIDGET_IDS as readonly WidgetId[]).map((id, i, arr) => {
+          const isOn = currentWidgets.includes(id);
+          const isLast = i === arr.length - 1;
+          return (
+            <button key={id} type="button"
+              onClick={() => toggleWidget(activeMode, id)}
+              className="w-full flex items-center gap-3 text-left transition-colors zr-ios-row"
+              style={{
+                padding: "12px 20px",
+                borderBottom: isLast ? "none" : "0.5px solid rgba(60,60,67,0.08)",
+                background: "transparent",
+              }}>
+              <span style={{ flex: 1, fontSize: "15px", color: "var(--zr-text-primary)", fontWeight: 500, letterSpacing: "-0.012em" }}>
+                {WIDGET_LABELS[id]}
+              </span>
+              {/* iOS-style switch */}
+              <span style={{
+                position: "relative",
+                width: 42, height: 26,
+                borderRadius: 999,
+                background: isOn ? "var(--zr-success)" : "rgba(60,60,67,0.2)",
+                transition: "background 150ms ease",
+                flexShrink: 0,
+              }}>
+                <span style={{
+                  position: "absolute",
+                  top: 2,
+                  left: isOn ? 18 : 2,
+                  width: 22, height: 22,
+                  borderRadius: "50%",
+                  background: "#fff",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "left 150ms ease",
+                }} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Reset — quiet text secondary */}
+      <div className="mt-4 px-5">
+        <button onClick={() => resetMode(activeMode)}
+          style={{ color: "var(--zr-orange)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+          className="transition-opacity active:opacity-60">
+          Reset {MODE_LABELS[activeMode]} to default
+        </button>
+      </div>
     </div>
   );
 }

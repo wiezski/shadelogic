@@ -38,7 +38,7 @@ Read all four files before touching any code.
 Web Push is **fully coded** but inert until:
 1. Generate VAPID keys (`npx web-push generate-vapid-keys`)
 2. Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY` to Vercel env
-3. Apply `supabase/migrations/DRAFT_push_notifications.sql`
+3. Apply `supabase/migrations/phase43_push_notifications.sql`
 4. Deploy the edge function: `supabase functions deploy send-pushes`
 5. Test with the "Send test push" button in Settings
 
@@ -48,9 +48,9 @@ Web Push is **fully coded** but inert until:
 
 | File | Status |
 |---|---|
-| `DRAFT_push_notifications.sql` | Apply to turn on pushes (required for the main feature) |
-| `DRAFT_job_duration_estimator.sql` | Apply when you want the duration estimator (settings UI graceful-detects) |
-| `DRAFT_reviews_and_requests.sql` | Apply to move `/reviews` off localStorage (page graceful-detects) |
+| `phase43_push_notifications.sql` | Apply to turn on pushes (required for the main feature) |
+| `phase44_job_duration_estimator.sql` | Apply when you want the duration estimator (settings UI graceful-detects) |
+| `phase45_reviews_and_requests.sql` | Apply to move `/reviews` off localStorage (page graceful-detects) |
 | `DRAFT_blank_measure_flow.sql.removed` | Superseded — not needed (app-only approach used) |
 
 All three remaining DRAFTs are **safe**: new tables only, no changes to existing data, RLS + rollback blocks included.

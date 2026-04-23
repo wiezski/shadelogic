@@ -38,7 +38,7 @@ Note: `SUPABASE_SERVICE_ROLE_KEY` is already probably set if you've used the sen
 Supabase Dashboard → **SQL Editor** → **New query**. Paste the entire contents of:
 
 ```
-supabase/migrations/DRAFT_push_notifications.sql
+supabase/migrations/phase43_push_notifications.sql
 ```
 
 Run it. This creates:
@@ -104,7 +104,7 @@ If it doesn't work, check in order:
 - `app/api/push/subscribe/route.ts` — persists a subscription for the signed-in user
 - `app/api/push/unsubscribe/route.ts` — removes a subscription
 - `supabase/functions/send-pushes/index.ts` — Deno edge function, pulls due rows and fires web-push
-- `supabase/migrations/DRAFT_push_notifications.sql` — tables + cron schedule
+- `supabase/migrations/phase43_push_notifications.sql` — tables + cron schedule
 - `lib/estimator.ts` — pure computation helper for job duration rules
 
 ### Integration points
@@ -130,9 +130,9 @@ Every integration is wrapped in try/catch. If the migration isn't applied, the a
 
 | File | What it does | Apply when |
 |---|---|---|
-| `DRAFT_job_duration_estimator.sql` | `estimation_rules` + `job_duration_overrides` tables with RLS | You want to start configuring duration rules |
-| `DRAFT_reviews_and_requests.sql` | `google_reviews` cache, `review_requests` history, `company_settings.google_place_id` | You want `/reviews` to move off localStorage into real DB |
-| `DRAFT_push_notifications.sql` | The thing this doc is about | Do this one tonight to turn on pushes |
+| `phase44_job_duration_estimator.sql` | `estimation_rules` + `job_duration_overrides` tables with RLS | You want to start configuring duration rules |
+| `phase45_reviews_and_requests.sql` | `google_reviews` cache, `review_requests` history, `company_settings.google_place_id` | You want `/reviews` to move off localStorage into real DB |
+| `phase43_push_notifications.sql` | The thing this doc is about | Do this one tonight to turn on pushes |
 
 All three are safe — new tables only, nothing modifies existing data. Rollback blocks are at the bottom of each.
 

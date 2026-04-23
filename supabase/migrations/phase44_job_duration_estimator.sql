@@ -1,4 +1,4 @@
--- DRAFT — REVIEW BEFORE APPLYING
+-- Phase 44 — Job Duration Estimator
 -- ─────────────────────────────────────────────────────────────────────
 -- Job Duration Estimator: owner-defined rules that compute how long a
 -- job will take based on the product mix + install factors. The

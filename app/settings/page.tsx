@@ -1976,7 +1976,7 @@ function DashboardWidgetsSection() {
 // ── Duration Estimator Rules (per-company) ───────────────
 // Owner-configurable rules for how long jobs take. Reads/writes the
 // `estimation_rules` table. If the table doesn't exist yet (i.e. the
-// DRAFT_job_duration_estimator.sql migration isn't applied), the UI
+// phase44_job_duration_estimator.sql migration isn't applied), the UI
 // shows a clear "apply migration" state rather than crashing.
 function DurationEstimatorSection() {
   type Rule = {
@@ -2085,7 +2085,7 @@ function DurationEstimatorSection() {
         <div style={{ padding: "12px 20px", fontSize: "13px", color: "rgba(60,60,67,0.55)", lineHeight: 1.45 }}>
           The estimator tables haven&apos;t been created yet. Apply
           <code style={{ padding: "0 4px", fontFamily: "ui-monospace, Menlo, monospace", color: "var(--zr-text-primary)" }}>
-            supabase/migrations/DRAFT_job_duration_estimator.sql
+            supabase/migrations/phase44_job_duration_estimator.sql
           </code>
           from your Supabase SQL editor, then reload this page.
         </div>

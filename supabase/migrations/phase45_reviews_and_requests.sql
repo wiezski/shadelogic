@@ -1,6 +1,5 @@
--- DRAFT — REVIEW BEFORE APPLYING
+-- Phase 45 — Google Reviews + review requests
 -- ─────────────────────────────────────────────────────────────────────
--- Google Reviews + review requests.
 --
 -- Currently the /reviews page stores the Place ID in localStorage and
 -- logs sent requests to localStorage + `activity_log`. When you're

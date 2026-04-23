@@ -1,6 +1,5 @@
--- DRAFT — REVIEW BEFORE APPLYING
+-- Phase 43 — Web Push notifications
 -- ─────────────────────────────────────────────────────────────────────
--- Web Push notifications.
 --
 -- Two tables:
 --   push_subscriptions  — one row per (user × device). The browser's

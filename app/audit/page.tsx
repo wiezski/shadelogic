@@ -292,32 +292,23 @@ export default function AuditPage() {
           {summary && stage !== "input" && stage !== "scanning" && (
             <>
               <ScoreBlock summary={summary} />
-
-              {/* Primary capture, above the fold — catches the user at
-                  the peak emotional moment (right after seeing the
-                  score and the lost-revenue line). The detailed version
-                  further down is kept as a second chance for users who
-                  scroll past. */}
-              {stage === "results" && (
-                <CompactEmailGate
-                  email={email}
-                  setEmail={setEmail}
-                  onSubmit={unlockReport}
-                  error={error}
-                />
-              )}
-
               <ScanMeta summary={summary} onRescan={rescan} />
               <TopThree findings={summary.topThree} />
               <QuickInsights insights={summary.quickInsights} />
 
               {/* Full report: always rendered. Blurred/dimmed when the
-                  user hasn't captured the email yet, so the value of
-                  the unlock is visible right behind the gate. */}
+                  user hasn't captured email. The primary email CTA
+                  sits INSIDE FullReport, right under the heading —
+                  so the decision moment is aligned with the value
+                  they're about to unlock. */}
               <FullReport
                 findings={summary.findings}
                 summary={summary}
                 locked={stage !== "unlocked" && stage !== "booking" && stage !== "booked"}
+                email={email}
+                setEmail={setEmail}
+                onSubmitEmail={unlockReport}
+                emailError={error}
               />
 
               {/* Email-delivery confirmation banner. Appears only after
@@ -1066,88 +1057,7 @@ function QuickInsights({ insights }: { insights: string[] }) {
   );
 }
 
-// ─── Layer 2: compact inline email capture (above the fold) ──────
-
-function CompactEmailGate({
-  email,
-  setEmail,
-  onSubmit,
-  error,
-}: {
-  email: string;
-  setEmail: (v: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  error: string | null;
-}) {
-  return (
-    <form onSubmit={onSubmit} style={{ marginTop: 14 }}>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          background: INPUT_FILL,
-          padding: 5,
-          borderRadius: 999,
-          alignItems: "stretch",
-        }}
-      >
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="your email — get the full report"
-          autoComplete="email"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            padding: "9px 14px",
-            fontSize: 14.5,
-            color: TEXT_PRIMARY,
-            letterSpacing: "-0.012em",
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            background: ORANGE,
-            color: "#fff",
-            fontSize: 13.5,
-            fontWeight: 600,
-            padding: "9px 18px",
-            borderRadius: 999,
-            border: "none",
-            cursor: "pointer",
-            letterSpacing: "-0.012em",
-            whiteSpace: "nowrap",
-          }}
-          className="active:scale-[0.97]"
-        >
-          Send my full report →
-        </button>
-      </div>
-      {error && (
-        <div
-          style={{
-            marginTop: 8,
-            padding: "8px 12px",
-            background: "rgba(214,68,58,0.08)",
-            color: "#c6443a",
-            fontSize: 13,
-            borderRadius: 10,
-            letterSpacing: "-0.005em",
-          }}
-        >
-          {error}
-        </div>
-      )}
-    </form>
-  );
-}
-
-// ─── Layer 2: email gate ─────────────────────────────────────────
+// ─── Layer 2: email gate (detailed, lower-on-page secondary CTA) ──
 
 function EmailGate({
   email,
@@ -1391,10 +1301,21 @@ function FullReport({
   findings,
   summary,
   locked = false,
+  // When locked, these props are used to render the inline primary CTA
+  // directly under the "Full breakdown" heading. They are ignored on
+  // the unlocked render.
+  email = "",
+  setEmail,
+  onSubmitEmail,
+  emailError = null,
 }: {
   findings: Finding[];
   summary: Layer1Summary;
   locked?: boolean;
+  email?: string;
+  setEmail?: (v: string) => void;
+  onSubmitEmail?: (e: React.FormEvent) => void;
+  emailError?: string | null;
 }) {
   // Exclude Top 3 from the full-list section so we don't repeat them
   // right after the Top 3 block. Only the remaining findings are shown
@@ -1404,17 +1325,27 @@ function FullReport({
   const issues = remaining.filter((f) => f.severity !== "pass");
   const passing = remaining.filter((f) => f.severity === "pass");
 
+  // Optional micro-detail: content below the CTA starts faded out and
+  // fades in ~250ms after mount. Creates a sequence of
+  // "action (CTA) → then proof (blurred content)".
+  const [contentVisible, setContentVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setContentVisible(true), 220);
+    return () => clearTimeout(t);
+  }, []);
+
   // When locked, blur the content so visitors see there's more but
   // can't read the details. Pointer events disabled so hover/click
-  // does nothing.
-  const lockedStyle: React.CSSProperties = locked
-    ? {
-        filter: "blur(5px)",
-        opacity: 0.6,
-        pointerEvents: "none",
-        userSelect: "none",
-      }
-    : {};
+  // does nothing. Opacity is staged: 0 on mount, then transitions to
+  // the target value once contentVisible flips true.
+  const targetOpacity = locked ? 0.6 : 1;
+  const blurStyle: React.CSSProperties = {
+    filter: locked ? "blur(5px)" : "none",
+    opacity: contentVisible ? targetOpacity : 0,
+    transition: "opacity 420ms ease-out, filter 420ms ease-out",
+    pointerEvents: locked ? "none" : "auto",
+    userSelect: locked ? "none" : "auto",
+  };
 
   return (
     <div style={{ marginTop: 36, position: "relative" }}>
@@ -1429,21 +1360,106 @@ function FullReport({
       >
         Full breakdown
       </div>
-      <div
-        style={{
-          fontSize: 13.5,
-          color: TEXT_SECONDARY,
-          marginBottom: 20,
-          letterSpacing: "-0.005em",
-          lineHeight: 1.5,
-        }}
-      >
-        {locked
-          ? `${remaining.length} more check${remaining.length === 1 ? "" : "s"} in the full report, ordered by impact.`
-          : `Every check, ordered by impact. ${issues.length} issue${issues.length === 1 ? "" : "s"} worth your time, ${passing.length} already working.`}
-      </div>
 
-      <div style={lockedStyle} aria-hidden={locked}>
+      {/* Primary CTA — appears only when the report is still locked. */}
+      {locked && setEmail && onSubmitEmail && (
+        <form onSubmit={onSubmitEmail} style={{ marginTop: 10, marginBottom: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              background: INPUT_FILL,
+              padding: 5,
+              borderRadius: 999,
+              alignItems: "stretch",
+            }}
+          >
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your email — get the full report"
+              autoComplete="email"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                padding: "9px 14px",
+                fontSize: 14.5,
+                color: TEXT_PRIMARY,
+                letterSpacing: "-0.012em",
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                background: ORANGE,
+                color: "#fff",
+                fontSize: 13.5,
+                fontWeight: 600,
+                padding: "9px 18px",
+                borderRadius: 999,
+                border: "none",
+                cursor: "pointer",
+                letterSpacing: "-0.012em",
+                whiteSpace: "nowrap",
+              }}
+              className="active:scale-[0.97]"
+            >
+              Send my full report →
+            </button>
+          </div>
+          <div
+            style={{
+              fontSize: 13.5,
+              color: TEXT_SECONDARY,
+              marginTop: 10,
+              lineHeight: 1.5,
+              letterSpacing: "-0.005em",
+            }}
+          >
+            I&apos;ll show you exactly what to fix first — prioritized like I
+            would for a real client.
+          </div>
+          {emailError && (
+            <div
+              style={{
+                marginTop: 8,
+                padding: "8px 12px",
+                background: "rgba(214,68,58,0.08)",
+                color: "#c6443a",
+                fontSize: 13,
+                borderRadius: 10,
+                letterSpacing: "-0.005em",
+              }}
+            >
+              {emailError}
+            </div>
+          )}
+        </form>
+      )}
+
+      {/* Unlocked: show the meta line about what's in the report. */}
+      {!locked && (
+        <div
+          style={{
+            fontSize: 13.5,
+            color: TEXT_SECONDARY,
+            marginBottom: 20,
+            letterSpacing: "-0.005em",
+            lineHeight: 1.5,
+          }}
+        >
+          Every check, ordered by impact. {issues.length} issue
+          {issues.length === 1 ? "" : "s"} worth your time, {passing.length}{" "}
+          already working.
+        </div>
+      )}
+
+      {/* Blurred / unblurred content — faded in after the CTA lands. */}
+      <div style={blurStyle} aria-hidden={locked}>
         {issues.length > 0 && (
           <>
             <SectionLabel>What to fix, in order</SectionLabel>
@@ -1488,43 +1504,21 @@ function FullReport({
       {/* Gentle fade at the bottom of the locked preview so it reads
           as "more below, ungated" — not like a hard wall. */}
       {locked && (
-        <>
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 120,
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 80%, #ffffff 100%)",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              left: "50%",
-              bottom: 16,
-              transform: "translateX(-50%)",
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: TEXT_MUTED,
-              background: "rgba(255,255,255,0.95)",
-              padding: "6px 14px",
-              borderRadius: 999,
-              border: HAIRLINE,
-              pointerEvents: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Unlock below
-          </div>
-        </>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 120,
+            background:
+              "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 80%, #ffffff 100%)",
+            pointerEvents: "none",
+            opacity: contentVisible ? 1 : 0,
+            transition: "opacity 420ms ease-out",
+          }}
+        />
       )}
     </div>
   );

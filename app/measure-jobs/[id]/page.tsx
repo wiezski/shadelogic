@@ -942,6 +942,15 @@ export default function MeasureJobPage() {
 
   const validationMessages: string[] = [];
 
+  // Customer name guard — a measure can't be finished anonymously. This
+  // supports the quick-start "blank measure" flow where an installer
+  // begins with only a name: they can measure in the field, but Submit
+  // Measure is blocked until the customer record has at least a first
+  // name present.
+  if (!customer?.first_name?.trim() && !customer?.last_name?.trim()) {
+    validationMessages.push("Add a customer name before finishing this measure.");
+  }
+
   if (normalizeMeasurement(job?.tallest_window || "") === null) {
     validationMessages.push("Height of tallest window is invalid.");
   }
@@ -1315,6 +1324,23 @@ export default function MeasureJobPage() {
         )}
 
         <h1 className="mb-3 mt-1 px-1" style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)", lineHeight: 1.15 }}>{job.title}</h1>
+
+        {/* "Complete customer info" nudge — shown when the customer was
+            created from the blank-measure flow and still has only a name.
+            Installer can finish the measure with just a name, but this
+            surfaces the remaining fields for the office to fill in later. */}
+        {customer && customer.first_name && !customer.phone && !customer.address && (
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.6)", letterSpacing: "-0.005em" }}>
+              This customer has only a name. Add phone / address when you can.
+            </div>
+            <Link href={`/customers/${customer.id}`}
+              style={{ color: "var(--zr-orange)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
+              className="shrink-0 transition-opacity active:opacity-60">
+              Complete
+            </Link>
+          </div>
+        )}
 
         {loadError && (
           <div className="mb-3 rounded p-3 text-xs" style={{ border: "1px solid var(--zr-warning)", background: "rgba(245, 158, 11, 0.1)", color: "var(--zr-warning)" }}>

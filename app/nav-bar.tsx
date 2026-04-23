@@ -225,6 +225,7 @@ export function NavBar() {
           {[
             { href: "/schedule",  label: "Schedule",  show: features.scheduling && (permissions.manage_schedule || permissions.complete_installs) },
             { href: "/analytics", label: "Analytics", show: features.analytics && permissions.view_reports },
+            { href: "/reviews",   label: "Reviews",   show: !isInstaller && permissions.access_settings },
             { href: "/products",  label: "Products",  show: features.inventory && permissions.access_settings },
             { href: "/calculator", label: "Calculator", show: features.quoting && permissions.view_pricing },
             { href: "/payments",  label: "Payments",  show: features.quoting && permissions.view_financials },

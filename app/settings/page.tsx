@@ -2219,6 +2219,8 @@ function NotificationsSection() {
   const [state, setState] = useState<"loading" | "unsupported" | "ios-install-needed" | "denied" | "off" | "on">("loading");
   const [busy, setBusy]   = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<"idle" | "sending" | "sent" | "fail">("idle");
+  const [testError, setTestError] = useState<string | null>(null);
 
   async function refresh() {
     const { pushState } = await import("../../lib/push");
@@ -2226,6 +2228,36 @@ function NotificationsSection() {
     setState(s);
   }
   useEffect(() => { refresh(); }, []);
+
+  async function sendTest() {
+    setTestStatus("sending");
+    setTestError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/push/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setTestStatus("fail");
+        setTestError(body.error === "no-subscription"
+          ? "No device is subscribed yet. Tap Enable above first."
+          : body.error || `${res.status} ${res.statusText}`);
+        return;
+      }
+      setTestStatus("sent");
+      // Reset the "Sent" indicator after a few seconds
+      setTimeout(() => setTestStatus("idle"), 4000);
+    } catch (e) {
+      setTestStatus("fail");
+      setTestError((e as Error).message);
+    }
+  }
 
   async function onEnable() {
     setBusy(true); setError(null);
@@ -2315,6 +2347,30 @@ function NotificationsSection() {
         <p style={{ fontSize: "12.5px", color: "#c6443a", padding: "4px 20px 12px", letterSpacing: "-0.005em", lineHeight: 1.45 }}>
           {error}
         </p>
+      )}
+
+      {/* Test push — only surface when the user is actually subscribed */}
+      {state === "on" && (
+        <div style={{ padding: "8px 20px 16px" }}>
+          <button type="button" onClick={sendTest}
+            disabled={testStatus === "sending"}
+            className="transition-opacity active:opacity-60"
+            style={{
+              color: testStatus === "sent" ? "var(--zr-success)" : "var(--zr-orange)",
+              fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em",
+              opacity: testStatus === "sending" ? 0.5 : 1,
+            }}>
+            {testStatus === "sending" && "Queueing test…"}
+            {testStatus === "sent" && "Test sent — should arrive within a minute"}
+            {testStatus === "idle" && "Send test push"}
+            {testStatus === "fail" && "Try again"}
+          </button>
+          {testStatus === "fail" && testError && (
+            <p style={{ fontSize: "12.5px", color: "#c6443a", marginTop: 4, letterSpacing: "-0.005em", lineHeight: 1.4 }}>
+              {testError}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

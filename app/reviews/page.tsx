@@ -52,13 +52,13 @@ type ReviewRequestLog = {
 };
 
 const PLACE_ID_KEY = "zr-google-place-id";
-const REVIEW_LOG_KEY = "zr-review-request-log"; // local fallback until DB table ships
+const REVIEW_LOG_KEY = "zr-review-request-log"; // fallback when DB table not yet migrated
 
-function readPlaceId(): string {
+function readLocalPlaceId(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(PLACE_ID_KEY) || "";
 }
-function writePlaceId(v: string) {
+function writeLocalPlaceId(v: string) {
   if (typeof window === "undefined") return;
   if (v) localStorage.setItem(PLACE_ID_KEY, v);
   else localStorage.removeItem(PLACE_ID_KEY);
@@ -75,8 +75,102 @@ function appendLocalLog(entry: ReviewRequestLog) {
   localStorage.setItem(REVIEW_LOG_KEY, JSON.stringify(list.slice(0, 50)));
 }
 
+/** Try to read Place ID from company_settings.google_place_id first;
+ *  fall back to localStorage if the column doesn't exist yet. */
+async function loadPlaceId(companyId: string | null): Promise<string> {
+  if (companyId) {
+    try {
+      const { data, error } = await supabase
+        .from("company_settings")
+        .select("google_place_id")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (!error && data && (data as { google_place_id?: string | null }).google_place_id) {
+        return (data as { google_place_id: string }).google_place_id;
+      }
+    } catch { /* column probably doesn't exist yet */ }
+  }
+  return readLocalPlaceId();
+}
+
+/** Persist Place ID to DB when possible; always mirror to localStorage
+ *  so the "coming soon" scaffolding works before the migration too. */
+async function savePlaceId(companyId: string | null, placeId: string) {
+  writeLocalPlaceId(placeId);
+  if (!companyId) return;
+  try {
+    await supabase
+      .from("company_settings")
+      .update({ google_place_id: placeId || null })
+      .eq("company_id", companyId);
+  } catch { /* column doesn't exist yet — localStorage is the source */ }
+}
+
+/** Load review request history. Prefer DB when the table exists. */
+async function loadRequestHistory(companyId: string | null): Promise<ReviewRequestLog[]> {
+  if (companyId) {
+    try {
+      const { data, error } = await supabase
+        .from("review_requests")
+        .select("id, customer_id, channel, sent_at")
+        .eq("company_id", companyId)
+        .order("sent_at", { ascending: false })
+        .limit(20);
+      if (!error && data) {
+        // Need customer names — batch fetch
+        const custIds = [...new Set(data.map((r: { customer_id: string }) => r.customer_id))];
+        const { data: custs } = await supabase
+          .from("customers")
+          .select("id, first_name, last_name")
+          .in("id", custIds);
+        const nameMap: Record<string, string> = {};
+        (custs || []).forEach((c: { id: string; first_name: string | null; last_name: string | null }) => {
+          nameMap[c.id] = [c.first_name, c.last_name].filter(Boolean).join(" ");
+        });
+        return (data as Array<{ id: string; customer_id: string; channel: ReviewRequestLog["channel"]; sent_at: string }>).map(r => ({
+          id: r.id,
+          customer_id: r.customer_id,
+          customer_name: nameMap[r.customer_id] || "Customer",
+          channel: r.channel,
+          sent_at: r.sent_at,
+        }));
+      }
+    } catch { /* table doesn't exist yet */ }
+  }
+  return readLocalLog();
+}
+
+/** Persist a request. Writes to DB when possible AND to localStorage
+ *  so UI updates even on fresh setups. */
+async function persistRequest(
+  companyId: string | null,
+  userId: string | null,
+  customer: { id: string; first_name: string | null; last_name: string | null },
+  channel: "text" | "email",
+): Promise<ReviewRequestLog> {
+  const entry: ReviewRequestLog = {
+    id: `${customer.id}_${Date.now()}`,
+    customer_id: customer.id,
+    customer_name: [customer.first_name, customer.last_name].filter(Boolean).join(" "),
+    channel,
+    sent_at: new Date().toISOString(),
+  };
+  appendLocalLog(entry);
+  if (companyId) {
+    try {
+      await supabase.from("review_requests").insert([{
+        company_id: companyId,
+        customer_id: customer.id,
+        channel,
+        sent_by: userId,
+      }]);
+    } catch { /* table doesn't exist yet */ }
+  }
+  return entry;
+}
+
 export default function ReviewsPage() {
-  const { companyId } = useAuth();
+  const { companyId, user } = useAuth();
 
   const [placeId, setPlaceId] = useState<string>("");
   const [savedPlaceId, setSavedPlaceId] = useState<string>("");
@@ -86,17 +180,27 @@ export default function ReviewsPage() {
   const [log, setLog] = useState<ReviewRequestLog[]>([]);
   const [companyName, setCompanyName] = useState("our company");
 
+  // Initial read — localStorage as fast path
   useEffect(() => {
-    const saved = readPlaceId();
+    const saved = readLocalPlaceId();
     setPlaceId(saved);
     setSavedPlaceId(saved);
     setLog(readLocalLog());
   }, []);
 
+  // Full load — prefers DB values once companyId is known
   useEffect(() => {
     if (!companyId) return;
     (async () => {
       setLoading(true);
+
+      // Pull Place ID from DB if available (falls back to localStorage)
+      const dbPlaceId = await loadPlaceId(companyId);
+      if (dbPlaceId && dbPlaceId !== savedPlaceId) {
+        setPlaceId(dbPlaceId);
+        setSavedPlaceId(dbPlaceId);
+      }
+
       // Sold / installed customers are best review-request candidates
       const { data } = await supabase
         .from("customers")
@@ -106,7 +210,7 @@ export default function ReviewsPage() {
         .limit(50);
       setCustomers((data || []) as Customer[]);
 
-      // Try to grab company name for message templating. Falls back gracefully.
+      // Company name for message templating
       const { data: comp } = await supabase
         .from("company_settings")
         .select("name")
@@ -114,9 +218,13 @@ export default function ReviewsPage() {
         .maybeSingle();
       if (comp?.name) setCompanyName(comp.name);
 
+      // Request history — DB first, localStorage fallback
+      const history = await loadRequestHistory(companyId);
+      if (history.length > 0) setLog(history);
+
       setLoading(false);
     })();
-  }, [companyId]);
+  }, [companyId, savedPlaceId]);
 
   const selectedCustomer = useMemo(
     () => customers.find(c => c.id === selectedId) || null,
@@ -131,9 +239,10 @@ export default function ReviewsPage() {
       : "";
   }, [savedPlaceId]);
 
-  function savePlaceId() {
-    writePlaceId(placeId.trim());
-    setSavedPlaceId(placeId.trim());
+  async function handleSavePlaceId() {
+    const clean = placeId.trim();
+    await savePlaceId(companyId, clean);
+    setSavedPlaceId(clean);
   }
 
   function messageBody(first: string): string {
@@ -142,18 +251,10 @@ export default function ReviewsPage() {
   }
 
   async function logRequest(c: Customer, channel: "text" | "email") {
-    const entry: ReviewRequestLog = {
-      id: `${c.id}_${Date.now()}`,
-      customer_id: c.id,
-      customer_name: [c.first_name, c.last_name].filter(Boolean).join(" "),
-      channel,
-      sent_at: new Date().toISOString(),
-    };
-    appendLocalLog(entry);
+    const entry = await persistRequest(companyId, user?.id ?? null, c, channel);
     setLog(prev => [entry, ...prev]);
 
-    // Also log to activity_log so it shows in the customer timeline — safe,
-    // uses an existing table. Fails silently if the schema differs.
+    // Also log to activity_log so it shows in the customer timeline.
     try {
       await supabase.from("activity_log").insert([{
         customer_id: c.id,
@@ -209,7 +310,7 @@ export default function ReviewsPage() {
                   {savedPlaceId}
                 </div>
               </div>
-              <button onClick={() => { setSavedPlaceId(""); writePlaceId(""); }}
+              <button onClick={() => { setSavedPlaceId(""); setPlaceId(""); savePlaceId(companyId, ""); }}
                 style={{ color: "rgba(60,60,67,0.7)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em" }}
                 className="transition-opacity active:opacity-60 shrink-0">
                 Change
@@ -235,7 +336,7 @@ export default function ReviewsPage() {
                     outline: "none",
                     fontFamily: "ui-monospace, Menlo, monospace",
                   }} />
-                <button onClick={savePlaceId} disabled={!placeId.trim()}
+                <button onClick={handleSavePlaceId} disabled={!placeId.trim()}
                   className="transition-all active:scale-[0.97]"
                   style={{
                     background: "var(--zr-orange)", color: "#fff",

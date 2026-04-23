@@ -1,8 +1,65 @@
 # ZeroRemake — Session Handoff
 
 ## How to Resume
-Start new session with: "continuing ZeroRemake — read SESSION-HANDOFF.md, MASTER-SPEC.md, and MVP-BUILD-PLAN.md before doing anything."
-Read this file + MASTER-SPEC.md + MVP-BUILD-PLAN.md before touching any code.
+Start new session with: "continuing ZeroRemake — read SESSION-HANDOFF.md, MASTER-SPEC.md, MVP-BUILD-PLAN.md, and DESIGN.md before doing anything."
+Read all four files before touching any code.
+
+---
+
+## ⚡ Most recent session (Apr 22, 2026) — UI system lock + field-features build
+
+### What shipped (deployed to Vercel)
+
+**Design system locked** — `DESIGN.md` at the repo root is the canonical UI spec. Every future change must match. Anti-patterns list included (no bordered cards, no `--zr-black` bg, no emoji labels, no radio buttons, no saturated red, no 1px row borders, no long back links).
+
+**UI refactor sweep** — every major surface brought onto the system:
+- Dashboard widgets (KPI Strip, Shipments, Today's Focus, Quick Actions, Sales Pipeline, Operations)
+- Top nav + Focus Mode overlay + Notifications panel (text-only, underline-tab active state)
+- Customer detail page (header, Next Action contextual bar, Lead Status chips, Contact Info)
+- Measure jobs page (iOS back, Apple title, Add Room pill, segmented Inside/Outside mount type)
+- Quote detail page (status segmented control, Request Signature primary, Send-to-customer share-sheet)
+- Schedule page (pill segmented Day/Week/Month, softened calendar hairlines)
+- Analytics, Payments, Warehouse, Products, Library, Specs, Canvas — all flattened
+- All modals → iOS sheets (rounded-top 20pt, backdrop blur)
+- Phone row in Customer > Contact Info — Call/Text buttons no longer clip on mobile
+- Reminders page — computed "Happening now" feed (upcoming appointments + signature prompts) with Text/Directions quick actions
+
+**New field features:**
+- `/measure-jobs/new` — blank-measure quick-start (type a name, start measuring; finish-guard blocks Submit without customer name)
+- Contract Installer role tuned: nav filtered (Canvas/Builders hidden, Specs visible), dashboard trimmed to field widgets, Quick Action first tile becomes "New measure"
+- `/reviews` — Google review request scaffolding (Place ID input, Text/Email composer, request history; DB-first with localStorage fallback)
+- Web Push stack — service worker, `lib/push.ts` client helper, `/api/push/{subscribe,unsubscribe,test}`, `supabase/functions/send-pushes` edge function, `scheduled_pushes` queue with 30-min-before-appt + signature prompt triggers
+- Settings → Notifications toggle with "Send test push" button
+- Settings → Job Duration Estimator rules CRUD (per_product_type / fixed_if_flag / setup_time)
+- Global `overflow-x: hidden` safety net on `<html>` and `<body>`
+
+### Needs user action (see `SETUP-WEB-PUSH.md`)
+
+Web Push is **fully coded** but inert until:
+1. Generate VAPID keys (`npx web-push generate-vapid-keys`)
+2. Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY` to Vercel env
+3. Apply `supabase/migrations/DRAFT_push_notifications.sql`
+4. Deploy the edge function: `supabase functions deploy send-pushes`
+5. Test with the "Send test push" button in Settings
+
+~20 min total. The app works fine tonight without these — every DB-dependent feature shows a graceful "not configured yet" state.
+
+### Migration files awaiting review (in `supabase/migrations/DRAFT_*.sql`)
+
+| File | Status |
+|---|---|
+| `DRAFT_push_notifications.sql` | Apply to turn on pushes (required for the main feature) |
+| `DRAFT_job_duration_estimator.sql` | Apply when you want the duration estimator (settings UI graceful-detects) |
+| `DRAFT_reviews_and_requests.sql` | Apply to move `/reviews` off localStorage (page graceful-detects) |
+| `DRAFT_blank_measure_flow.sql.removed` | Superseded — not needed (app-only approach used) |
+
+All three remaining DRAFTs are **safe**: new tables only, no changes to existing data, RLS + rollback blocks included.
+
+### Left for next session
+
+1. **Estimator wire-through** — `lib/estimator.ts` has `computeEstimate()` ready. Wire up when you want: on appointment create for install/measure, pull the customer's latest quote line items, group by product category, call estimator, suggest a duration in the modal.
+2. **Google Business Profile OAuth** — `/reviews` page integration points are commented. Swap localStorage + message-templating for real review fetching + server-side auto-send when ready.
+3. **SESSION-HANDOFF cleanup** — this file is 700+ lines of history. Worth a consolidate pass at some point.
 
 ---
 

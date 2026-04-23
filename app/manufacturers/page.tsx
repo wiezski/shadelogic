@@ -356,59 +356,78 @@ export default function ManufacturersPage() {
                   )}
                 </div>
 
-                {/* Manufacturer account edit form */}
-                {editingMfg === manufacturer && (
-                  <div className="rounded p-4 space-y-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-orange)" }}>
-                    <h3 className="text-xs font-semibold uppercase" style={{ color: "var(--zr-orange)" }}>
-                      {manufacturer} — Account Details
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                {/* Manufacturer account edit form — iOS inline form, no orange box */}
+                {editingMfg === manufacturer && (() => {
+                  const fieldStyle: React.CSSProperties = {
+                    width: "100%",
+                    background: "rgba(60,60,67,0.06)",
+                    color: "var(--zr-text-primary)",
+                    fontSize: "14px",
+                    letterSpacing: "-0.012em",
+                    padding: "9px 13px",
+                    borderRadius: 10,
+                    border: "none",
+                    outline: "none",
+                  };
+                  const lblStyle: React.CSSProperties = {
+                    fontSize: "12px", color: "rgba(60,60,67,0.55)", fontWeight: 500,
+                    display: "block", marginBottom: 4, paddingLeft: 4, letterSpacing: "-0.003em",
+                  };
+                  return (
+                  <div style={{ padding: "14px 20px 18px", borderBottom: "0.5px solid rgba(60,60,67,0.08)" }}>
+                    <div style={{ fontSize: "11px", color: "rgba(60,60,67,0.55)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 10 }}>
+                      Account details
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Account #</label>
-                        <input value={acctNum} onChange={e => setAcctNum(e.target.value)}
-                          placeholder="DLR-12345" className="w-full rounded px-2 py-1.5 text-sm"
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                        <label style={lblStyle}>Account #</label>
+                        <input value={acctNum} onChange={e => setAcctNum(e.target.value)} placeholder="DLR-12345" style={fieldStyle} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Discount %</label>
+                        <label style={lblStyle}>Discount %</label>
                         <input value={discountPct} onChange={e => setDiscountPct(e.target.value)}
-                          type="number" min="0" max="100" placeholder="0" className="w-full rounded px-2 py-1.5 text-sm"
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                          type="number" min="0" max="100" placeholder="0" style={fieldStyle} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Rep Name</label>
-                        <input value={repName} onChange={e => setRepName(e.target.value)}
-                          placeholder="John Smith" className="w-full rounded px-2 py-1.5 text-sm"
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                        <label style={lblStyle}>Rep name</label>
+                        <input value={repName} onChange={e => setRepName(e.target.value)} placeholder="John Smith" style={fieldStyle} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Rep Phone</label>
-                        <input value={repPhone} onChange={e => setRepPhone(e.target.value)}
-                          placeholder="801-555-1234" className="w-full rounded px-2 py-1.5 text-sm"
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                        <label style={lblStyle}>Rep phone</label>
+                        <input value={repPhone} onChange={e => setRepPhone(e.target.value)} placeholder="801-555-1234" style={fieldStyle} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Rep Email</label>
-                        <input value={repEmail} onChange={e => setRepEmail(e.target.value)}
-                          placeholder="rep@hunterdouglas.com" className="w-full rounded px-2 py-1.5 text-sm"
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                        <label style={lblStyle}>Rep email</label>
+                        <input value={repEmail} onChange={e => setRepEmail(e.target.value)} placeholder="rep@hunterdouglas.com" style={fieldStyle} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Notes</label>
-                        <input value={mfgNotes} onChange={e => setMfgNotes(e.target.value)}
-                          placeholder="Preferred manufacturer" className="w-full rounded px-2 py-1.5 text-sm"
-                          style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+                        <label style={lblStyle}>Notes</label>
+                        <input value={mfgNotes} onChange={e => setMfgNotes(e.target.value)} placeholder="Preferred manufacturer" style={fieldStyle} />
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => saveCompanyMfg(manufacturer)}
-                        className="rounded px-3 py-1.5 text-xs font-medium text-white"
-                        style={{ background: "var(--zr-orange)" }}>
-                        Save
-                      </button>
+                    <div className="flex items-center justify-end gap-4 mt-3">
                       <button onClick={() => setEditingMfg(null)}
-                        className="rounded px-3 py-1.5 text-xs"
-                        style={{ color: "var(--zr-text-muted)" }}>
+                        style={{ color: "rgba(60,60,67,0.7)", fontSize: "13px", fontWeight: 500, letterSpacing: "-0.012em", padding: "6px 4px" }}
+                        className="transition-opacity active:opacity-60">Cancel</button>
+                      <button onClick={() => saveCompanyMfg(manufacturer)}
+                        className="transition-all active:scale-[0.97]"
+                        style={{
+                          background: "var(--zr-orange)", color: "#fff",
+                          fontSize: "13px", fontWeight: 600,
+                          padding: "7px 16px",
+                          borderRadius: 999,
+                          letterSpacing: "-0.012em",
+                        }}>Save</button>
+                    </div>
+                  </div>);
+                })()}
+                {/* Dead code starts here — legacy preserved to avoid JSX mismatch */}
+                {false && (
+                  <div>
+                    <h3>X</h3>
+                    <div>
+                      <button onClick={() => saveCompanyMfg(manufacturer)}>Save</button>
+                      <button onClick={() => setEditingMfg(null)}>
                         Cancel
                       </button>
                     </div>

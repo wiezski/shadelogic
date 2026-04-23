@@ -108,99 +108,123 @@ export default function LogSweepPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen p-4" style={{ background: "var(--zr-black)" }}>
-      <div className="mx-auto max-w-md">
-        <Link href="/canvas" className="text-xs" style={{ color: "var(--zr-orange)" }}>← Back to Canvas</Link>
-        <h1 className="mt-2 text-xl font-bold" style={{ color: "var(--zr-text-primary)" }}>Log Street Sweep</h1>
-        <p className="text-xs mt-1" style={{ color: "var(--zr-text-muted)" }}>
-          For "walked a whole street, dropped hangers on every door." Log individual leads / chats with Log Visit instead.
-        </p>
+  const fieldStyle: React.CSSProperties = {
+    width: "100%",
+    background: "rgba(60,60,67,0.06)",
+    color: "var(--zr-text-primary)",
+    fontSize: "14px",
+    letterSpacing: "-0.012em",
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "none",
+    outline: "none",
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500,
+    display: "block", marginBottom: 4, paddingLeft: 4,
+  };
 
-        <form onSubmit={save} className="mt-4 space-y-4">
+  return (
+    <main className="min-h-screen pt-2 pb-24" style={{ background: "var(--zr-canvas)" }}>
+      <div className="mx-auto max-w-md px-4 sm:px-6">
+        {/* iOS back */}
+        <div className="mb-3">
+          <Link href="/canvas"
+            style={{ color: "var(--zr-orange)", display: "inline-flex", alignItems: "center", gap: 2, fontSize: "15px", fontWeight: 400, letterSpacing: "-0.012em" }}
+            className="transition-opacity active:opacity-60">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" style={{ marginRight: 2 }}>
+              <path d="M8 1 L2 8 L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Canvas
+          </Link>
+        </div>
+
+        <div className="mb-4 px-1">
+          <h1 style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "-0.025em", color: "var(--zr-text-primary)", lineHeight: 1.15 }}>Log sweep</h1>
+          <p style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 4, letterSpacing: "-0.005em", lineHeight: 1.35 }}>
+            For walking a whole street and dropping hangers. Log individual leads with Log Visit instead.
+          </p>
+        </div>
+
+        <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {/* Territory */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Territory</label>
-            <select value={territoryId} onChange={e => setTerritoryId(e.target.value)}
-              className="w-full rounded px-2 py-2 text-sm"
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }}>
-              <option value="">— None —</option>
-              {territories.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            <label style={labelStyle}>Territory</label>
+            <div className="relative">
+              <select value={territoryId} onChange={e => setTerritoryId(e.target.value)}
+                style={{ ...fieldStyle, appearance: "none", WebkitAppearance: "none", paddingRight: 36, cursor: "pointer" }}>
+                <option value="">None</option>
+                {territories.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
           </div>
 
-          {/* Street */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Street name *</label>
+            <label style={labelStyle}>Street name</label>
             <input value={streetName} onChange={e => setStreetName(e.target.value)}
-              placeholder="Oak St"
-              className="w-full rounded px-2 py-2 text-sm"
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+              placeholder="Oak St" style={fieldStyle} />
           </div>
 
-          {/* Section */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Section (optional)</label>
+            <label style={labelStyle}>Section (optional)</label>
             <input value={section} onChange={e => setSection(e.target.value)}
-              placeholder="100–500 block, east side, etc."
-              className="w-full rounded px-2 py-2 text-sm"
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+              placeholder="100–500 block, east side" style={fieldStyle} />
           </div>
 
-          {/* Count steppers */}
-          <div className="space-y-3">
-            <Stepper
-              label="📋 Hangers / flyers dropped"
-              value={hangersDropped}
-              onChange={setHangersDropped}
-              color="#3b82f6"
-            />
-            <Stepper
-              label="🚪 Doors knocked"
-              value={knockedCount}
-              onChange={setKnockedCount}
-              color="#f59e0b"
-            />
-            <Stepper
-              label="👻 No answer"
-              value={noAnswerCount}
-              onChange={setNoAnswerCount}
-              color="#9ca3af"
-            />
+          {/* Count steppers — calm canvas rows, no emoji */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <Stepper label="Hangers / flyers dropped" value={hangersDropped} onChange={setHangersDropped} color="var(--zr-info)" />
+            <Stepper label="Doors knocked" value={knockedCount} onChange={setKnockedCount} color="var(--zr-warning)" />
+            <Stepper label="No answer" value={noAnswerCount} onChange={setNoAnswerCount} color="rgba(60,60,67,0.45)" />
           </div>
 
-          {/* GPS */}
+          {/* GPS — subtle text action */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Location (optional)</label>
+            <label style={labelStyle}>Location (optional)</label>
             <button type="button" onClick={captureGPS}
-              className="w-full rounded px-3 py-2 text-sm font-medium"
+              className="transition-opacity active:opacity-60 inline-flex items-center gap-1.5"
               style={{
-                background: gpsStatus === "ok" ? "rgba(22,163,74,0.15)" : "var(--zr-surface-2)",
-                border: `1px solid ${gpsStatus === "ok" ? "#16a34a" : "var(--zr-border)"}`,
-                color: gpsStatus === "ok" ? "#16a34a" : "var(--zr-text-secondary)",
+                color: gpsStatus === "ok" ? "var(--zr-success)" : gpsStatus === "error" ? "#c6443a" : "var(--zr-orange)",
+                fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em",
+                padding: "4px 4px",
               }}>
-              {gpsStatus === "idle" && "📍 Stamp this sweep with GPS"}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a8 8 0 0 0-8 8c0 6 8 12 8 12s8-6 8-12a8 8 0 0 0-8-8z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {gpsStatus === "idle" && "Stamp with GPS"}
               {gpsStatus === "loading" && "Getting GPS…"}
-              {gpsStatus === "ok" && `✓ GPS captured`}
-              {gpsStatus === "error" && `⚠ ${gpsError}`}
+              {gpsStatus === "ok" && "GPS captured"}
+              {gpsStatus === "error" && (gpsError || "Try again")}
             </button>
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--zr-text-secondary)" }}>Notes</label>
+            <label style={labelStyle}>Notes</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               placeholder="Nice area, lots of older homes. Try again in a few weeks."
-              className="w-full rounded px-2 py-2 text-sm"
-              style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} />
+              style={{ ...fieldStyle, resize: "vertical", fontFamily: "inherit" }} />
           </div>
 
-          {error && <div className="text-xs" style={{ color: "var(--zr-error)" }}>{error}</div>}
+          {error && <div style={{ fontSize: "13px", color: "#c6443a", paddingLeft: 4 }}>{error}</div>}
 
           <button type="submit" disabled={saving}
-            className="w-full rounded-lg py-3 text-sm font-bold disabled:opacity-50"
-            style={{ background: "var(--zr-orange)", color: "#fff" }}>
-            {saving ? "Saving..." : `Log sweep · ${hangersDropped + knockedCount + noAnswerCount} homes`}
+            className="transition-all active:scale-[0.98] mt-2"
+            style={{
+              background: "var(--zr-orange)",
+              color: "#fff",
+              fontSize: "15px",
+              fontWeight: 600,
+              padding: "12px 20px",
+              borderRadius: 14,
+              letterSpacing: "-0.012em",
+              opacity: saving ? 0.5 : 1,
+            }}>
+            {saving ? "Saving…" : `Log sweep · ${hangersDropped + knockedCount + noAnswerCount} homes`}
           </button>
         </form>
       </div>
@@ -210,41 +234,52 @@ export default function LogSweepPage() {
 
 function Stepper({ label, value, onChange, color }: { label: string; value: number; onChange: (v: number) => void; color: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg p-3" style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }}>
-      <div className="flex-1 text-sm" style={{ color: "var(--zr-text-primary)" }}>{label}</div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(0, value - 1))}
-          className="w-9 h-9 rounded-full text-lg font-bold transition-colors disabled:opacity-30"
-          style={{ background: "var(--zr-surface-2)", color: "var(--zr-text-primary)", border: "1px solid var(--zr-border)" }}
+    // Calm row: no nested card, no emoji. Plain label left; −/value/+ and +5 on the right.
+    <div className="flex items-center gap-3" style={{ padding: "10px 14px", background: "rgba(60,60,67,0.04)", borderRadius: 12 }}>
+      <div className="flex-1" style={{ fontSize: "14px", color: "var(--zr-text-primary)", letterSpacing: "-0.012em", fontWeight: 500 }}>{label}</div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button type="button" onClick={() => onChange(Math.max(0, value - 1))}
           disabled={value === 0}
-        >
+          className="transition-opacity active:opacity-60"
+          style={{
+            width: 30, height: 30, borderRadius: "50%",
+            background: "rgba(60,60,67,0.08)",
+            color: value === 0 ? "rgba(60,60,67,0.3)" : "var(--zr-text-primary)",
+            fontSize: "17px", fontWeight: 600, lineHeight: 1,
+            opacity: value === 0 ? 0.5 : 1,
+          }}>
           −
         </button>
-        <input
-          type="number"
-          min={0}
-          value={value}
+        <input type="number" min={0} value={value}
           onChange={e => onChange(Math.max(0, parseInt(e.target.value || "0", 10)))}
-          className="w-14 text-center rounded py-2 text-base font-bold"
-          style={{ background: "var(--zr-surface-2)", border: `2px solid ${value > 0 ? color : "var(--zr-border)"}`, color: value > 0 ? color : "var(--zr-text-muted)" }}
+          style={{
+            width: 44, textAlign: "center",
+            background: "transparent",
+            color: value > 0 ? color : "rgba(60,60,67,0.45)",
+            fontSize: "16px", fontWeight: 700,
+            fontVariantNumeric: "tabular-nums",
+            border: "none",
+            outline: "none",
+            padding: "4px 0",
+          }}
         />
-        <button
-          type="button"
-          onClick={() => onChange(value + 1)}
-          className="w-9 h-9 rounded-full text-lg font-bold transition-colors"
-          style={{ background: color, color: "#fff" }}
-        >
+        <button type="button" onClick={() => onChange(value + 1)}
+          className="transition-opacity active:opacity-60"
+          style={{
+            width: 30, height: 30, borderRadius: "50%",
+            background: color, color: "#fff",
+            fontSize: "17px", fontWeight: 600, lineHeight: 1,
+          }}>
           +
         </button>
-        {/* Quick-bump: +5 */}
-        <button
-          type="button"
-          onClick={() => onChange(value + 5)}
-          className="text-xs rounded-full px-2 py-1 font-semibold"
-          style={{ background: "rgba(230,48,0,0.1)", color: "var(--zr-orange)" }}
-        >
+        <button type="button" onClick={() => onChange(value + 5)}
+          className="transition-opacity active:opacity-60"
+          style={{
+            fontSize: "12px", fontWeight: 600,
+            color: "var(--zr-orange)",
+            padding: "4px 8px",
+            letterSpacing: "-0.012em",
+          }}>
           +5
         </button>
       </div>

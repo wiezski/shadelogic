@@ -870,26 +870,82 @@ export default function HomePage() {
               />
             </div>
 
-            {showForm && (
-              <form onSubmit={addCustomer} style={{ background: "var(--zr-surface-1)", border: "1px solid var(--zr-border)" }} className="mb-6 rounded p-4">
-                <h3 style={{ color: "var(--zr-text-primary)" }} className="mb-3 font-semibold">New Customer</h3>
-                <div className="mb-3 grid grid-cols-2 gap-3">
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">First Name</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" /></div>
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Last Name</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Johnson" /></div>
+            {showForm && (() => {
+              const fieldStyle: React.CSSProperties = {
+                width: "100%",
+                background: "rgba(60,60,67,0.06)",
+                color: "var(--zr-text-primary)",
+                fontSize: "14px",
+                letterSpacing: "-0.012em",
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "none",
+                outline: "none",
+              };
+              const lbl: React.CSSProperties = {
+                fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500,
+                display: "block", marginBottom: 4, paddingLeft: 4, letterSpacing: "-0.005em",
+              };
+              return (
+              <form onSubmit={addCustomer} className="mb-6" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div className="flex items-baseline justify-between px-1">
+                  <h3 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.022em", color: "var(--zr-text-primary)" }}>New customer</h3>
+                  <button type="button" onClick={() => setShowForm(false)}
+                    style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em" }}
+                    className="transition-opacity active:opacity-60">Cancel</button>
                 </div>
-                <div className="mb-3"><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Street Address</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="123 Main St" /></div>
-                <div className="mb-3 grid grid-cols-[1fr_72px_104px] gap-3">
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">City</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Salt Lake City" /></div>
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">State</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2 uppercase" value={addrState} onChange={(e) => setAddrState(e.target.value.toUpperCase())} placeholder="UT" maxLength={2} /></div>
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Zip</label><input style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="84101" /></div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label style={lbl}>First name</label>
+                    <input style={fieldStyle} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="John" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Last name</label>
+                    <input style={fieldStyle} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Johnson" />
+                  </div>
                 </div>
-                <div className="mb-4 grid grid-cols-2 gap-3">
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Phone</label><input type="tel" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="801-555-1234" /></div>
-                  <div><label style={{ color: "var(--zr-text-secondary)" }} className="mb-1 block text-xs font-medium">Email</label><input type="email" style={{ background: "var(--zr-surface-2)", border: "1px solid var(--zr-border)", color: "var(--zr-text-primary)" }} className="w-full rounded px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" /></div>
+                <div>
+                  <label style={lbl}>Street address</label>
+                  <input style={fieldStyle} value={street} onChange={e => setStreet(e.target.value)} placeholder="123 Main St" />
                 </div>
-                <button type="submit" disabled={saving} style={{ background: "var(--zr-orange)", color: "#fff" }} className="rounded px-4 py-2 disabled:opacity-50">{saving ? "Saving..." : "Save Customer"}</button>
+                <div className="grid grid-cols-[1fr_72px_104px] gap-2.5">
+                  <div>
+                    <label style={lbl}>City</label>
+                    <input style={fieldStyle} value={city} onChange={e => setCity(e.target.value)} placeholder="Salt Lake City" />
+                  </div>
+                  <div>
+                    <label style={lbl}>State</label>
+                    <input style={{ ...fieldStyle, textTransform: "uppercase" }} value={addrState} onChange={e => setAddrState(e.target.value.toUpperCase())} placeholder="UT" maxLength={2} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Zip</label>
+                    <input style={fieldStyle} value={zip} onChange={e => setZip(e.target.value)} placeholder="84101" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label style={lbl}>Phone</label>
+                    <input type="tel" style={fieldStyle} value={phone} onChange={e => setPhone(e.target.value)} placeholder="801-555-1234" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Email</label>
+                    <input type="email" style={fieldStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
+                  </div>
+                </div>
+                <button type="submit" disabled={saving}
+                  className="transition-all active:scale-[0.98] mt-1"
+                  style={{
+                    background: "var(--zr-orange)", color: "#fff",
+                    fontSize: "15px", fontWeight: 600,
+                    padding: "12px 20px",
+                    borderRadius: 14,
+                    letterSpacing: "-0.012em",
+                    opacity: saving ? 0.5 : 1,
+                  }}>
+                  {saving ? "Saving…" : "Save customer"}
+                </button>
               </form>
-            )}
+            );})()}
 
             {(() => {
               const q = custSearch.toLowerCase();

@@ -69,7 +69,7 @@ async function sendRaw(params: {
 function severityLabel(sev: Finding["severity"]): { label: string; color: string } {
   switch (sev) {
     case "critical":
-      return { label: "Critical gap", color: "#c6443a" };
+      return { label: "What’s costing you leads", color: "#c6443a" };
     case "important":
       return { label: "Worth fixing", color: "#e08a00" };
     case "minor":
@@ -200,7 +200,7 @@ export async function sendInternalAlertEmail(params: {
   const topThree = (params.report?.topThree || []).map((f) => `<li>${f.title} — ${f.detail}</li>`).join("");
 
   const html = `<!doctype html><html><body style="font-family:-apple-system,sans-serif;padding:16px;">
-    <h2 style="margin:0 0 8px 0;">${params.kind === "call_booked" ? "📞 Call booked" : "📧 Email captured"}</h2>
+    <h2 style="margin:0 0 8px 0;">${params.kind === "call_booked" ? "Call booked" : "Email captured"}</h2>
     <table cellpadding="6" style="border-collapse:collapse;font-size:14px;">${rows.join("")}</table>
     ${topThree ? `<h3 style="margin-top:16px;">Top 3 issues</h3><ul>${topThree}</ul>` : ""}
   </body></html>`;

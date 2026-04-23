@@ -10,38 +10,110 @@ import { ZRIcon } from "./zr-logo";
    husband-wife teams, small blind & shade businesses.
    ─────────────────────────────────────────────────────────── */
 
-const FEATURES = [
+type FeatureIconKey =
+  | "crm"
+  | "measure"
+  | "order"
+  | "schedule"
+  | "invoice"
+  | "analytics";
+
+const FEATURES: { icon: FeatureIconKey; title: string; desc: string }[] = [
   {
-    icon: "👥",
+    icon: "crm",
     title: "CRM Built for Blinds",
     desc: "Track every lead from first call to final install. Heat scores, pipeline stages, and automatic follow-up reminders keep nothing falling through the cracks.",
   },
   {
-    icon: "📐",
+    icon: "measure",
     title: "Measure & Quote",
     desc: "Capture window measurements on-site, build accurate quotes with real product specs, and send them for e-signature — all from your phone.",
   },
   {
-    icon: "📦",
+    icon: "order",
     title: "Order & Inventory Tracking",
     desc: "Know exactly when product ships, which boxes arrived, where they're stored, and whether everything matches what you ordered. No more hunting through the warehouse.",
   },
   {
-    icon: "📅",
+    icon: "schedule",
     title: "Scheduling & Installs",
     desc: "Calendar for measures and installs. Your crew sees their jobs, customers get reminders, and nobody shows up to an install that isn't ready.",
   },
   {
-    icon: "💰",
+    icon: "invoice",
     title: "Invoicing & Payments",
     desc: "Generate invoices, collect deposits, and get paid online with Stripe. Track who owes you what and stop chasing balances over text.",
   },
   {
-    icon: "📊",
+    icon: "analytics",
     title: "Analytics Dashboard",
     desc: "Close rate, pipeline value, revenue trends, and team performance — the numbers that actually tell you if things are working, not buried in spreadsheets.",
   },
 ];
+
+function FeatureIcon({ kind }: { kind: FeatureIconKey }) {
+  const common = {
+    width: 28,
+    height: 28,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.75,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (kind) {
+    case "crm":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="4" />
+          <path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1" />
+          <path d="M17 11a3 3 0 0 0 0-6" />
+          <path d="M22 21v-1a4 4 0 0 0-3-3.87" />
+        </svg>
+      );
+    case "measure":
+      return (
+        <svg {...common}>
+          <path d="M21.3 13.8 10.2 2.7a1 1 0 0 0-1.4 0L2.7 8.8a1 1 0 0 0 0 1.4l11.1 11.1a1 1 0 0 0 1.4 0l6.1-6.1a1 1 0 0 0 0-1.4Z" />
+          <path d="M7 9l1.5 1.5M10 6l1.5 1.5M13 9l1.5 1.5M10 12l1.5 1.5" />
+        </svg>
+      );
+    case "order":
+      return (
+        <svg {...common}>
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <path d="m3.3 7 8.7 5 8.7-5" />
+          <path d="M12 22V12" />
+        </svg>
+      );
+    case "schedule":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="17" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+      );
+    case "invoice":
+      return (
+        <svg {...common}>
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+          <path d="M14 3v6h6" />
+          <path d="M8 13h6M8 17h4" />
+        </svg>
+      );
+    case "analytics":
+      return (
+        <svg {...common}>
+          <path d="M3 3v18h18" />
+          <path d="M7 14v4" />
+          <path d="M12 10v8" />
+          <path d="M17 6v12" />
+        </svg>
+      );
+  }
+}
 
 const PLANS = [
   {
@@ -372,7 +444,18 @@ export function LandingPage() {
                 className="rounded-xl p-6 transition-shadow hover:shadow-md"
                 style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}
               >
-                <div className="mb-3 text-3xl">{f.icon}</div>
+                <div
+                  className="mb-4 inline-flex items-center justify-center"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "rgba(214,90,49,0.10)",
+                    color: "var(--zr-orange)",
+                  }}
+                >
+                  <FeatureIcon kind={f.icon} />
+                </div>
                 <h3 className="text-base font-bold mb-2" style={{ color: "#111827" }}>{f.title}</h3>
                 <p className="text-sm leading-relaxed" style={{ color: "#6b7280" }}>{f.desc}</p>
               </div>
@@ -488,10 +571,21 @@ export function LandingPage() {
                 </p>
                 <ul className="mt-5 flex-1 space-y-2.5">
                   {plan.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm">
-                      <span style={{ color: plan.highlight ? "#4ade80" : "#16a34a" }} className="mt-0.5 shrink-0">
-                        ✓
-                      </span>
+                    <li key={j} className="flex items-start gap-2.5 text-sm">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke={plan.highlight ? "#4ade80" : "#16a34a"}
+                        strokeWidth="2.25"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mt-[3px] shrink-0"
+                        aria-hidden="true"
+                      >
+                        <path d="M4 10.5 L8 14 L16 6" />
+                      </svg>
                       <span style={{ color: plan.highlight ? "#d1d5db" : "#374151" }}>{f}</span>
                     </li>
                   ))}

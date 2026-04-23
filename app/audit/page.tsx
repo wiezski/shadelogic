@@ -38,6 +38,7 @@ interface Layer1Summary {
   grade: "Strong" | "Solid" | "Needs Work" | "Critical Gaps";
   domain: string;
   pageTitle: string | null;
+  findings: Finding[];
   topThree: FindingLite[];
   quickInsights: string[];
   additionalFindings: number;
@@ -64,7 +65,7 @@ const INPUT_FILL = "rgba(60,60,67,0.06)";
 const HAIRLINE = "0.5px solid rgba(60,60,67,0.08)";
 
 const SEVERITY: Record<Severity, { label: string; color: string; soft: string }> = {
-  critical: { label: "Critical gap", color: "#c6443a", soft: "rgba(214,68,58,0.10)" },
+  critical: { label: "What’s costing you leads", color: "#c6443a", soft: "rgba(214,68,58,0.10)" },
   important: { label: "Worth fixing", color: "#b56c00", soft: "rgba(224,138,0,0.10)" },
   minor: { label: "Minor", color: "rgba(60,60,67,0.5)", soft: "rgba(60,60,67,0.06)" },
   pass: { label: "Looks good", color: "#1d8052", soft: "rgba(48,164,108,0.10)" },
@@ -78,13 +79,15 @@ export default function AuditPage() {
   const [error, setError] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
   const [summary, setSummary] = useState<Layer1Summary | null>(null);
-  const [findings, setFindings] = useState<Finding[] | null>(null);
   const [email, setEmail] = useState("");
 
   // Booking form state (Layer 3)
   const [bookName, setBookName] = useState("");
   const [bookPhone, setBookPhone] = useState("");
   const [bookNotes, setBookNotes] = useState("");
+  // When true, show the booking form inline (user opted for the call path
+  // instead of — or in addition to — the email unlock).
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   // Prefill booking domain if they came back via the emailed CTA (?book=domain)
   useEffect(() => {
@@ -162,27 +165,26 @@ export default function AuditPage() {
     setError(null);
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("That email doesn't look right.");
+      setError("That email doesn’t look right.");
       return;
     }
-    setStage("unlocking");
+    // Flip UI to unlocked immediately — the findings are already loaded
+    // with the Layer 1 summary; the server call just records the email
+    // and fires the branded report email in the background.
+    setStage("unlocked");
     try {
       const res = await fetch("/api/audit/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: summary.id, email: trimmed }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Couldn't unlock the full report.");
-        setStage("results");
-        return;
+        const data = await res.json().catch(() => ({}));
+        // Non-fatal — the UI is already unlocked; just log.
+        console.warn("[audit/unlock] server call failed:", data);
       }
-      setFindings(data.findings || []);
-      setStage("unlocked");
     } catch (err) {
-      setError((err as Error).message || "Network error. Try again in a moment.");
-      setStage("results");
+      console.warn("[audit/unlock] network error:", err);
     }
   }
 
@@ -251,7 +253,16 @@ export default function AuditPage() {
               <TopThree findings={summary.topThree} />
               <QuickInsights insights={summary.quickInsights} />
 
-              {/* Layer 2 */}
+              {/* Full report: always rendered. Blurred/dimmed when the
+                  user hasn't captured the email yet, so the value of
+                  the unlock is visible right behind the gate. */}
+              <FullReport
+                findings={summary.findings}
+                summary={summary}
+                locked={stage !== "unlocked" && stage !== "booking" && stage !== "booked"}
+              />
+
+              {/* Layer 2 — email gate */}
               {stage === "results" && (
                 <EmailGate
                   email={email}
@@ -261,23 +272,32 @@ export default function AuditPage() {
                   error={error}
                 />
               )}
-              {stage === "unlocking" && <LoadingRow label="Loading your full report…" />}
 
-              {/* Full report + Layer 3 */}
-              {stage === "unlocked" && findings && (
-                <>
-                  <FullReport findings={findings} summary={summary} />
-                  <BookCallCard
-                    name={bookName}
-                    setName={setBookName}
-                    phone={bookPhone}
-                    setPhone={setBookPhone}
-                    notes={bookNotes}
-                    setNotes={setBookNotes}
-                    onSubmit={bookCall}
-                    error={error}
-                  />
-                </>
+              {/* Parallel Layer 2.5 — "or book a call" CTA. Available
+                  from results onward; reveals the booking form below. */}
+              {(stage === "results" || stage === "unlocked") && !showBookingForm && (
+                <CallCTA onClick={() => {
+                  setShowBookingForm(true);
+                  requestAnimationFrame(() => {
+                    if (typeof window !== "undefined") {
+                      window.scrollBy({ top: 180, behavior: "smooth" });
+                    }
+                  });
+                }} />
+              )}
+
+              {/* Layer 3 — booking form */}
+              {(showBookingForm || stage === "unlocked") && stage !== "booking" && stage !== "booked" && (
+                <BookCallCard
+                  name={bookName}
+                  setName={setBookName}
+                  phone={bookPhone}
+                  setPhone={setBookPhone}
+                  notes={bookNotes}
+                  setNotes={setBookNotes}
+                  onSubmit={bookCall}
+                  error={error}
+                />
               )}
               {stage === "booking" && <LoadingRow label="Sending your request…" />}
               {stage === "booked" && <BookedThankYou domain={summary.domain} />}
@@ -287,11 +307,11 @@ export default function AuditPage() {
                   setStage("input");
                   setUrl("");
                   setSummary(null);
-                  setFindings(null);
                   setEmail("");
                   setBookName("");
                   setBookPhone("");
                   setBookNotes("");
+                  setShowBookingForm(false);
                   setError(null);
                   if (typeof window !== "undefined") {
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -478,14 +498,20 @@ function ScanForm({
         }}
       >
         <input
-          type="url"
+          type="text"
+          inputMode="url"
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="your-business.com"
+          placeholder="enter your website (e.g. heberblinds.com)"
           disabled={loading}
           autoFocus
           style={{
             flex: 1,
+            minWidth: 0,
             background: "transparent",
             border: "none",
             outline: "none",
@@ -625,11 +651,44 @@ function progressLabel(pct: number): string {
 
 // ─── Layer 1: results ────────────────────────────────────────────
 
+function AnimatedScore({ target, color }: { target: number; color: string }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const duration = 900;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      // Ease-out-expo — fast start, soft landing
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+      setValue(Math.round(target * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return (
+    <div
+      style={{
+        fontSize: 56,
+        fontWeight: 800,
+        color,
+        letterSpacing: "-0.03em",
+        lineHeight: 1,
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      {value}
+    </div>
+  );
+}
+
 function ScoreBlock({ summary }: { summary: Layer1Summary }) {
   const { score, grade, domain } = summary;
   const color = score >= 80 ? "#1d8052" : score >= 60 ? ORANGE : "#c6443a";
   const interpretation = scoreInterpretation(score);
   const comparison = scoreComparison(score);
+  const impact = scoreImpact(score);
   return (
     <div
       style={{
@@ -640,18 +699,7 @@ function ScoreBlock({ summary }: { summary: Layer1Summary }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <div
-          style={{
-            fontSize: 56,
-            fontWeight: 800,
-            color,
-            letterSpacing: "-0.03em",
-            lineHeight: 1,
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {score}
-        </div>
+        <AnimatedScore target={score} color={color} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -708,10 +756,37 @@ function ScoreBlock({ summary }: { summary: Layer1Summary }) {
         >
           {interpretation}
         </div>
+
+        {impact && (
+          <div style={{ marginTop: 10 }}>
+            <div
+              style={{
+                fontSize: 14.5,
+                color: TEXT_PRIMARY,
+                letterSpacing: "-0.005em",
+                lineHeight: 1.5,
+                marginBottom: 4,
+              }}
+            >
+              {impact.leads}
+            </div>
+            <div
+              style={{
+                fontSize: 14.5,
+                color: TEXT_SECONDARY,
+                letterSpacing: "-0.005em",
+                lineHeight: 1.5,
+              }}
+            >
+              {impact.revenue}
+            </div>
+          </div>
+        )}
+
         {comparison && (
           <div
             style={{
-              marginTop: 8,
+              marginTop: 12,
               display: "inline-block",
               fontSize: 12,
               fontWeight: 500,
@@ -742,6 +817,38 @@ function scoreComparison(score: number): string | null {
   if (score >= 60) return "About average for window treatment businesses";
   if (score >= 40) return "Below average compared to similar businesses";
   return "Well below average for window treatment businesses";
+}
+
+// Dynamic lead/revenue estimate, calibrated to the score band.
+// Numbers are realistic for a Utah-ish window treatment market: average
+// ticket $1,500–$3,000, reasonable close rate on inbound ~20–30%.
+function scoreImpact(score: number): { leads: string; revenue: string } | null {
+  if (score >= 80) {
+    return {
+      leads: "You’re probably capturing most of the leads coming your way.",
+      revenue:
+        "Tightening the last few gaps could add another $1,500–$3,000/month — small improvements compound.",
+    };
+  }
+  if (score >= 60) {
+    return {
+      leads: "You’re likely losing 2–5 leads per week — and they’re going to competitors.",
+      revenue:
+        "At your current setup, you could be missing $2,000–$5,000/month in revenue.",
+    };
+  }
+  if (score >= 40) {
+    return {
+      leads: "You’re likely losing 3–10 leads per week — and they’re going to competitors.",
+      revenue:
+        "At your current setup, you could be missing $4,000–$12,000/month in revenue.",
+    };
+  }
+  return {
+    leads: "You’re likely losing 5–15+ leads per week — and they’re going to competitors.",
+    revenue:
+      "At your current setup, you could be missing $6,000–$20,000/month in revenue.",
+  };
 }
 
 function TopThree({ findings }: { findings: FindingLite[] }) {
@@ -899,7 +1006,7 @@ function EmailGate({
           marginBottom: 6,
         }}
       >
-        Get your full action plan
+        Here&apos;s exactly what I&apos;d fix first
       </div>
       <div
         style={{
@@ -910,7 +1017,8 @@ function EmailGate({
           letterSpacing: "-0.005em",
         }}
       >
-        I&apos;ll show you exactly what to fix first — prioritized like I would for a real client.
+        Prioritized fixes, real-world impact, ordered the way I&apos;d tackle them
+        for a paying client — not just more data.
       </div>
 
       <ul
@@ -924,10 +1032,10 @@ function EmailGate({
       >
         {[
           additional > 0
-            ? `Full breakdown of all ${additional + 3} issues`
-            : "Full breakdown of every issue",
-          "What to fix first",
-          "How to get more leads",
+            ? `Every issue ranked by impact (${additional + 3} total)`
+            : "Every issue ranked by impact",
+          "What to fix first — and what to skip",
+          "What each fix could be worth in leads",
         ].map((item) => (
           <li
             key={item}
@@ -1036,14 +1144,105 @@ function EmailGate({
   );
 }
 
+// ─── Parallel Layer 2 CTA: book a call (opens the booking form) ──
+
+function CallCTA({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      style={{
+        marginTop: 20,
+        padding: "20px 22px",
+        border: HAIRLINE,
+        borderRadius: 16,
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: TEXT_MUTED,
+          marginBottom: 10,
+        }}
+      >
+        Or — skip the reading
+      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          background: "transparent",
+          color: ORANGE,
+          fontSize: 15.5,
+          fontWeight: 600,
+          padding: "10px 20px",
+          borderRadius: 999,
+          border: `1.5px solid ${ORANGE}`,
+          cursor: "pointer",
+          letterSpacing: "-0.012em",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+        className="transition-opacity active:opacity-60"
+      >
+        See what I&apos;d fix first (20-min call)
+        <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>→</span>
+      </button>
+      <div
+        style={{
+          marginTop: 12,
+          fontSize: 13.5,
+          color: TEXT_SECONDARY,
+          lineHeight: 1.5,
+          letterSpacing: "-0.003em",
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        I&apos;ll walk through your site and show you exactly what I&apos;d do
+        if this were my business.
+      </div>
+    </div>
+  );
+}
+
 // ─── Layer 2 unlocked: full findings ─────────────────────────────
 
-function FullReport({ findings, summary }: { findings: Finding[]; summary: Layer1Summary }) {
-  const issues = findings.filter((f) => f.severity !== "pass");
-  const passing = findings.filter((f) => f.severity === "pass");
+function FullReport({
+  findings,
+  summary,
+  locked = false,
+}: {
+  findings: Finding[];
+  summary: Layer1Summary;
+  locked?: boolean;
+}) {
+  // Exclude Top 3 from the full-list section so we don't repeat them
+  // right after the Top 3 block. Only the remaining findings are shown
+  // here — they're what the email unlock reveals.
+  const topIds = new Set(summary.topThree.map((t) => t.id));
+  const remaining = findings.filter((f) => !topIds.has(f.id));
+  const issues = remaining.filter((f) => f.severity !== "pass");
+  const passing = remaining.filter((f) => f.severity === "pass");
+
+  // When locked, blur the content so visitors see there's more but
+  // can't read the details. Pointer events disabled so hover/click
+  // does nothing.
+  const lockedStyle: React.CSSProperties = locked
+    ? {
+        filter: "blur(5px)",
+        opacity: 0.6,
+        pointerEvents: "none",
+        userSelect: "none",
+      }
+    : {};
 
   return (
-    <div style={{ marginTop: 36 }}>
+    <div style={{ marginTop: 36, position: "relative" }}>
       <div
         style={{
           fontSize: 24,
@@ -1064,47 +1263,93 @@ function FullReport({ findings, summary }: { findings: Finding[]; summary: Layer
           lineHeight: 1.5,
         }}
       >
-        Every check, ordered by impact. {issues.length} issue{issues.length === 1 ? "" : "s"} worth your time, {passing.length} things already working.
+        {locked
+          ? `${remaining.length} more check${remaining.length === 1 ? "" : "s"} in the full report, ordered by impact.`
+          : `Every check, ordered by impact. ${issues.length} issue${issues.length === 1 ? "" : "s"} worth your time, ${passing.length} already working.`}
       </div>
 
-      {issues.length > 0 && (
+      <div style={lockedStyle} aria-hidden={locked}>
+        {issues.length > 0 && (
+          <>
+            <SectionLabel>What to fix, in order</SectionLabel>
+            <div>
+              {issues.map((f, i) => (
+                <FindingRow key={f.id} finding={f} last={i === issues.length - 1} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {passing.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <SectionLabel>What&apos;s already working</SectionLabel>
+            <div>
+              {passing.map((f, i) => (
+                <FindingRow key={f.id} finding={f} last={i === passing.length - 1} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {summary.pageTitle && !locked && (
+          <div
+            style={{
+              marginTop: 28,
+              padding: "14px 18px",
+              background: SURFACE_SOFT,
+              borderRadius: 12,
+              fontSize: 13,
+              color: TEXT_MUTED,
+              letterSpacing: "-0.003em",
+              lineHeight: 1.55,
+            }}
+          >
+            <strong style={{ color: TEXT_SECONDARY, fontWeight: 600 }}>Scanned page title:</strong>{" "}
+            {summary.pageTitle}
+          </div>
+        )}
+      </div>
+
+      {/* Gentle fade at the bottom of the locked preview so it reads
+          as "more below, ungated" — not like a hard wall. */}
+      {locked && (
         <>
-          <SectionLabel>What to fix, in order</SectionLabel>
-          <div>
-            {issues.map((f, i) => (
-              <FindingRow key={f.id} finding={f} last={i === issues.length - 1} />
-            ))}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 120,
+              background:
+                "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 80%, #ffffff 100%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: 16,
+              transform: "translateX(-50%)",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: TEXT_MUTED,
+              background: "rgba(255,255,255,0.95)",
+              padding: "6px 14px",
+              borderRadius: 999,
+              border: HAIRLINE,
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Unlock below
           </div>
         </>
-      )}
-
-      {passing.length > 0 && (
-        <div style={{ marginTop: 32 }}>
-          <SectionLabel>What&apos;s already working</SectionLabel>
-          <div>
-            {passing.map((f, i) => (
-              <FindingRow key={f.id} finding={f} last={i === passing.length - 1} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {summary.pageTitle && (
-        <div
-          style={{
-            marginTop: 28,
-            padding: "14px 18px",
-            background: SURFACE_SOFT,
-            borderRadius: 12,
-            fontSize: 13,
-            color: TEXT_MUTED,
-            letterSpacing: "-0.003em",
-            lineHeight: 1.55,
-          }}
-        >
-          <strong style={{ color: TEXT_SECONDARY, fontWeight: 600 }}>Scanned page title:</strong>{" "}
-          {summary.pageTitle}
-        </div>
       )}
     </div>
   );

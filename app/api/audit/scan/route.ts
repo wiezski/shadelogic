@@ -37,14 +37,16 @@ function getClientIp(req: NextRequest): string | null {
 }
 
 function summarize(report: Awaited<ReturnType<typeof scanUrl>>) {
-  // Public-safe payload for Layer 1 — score, top 3, quick insights, and
-  // enough metadata to render the page. We deliberately don't return the
-  // full findings array here — unlock the full report at Layer 2.
+  // Public payload for Layer 1. We include the full findings array so
+  // the client can render a dimmed/blurred preview behind the email gate
+  // (the findings aren't sensitive — they're checks on a public URL). The
+  // email capture is a psychological unlock, not a data gate.
   return {
     score: report.score,
     grade: report.grade,
     domain: report.domain,
     pageTitle: report.pageTitle,
+    findings: report.findings,
     topThree: report.topThree.map((f) => ({
       id: f.id,
       title: f.title,
@@ -53,7 +55,7 @@ function summarize(report: Awaited<ReturnType<typeof scanUrl>>) {
     })),
     quickInsights: report.quickInsights,
     scannedAt: report.scannedAt,
-    // Count of additional findings available once they unlock the full report
+    // Count of non-top-3 findings — used for copy like "N total issues"
     additionalFindings: Math.max(0, report.findings.length - report.topThree.length),
   };
 }

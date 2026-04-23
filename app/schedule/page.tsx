@@ -220,6 +220,14 @@ function SchedulePageInner() {
   const [createAssignee, setCreateAssignee] = useState("");
   const [saving,        setSaving]        = useState(false);
 
+  // Duration estimator suggestion state. When a customer is picked and
+  // the appointment is an install/measure, try to compute a suggested
+  // duration from their most recent quote + the owner's estimation
+  // rules. Null when nothing useful — the Duration select stays at
+  // whatever the user chose.
+  const [estimate, setEstimate] = useState<null | { totalMinutes: number; items: Array<{ label: string; minutes: number }> }>(null);
+  const [estimating, setEstimating] = useState(false);
+
   // Confirmation
   const [confirmMsg,       setConfirmMsg]       = useState("");
   const [confirmPhone,     setConfirmPhone]     = useState("");
@@ -371,8 +379,36 @@ function SchedulePageInner() {
     setCreateMins(APPT_TYPES.sales_consultation.defaultMins);
     setCreateAddr(""); setCreateNotes("");
     setCreateAssignee(user?.id || "");
+    setEstimate(null);
     setShowCreate(true);
   }
+
+  // Refresh the duration suggestion whenever the picked customer or
+  // appointment type changes. Only install/measure appointments get
+  // a suggestion — consults and follow-ups are fixed-length.
+  useEffect(() => {
+    if (!custId || !companyId) { setEstimate(null); return; }
+    if (createType !== "install" && createType !== "measure") { setEstimate(null); return; }
+    let cancelled = false;
+    setEstimating(true);
+    (async () => {
+      try {
+        const { estimateForCustomer, roundToQuarterHour } = await import("../../lib/estimator");
+        const result = await estimateForCustomer(companyId, custId);
+        if (cancelled) return;
+        if (!result) { setEstimate(null); return; }
+        setEstimate({
+          totalMinutes: roundToQuarterHour(result.totalMinutes),
+          items: result.items,
+        });
+      } catch {
+        if (!cancelled) setEstimate(null);
+      } finally {
+        if (!cancelled) setEstimating(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [custId, createType, companyId]);
 
   function handleTypeChange(t: AppointmentType) {
     setCreateType(t);
@@ -981,7 +1017,58 @@ function SchedulePageInner() {
                 <option value={240}>4 hours</option>
                 <option value={360}>6 hours</option>
                 <option value={480}>Full day (8 hr)</option>
+                {/* When the estimator suggests a non-standard value (e.g. 75 or
+                    255 min) we inject an "Estimated" option so the user can
+                    actually select it from the list. */}
+                {estimate && ![30,60,90,120,180,240,360,480].includes(estimate.totalMinutes) && (
+                  <option value={estimate.totalMinutes}>
+                    Estimated · {estimate.totalMinutes >= 60
+                      ? `${Math.floor(estimate.totalMinutes/60)}h${estimate.totalMinutes%60 ? " "+(estimate.totalMinutes%60)+"m" : ""}`
+                      : `${estimate.totalMinutes} min`}
+                  </option>
+                )}
               </select>
+              {/* Estimator suggestion — appears for install/measure when the
+                  owner has configured rules. Tap to apply. Breakdown in
+                  small gray underneath. */}
+              {(createType === "install" || createType === "measure") && (estimating || estimate) && (
+                <div style={{ marginTop: 6, paddingLeft: 4 }}>
+                  {estimating && (
+                    <span style={{ fontSize: "12px", color: "rgba(60,60,67,0.45)" }}>
+                      Estimating…
+                    </span>
+                  )}
+                  {!estimating && estimate && (
+                    <>
+                      <button type="button"
+                        onClick={() => setCreateMins(estimate.totalMinutes)}
+                        className="transition-opacity active:opacity-60"
+                        style={{
+                          color: createMins === estimate.totalMinutes ? "var(--zr-success)" : "var(--zr-orange)",
+                          fontSize: "13px",
+                          fontWeight: 500,
+                          letterSpacing: "-0.012em",
+                        }}>
+                        {createMins === estimate.totalMinutes ? "✓ Using estimate" : "Use estimate"} ·{" "}
+                        {estimate.totalMinutes >= 60
+                          ? `${Math.floor(estimate.totalMinutes/60)}h${estimate.totalMinutes%60 ? " "+(estimate.totalMinutes%60)+"m" : ""}`
+                          : `${estimate.totalMinutes} min`}
+                      </button>
+                      {estimate.items.length > 0 && (
+                        <div style={{
+                          fontSize: "11.5px",
+                          color: "rgba(60,60,67,0.5)",
+                          marginTop: 2,
+                          lineHeight: 1.35,
+                          letterSpacing: "-0.003em",
+                        }}>
+                          {estimate.items.map(i => `${i.label} (${i.minutes}m)`).join(" · ")}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Address */}

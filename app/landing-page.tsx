@@ -188,6 +188,13 @@ export function LandingPage() {
           </span>
           <div className="flex items-center gap-3">
             <Link
+              href="/audit"
+              className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: "var(--zr-orange)" }}
+            >
+              Free Audit
+            </Link>
+            <Link
               href="/login"
               className="text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
               style={{ color: "#4b5563" }}
@@ -234,13 +241,13 @@ export function LandingPage() {
             >
               Start Your Free 14-Day Trial
             </Link>
-            <a
-              href="#features"
+            <Link
+              href="/audit"
               className="inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-medium border transition-colors"
               style={{ borderColor: "#d1d5db", color: "#374151" }}
             >
-              See Features
-            </a>
+              Free Website Check
+            </Link>
           </div>
           <p className="mt-4 text-xs" style={{ color: "#9ca3af" }}>
             Works on iPhone, Android & desktop. No app download needed.

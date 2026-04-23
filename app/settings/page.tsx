@@ -1973,6 +1973,353 @@ function DashboardWidgetsSection() {
   );
 }
 
+// ── Duration Estimator Rules (per-company) ───────────────
+// Owner-configurable rules for how long jobs take. Reads/writes the
+// `estimation_rules` table. If the table doesn't exist yet (i.e. the
+// DRAFT_job_duration_estimator.sql migration isn't applied), the UI
+// shows a clear "apply migration" state rather than crashing.
+function DurationEstimatorSection() {
+  type Rule = {
+    id: string;
+    rule_type: "setup_time" | "per_product_type" | "fixed_if_flag";
+    key: string | null;
+    minutes: number;
+    label: string;
+    active: boolean;
+    sort_order: number;
+  };
+  const { companyId } = useAuth();
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tableMissing, setTableMissing] = useState(false);
+
+  // New-rule form state
+  const [newType, setNewType] = useState<Rule["rule_type"]>("per_product_type");
+  const [newKey, setNewKey] = useState("blind");
+  const [newMinutes, setNewMinutes] = useState("15");
+  const [newLabel, setNewLabel] = useState("15 min per blind");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (companyId) load(); }, [companyId]);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("estimation_rules")
+        .select("id, rule_type, key, minutes, label, active, sort_order")
+        .eq("company_id", companyId)
+        .order("sort_order", { ascending: true });
+      if (error) {
+        if (error.code === "42P01" || /does not exist/i.test(error.message)) {
+          setTableMissing(true);
+        }
+      } else {
+        setRules((data || []) as Rule[]);
+      }
+    } catch {
+      setTableMissing(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addRule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!companyId) return;
+    const mins = parseInt(newMinutes, 10);
+    if (!Number.isFinite(mins) || mins < 0) return;
+    setSaving(true);
+    const { error } = await supabase.from("estimation_rules").insert([{
+      company_id: companyId,
+      rule_type: newType,
+      key: newType === "setup_time" ? null : newKey.trim() || null,
+      minutes: mins,
+      label: newLabel.trim() || `${mins} min`,
+      active: true,
+      sort_order: rules.length + 1,
+    }]);
+    setSaving(false);
+    if (!error) {
+      setNewLabel(""); setNewMinutes("15"); setNewKey("blind"); setNewType("per_product_type");
+      load();
+    }
+  }
+
+  async function toggleRule(id: string, active: boolean) {
+    await supabase.from("estimation_rules").update({ active: !active }).eq("id", id);
+    setRules(prev => prev.map(r => r.id === id ? { ...r, active: !active } : r));
+  }
+
+  async function deleteRule(id: string) {
+    await supabase.from("estimation_rules").delete().eq("id", id);
+    setRules(prev => prev.filter(r => r.id !== id));
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "13px", color: "rgba(60,60,67,0.6)", fontWeight: 500,
+    display: "block", marginBottom: 4, paddingLeft: 4, letterSpacing: "-0.005em",
+  };
+  const fieldStyle: React.CSSProperties = {
+    width: "100%",
+    background: "rgba(60,60,67,0.06)",
+    color: "var(--zr-text-primary)",
+    fontSize: "14px",
+    letterSpacing: "-0.012em",
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "none",
+    outline: "none",
+  };
+
+  return (
+    <div>
+      <div className="mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>Job duration estimator</span>
+      </div>
+      <p style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginBottom: 14, letterSpacing: "-0.005em", lineHeight: 1.4, paddingLeft: 20, paddingRight: 20 }}>
+        Rules that compute how long a job takes. The calendar and appointment end-time reminders use this total.
+      </p>
+
+      {tableMissing ? (
+        <div style={{ padding: "12px 20px", fontSize: "13px", color: "rgba(60,60,67,0.55)", lineHeight: 1.45 }}>
+          The estimator tables haven&apos;t been created yet. Apply
+          <code style={{ padding: "0 4px", fontFamily: "ui-monospace, Menlo, monospace", color: "var(--zr-text-primary)" }}>
+            supabase/migrations/DRAFT_job_duration_estimator.sql
+          </code>
+          from your Supabase SQL editor, then reload this page.
+        </div>
+      ) : loading ? (
+        <div style={{ padding: "12px 20px", fontSize: "13px", color: "rgba(60,60,67,0.5)" }}>Loading rules…</div>
+      ) : (
+        <>
+          {/* Rule list */}
+          {rules.length === 0 ? (
+            <div style={{ padding: "12px 20px", fontSize: "13px", color: "rgba(60,60,67,0.5)" }}>
+              No rules yet. Add your first below.
+            </div>
+          ) : (
+            <div>
+              {rules.map((r, i, arr) => (
+                <div key={r.id} style={{
+                  padding: "12px 20px",
+                  borderBottom: i < arr.length - 1 ? "0.5px solid rgba(60,60,67,0.08)" : "none",
+                  opacity: r.active ? 1 : 0.5,
+                }}
+                className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.012em" }}>
+                      {r.label}
+                    </div>
+                    <div style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.5)", marginTop: 2 }}>
+                      {r.rule_type === "setup_time" && `+${r.minutes} min base`}
+                      {r.rule_type === "per_product_type" && `+${r.minutes} min per ${r.key}`}
+                      {r.rule_type === "fixed_if_flag" && `+${r.minutes} min if ${r.key}`}
+                    </div>
+                  </div>
+                  {/* Toggle active */}
+                  <button onClick={() => toggleRule(r.id, r.active)}
+                    style={{
+                      position: "relative",
+                      width: 36, height: 22,
+                      borderRadius: 999,
+                      background: r.active ? "var(--zr-success)" : "rgba(60,60,67,0.2)",
+                      flexShrink: 0,
+                      transition: "background 150ms ease",
+                    }}>
+                    <span style={{
+                      position: "absolute", top: 2,
+                      left: r.active ? 16 : 2,
+                      width: 18, height: 18,
+                      borderRadius: "50%", background: "#fff",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                      transition: "left 150ms ease",
+                    }} />
+                  </button>
+                  <button onClick={() => deleteRule(r.id)}
+                    style={{ color: "rgba(60,60,67,0.4)", fontSize: "18px", lineHeight: 1, padding: "4px 6px" }}
+                    className="transition-opacity active:opacity-60 shrink-0"
+                    aria-label="Delete rule">
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add rule */}
+          <form onSubmit={addRule} className="px-5 pt-4" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <label style={labelStyle}>Rule type</label>
+              <div className="relative">
+                <select value={newType}
+                  onChange={e => {
+                    const t = e.target.value as Rule["rule_type"];
+                    setNewType(t);
+                    if (t === "setup_time") { setNewKey(""); setNewLabel("Setup / wrap-up"); }
+                    if (t === "per_product_type") { setNewKey("blind"); setNewLabel("15 min per blind"); }
+                    if (t === "fixed_if_flag") { setNewKey("motorized"); setNewLabel("+20 min if motorized"); }
+                  }}
+                  style={{ ...fieldStyle, appearance: "none", WebkitAppearance: "none", paddingRight: 32, cursor: "pointer" }}>
+                  <option value="per_product_type">Per product type</option>
+                  <option value="fixed_if_flag">Fixed if flag</option>
+                  <option value="setup_time">Setup / base time</option>
+                </select>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--zr-text-secondary)", pointerEvents: "none" }}>
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+            </div>
+            {newType !== "setup_time" && (
+              <div>
+                <label style={labelStyle}>
+                  {newType === "per_product_type" ? "Product category" : "Flag name"}
+                </label>
+                <input value={newKey} onChange={e => setNewKey(e.target.value)}
+                  placeholder={newType === "per_product_type" ? "blind" : "motorized"}
+                  style={fieldStyle} />
+              </div>
+            )}
+            <div className="grid grid-cols-[1fr_90px] gap-2">
+              <div>
+                <label style={labelStyle}>Label</label>
+                <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                  placeholder="15 min per blind" style={fieldStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Minutes</label>
+                <input type="number" min="0" value={newMinutes}
+                  onChange={e => setNewMinutes(e.target.value)} style={fieldStyle} />
+              </div>
+            </div>
+            <button type="submit" disabled={saving || !newLabel.trim()}
+              className="transition-all active:scale-[0.97] self-end"
+              style={{
+                background: "var(--zr-orange)", color: "#fff",
+                fontSize: "13px", fontWeight: 600,
+                padding: "7px 16px", borderRadius: 999,
+                letterSpacing: "-0.012em",
+                opacity: saving || !newLabel.trim() ? 0.4 : 1,
+              }}>
+              {saving ? "Adding…" : "Add rule"}
+            </button>
+          </form>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Notifications (per-device web push) ──────────────────
+// Toggle controls an opt-in subscription stored in push_subscriptions.
+// One subscription per device × user; a single user can have push on
+// their phone but not on their laptop.
+function NotificationsSection() {
+  const [state, setState] = useState<"loading" | "unsupported" | "ios-install-needed" | "denied" | "off" | "on">("loading");
+  const [busy, setBusy]   = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    const { pushState } = await import("../../lib/push");
+    const s = await pushState();
+    setState(s);
+  }
+  useEffect(() => { refresh(); }, []);
+
+  async function onEnable() {
+    setBusy(true); setError(null);
+    const { enablePush } = await import("../../lib/push");
+    const res = await enablePush();
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.reason === "vapid-key-not-configured"
+        ? "Notifications aren't configured yet. Ask the admin to add VAPID keys."
+        : res.reason === "ios-install-needed"
+        ? "Add ZeroRemake to your Home Screen first (Safari → Share → Add to Home Screen), then try again."
+        : res.reason === "denied"
+        ? "You denied the permission. Re-enable from browser settings."
+        : `Couldn't enable: ${res.reason}`);
+    }
+    refresh();
+  }
+  async function onDisable() {
+    setBusy(true); setError(null);
+    const { disablePush } = await import("../../lib/push");
+    await disablePush();
+    setBusy(false);
+    refresh();
+  }
+
+  return (
+    <div>
+      {/* Section header */}
+      <div className="flex items-baseline justify-between mb-1 px-5">
+        <span className="zr-v2-section-label" style={{ padding: 0 }}>Notifications on this device</span>
+      </div>
+      <p style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginBottom: 14, letterSpacing: "-0.005em", lineHeight: 1.4, paddingLeft: 20, paddingRight: 20 }}>
+        Get a ding 30 minutes before an appointment and when it&apos;s time to collect a signature.
+      </p>
+
+      {/* Single row with the toggle */}
+      <div style={{
+        padding: "14px 20px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--zr-text-primary)", letterSpacing: "-0.012em" }}>
+            Appointment reminders
+          </div>
+          <div style={{ fontSize: "13px", color: "rgba(60,60,67,0.55)", marginTop: 2 }}>
+            {state === "loading" && "Checking…"}
+            {state === "unsupported" && "This browser doesn't support web push."}
+            {state === "ios-install-needed" && "Add to Home Screen to enable"}
+            {state === "denied" && "Blocked in browser settings"}
+            {state === "off" && "Off"}
+            {state === "on" && "On — you'll get reminders here"}
+          </div>
+        </div>
+        {/* Toggle */}
+        {state === "on" ? (
+          <button type="button" onClick={onDisable} disabled={busy}
+            className="transition-opacity active:opacity-60"
+            style={{ color: "rgba(60,60,67,0.7)", fontSize: "14px", fontWeight: 500, letterSpacing: "-0.012em", flexShrink: 0 }}>
+            Turn off
+          </button>
+        ) : (
+          <button type="button" onClick={onEnable}
+            disabled={busy || state === "unsupported" || state === "loading" || state === "denied"}
+            className="transition-all active:scale-[0.97]"
+            style={{
+              background: "var(--zr-orange)", color: "#fff",
+              fontSize: "13px", fontWeight: 600,
+              padding: "7px 16px",
+              borderRadius: 999,
+              letterSpacing: "-0.012em",
+              opacity: busy || state === "unsupported" || state === "loading" || state === "denied" ? 0.4 : 1,
+              flexShrink: 0,
+            }}>
+            {busy ? "Working…" : "Enable"}
+          </button>
+        )}
+      </div>
+
+      {state === "ios-install-needed" && (
+        <p style={{ fontSize: "12.5px", color: "rgba(60,60,67,0.55)", padding: "4px 20px 12px", letterSpacing: "-0.005em", lineHeight: 1.45 }}>
+          On iPhone, tap the Share button in Safari, then &ldquo;Add to Home Screen&rdquo;. Open the app from the Home Screen icon and the Enable button will work.
+        </p>
+      )}
+      {error && (
+        <p style={{ fontSize: "12.5px", color: "#c6443a", padding: "4px 20px 12px", letterSpacing: "-0.005em", lineHeight: 1.45 }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Focus Mode Widget Config (per-user) ──────────────────
 function FocusModeWidgetsSection() {
   const modes: TaskMode[] = ["measuring", "quoting", "scheduling", "warehouse"];
@@ -2477,8 +2824,10 @@ export default function SettingsPage() {
         {activeTab === "dashboard" && (
           <div className="space-y-5">
             <p className="text-xs" style={{ color: "var(--zr-text-muted)" }}>Customize which widgets you see on your dashboard and their order. These settings are per-user — each team member can have their own layout.</p>
+            <NotificationsSection />
             <DashboardWidgetsSection />
             <FocusModeWidgetsSection />
+            <DurationEstimatorSection />
           </div>
         )}
 

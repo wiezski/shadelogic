@@ -423,6 +423,70 @@ function SchedulePageInner() {
     const apptLabel = APPT_TYPES[createType].label;
     const dateStr = new Date(scheduledAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
     const timeStr = fmtTime(scheduledAt);
+
+    // Schedule push notifications for the assignee.
+    //
+    // Two pushes per appointment:
+    //   - "Heads up" 30 min before start: "Heading to {name}"
+    //   - "Wrap signature" 30 min before end: "Collect signature"
+    //     (only for install / measure appointments)
+    //
+    // These write rows into scheduled_pushes; the pg_cron job invokes
+    // the send-pushes edge function every minute and fires them.
+    //
+    // Wrapped in try/catch so pushes are best-effort — if the migration
+    // isn't applied yet or the table doesn't exist, the appointment
+    // still gets created and everything else works.
+    try {
+      const assignee = createAssignee || user?.id;
+      if (assignee && data?.id) {
+        const apptId = (data as { id: string }).id;
+        const startMs = new Date(scheduledAt).getTime();
+        const endMs = startMs + (createMins || 60) * 60_000;
+        const heads = new Date(startMs - 30 * 60_000).toISOString();
+        const wrap  = new Date(endMs   - 30 * 60_000).toISOString();
+        const addrSuffix = createAddr ? ` · ${createAddr.split(",")[0]}` : "";
+
+        const pushes: Array<{ kind: string; title: string; body: string; url: string; fire_at: string; dedupe_key: string }> = [
+          {
+            kind: "appt_heads_up",
+            title: `Heading to ${firstName}`,
+            body: `${apptLabel} at ${timeStr}${addrSuffix}`,
+            url: "/schedule",
+            fire_at: heads,
+            dedupe_key: `appt_heads_up:${apptId}`,
+          },
+        ];
+        // Signature prompt only for install / measure jobs
+        if (createType === "install" || createType === "measure") {
+          pushes.push({
+            kind: "signature_prompt",
+            title: `Collect signature — ${firstName}`,
+            body: "Wrap up the paperwork before leaving.",
+            url: `/customers/${custId}`,
+            fire_at: wrap,
+            dedupe_key: `signature_prompt:${apptId}`,
+          });
+        }
+
+        // Profile lookup for company_id (needed for RLS insert policy)
+        const { data: profile } = await supabase
+          .from("profiles").select("company_id").eq("id", assignee).maybeSingle();
+        if (profile?.company_id) {
+          await supabase.from("scheduled_pushes").upsert(
+            pushes.map(p => ({
+              ...p,
+              user_id: assignee,
+              company_id: profile.company_id,
+            })),
+            { onConflict: "dedupe_key" }
+          );
+        }
+      }
+    } catch {
+      // Non-critical — push scheduling failed but the appointment exists
+    }
+
     setConfirmMsg(
       `Hi ${firstName}! This confirms your ${apptLabel} appointment on ${dateStr} at ${timeStr}` +
       `${createAddr ? ` at ${createAddr}` : ""}. Reply YES to confirm or call to reschedule.`

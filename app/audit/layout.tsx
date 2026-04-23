@@ -3,19 +3,19 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Free Website Health Check for Window Treatment Pros",
   description:
-    "Get a score, top issues, and what to fix — instantly. Built by a 3rd-generation window treatment installer. No signup, free instant scan.",
+    "Find out why your website isn't getting leads — in 10 seconds. Built from real audits of window treatment businesses, by someone who's run installs, managed teams, and fixed the problems you're dealing with. No signup, free instant scan.",
   openGraph: {
-    title: "Free Website Health Check for Window Treatment Pros",
+    title: "Find out why your website isn't getting leads — in 10 seconds",
     description:
-      "Get a score, top issues, and what to fix — instantly. Free instant scan, no signup.",
+      "Free website health check built from real audits of window treatment businesses. Score, top issues, and what to fix — instantly.",
     type: "website",
     url: "https://zeroremake.com/audit",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free Website Health Check for Window Treatment Pros",
+    title: "Find out why your website isn't getting leads — in 10 seconds",
     description:
-      "Get a score, top issues, and what to fix — instantly.",
+      "Free website health check for window treatment businesses. Score, top issues, what to fix — instantly.",
   },
   alternates: { canonical: "https://zeroremake.com/audit" },
 };

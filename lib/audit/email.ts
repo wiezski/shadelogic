@@ -136,10 +136,10 @@ export function renderFullReportHtml(report: AuditReport): string {
     }
 
     <div style="margin-top:36px;padding:24px;background:#fafaf9;border-radius:16px;">
-      <div style="font-size:19px;font-weight:700;color:#1c1c1e;margin-bottom:8px;letter-spacing:-0.015em;">Want help understanding this?</div>
+      <div style="font-size:19px;font-weight:700;color:#1c1c1e;margin-bottom:8px;letter-spacing:-0.015em;">Want me to walk through this with you?</div>
       <div style="font-size:14.5px;color:#374151;line-height:1.55;margin-bottom:16px;">
-        If you want, I'll walk through the report with you on a quick call and show you what I'd fix first.
-        No pitch — just a conversation. Twenty minutes tops.
+        I've seen exactly where businesses like yours lose leads — I can show you what actually moves the needle.
+        Twenty minutes, no pitch.
       </div>
       <a href="https://zeroremake.com/audit?book=${encodeURIComponent(report.domain)}"
         style="display:inline-block;background:#d65a31;color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;text-decoration:none;">
@@ -149,7 +149,7 @@ export function renderFullReportHtml(report: AuditReport): string {
 
     <div style="margin-top:36px;font-size:13px;color:#6b7280;line-height:1.55;">
       — Steve · ZeroRemake Studio<br/>
-      3rd-generation window treatment installer. Built ZeroRemake because we needed better tools.
+      I've run installs, managed teams, and fixed the ops problems you're probably dealing with. ZeroRemake exists because the tools out there weren't getting the job done.
     </div>
 
     <div style="margin-top:28px;padding-top:18px;border-top:1px solid #eee;font-size:11px;color:#9ca3af;line-height:1.5;">

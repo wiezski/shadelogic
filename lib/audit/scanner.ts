@@ -133,48 +133,49 @@ function pickTopThree(findings: Finding[]): Finding[] {
 }
 
 // Build 3-5 short quick-insight one-liners for Layer 1.
+// Direct, outcome-focused. No vague "has gaps" phrasing.
 function buildQuickInsights(findings: Finding[], score: number, domain: string): string[] {
   const insights: string[] = [];
 
-  // Opening line — calibrated to the score band
+  // Opening line — calibrated to the score band, outcome-focused.
   if (score >= 80) {
-    insights.push(`${domain} has a strong foundation — most of the common fixes are already in place.`);
+    insights.push(`${domain} is in good shape. A few refinements could widen the lead coming in.`);
   } else if (score >= 60) {
-    insights.push(`${domain} is solid in a few areas, but there are clear wins on the table.`);
+    insights.push(`${domain} is leaving traffic — and leads — on the table every week.`);
   } else if (score >= 40) {
-    insights.push(`${domain} has real gaps that are holding back traffic and leads.`);
+    insights.push(`Homeowners searching for you are finding your competitors first. That’s fixable.`);
   } else {
-    insights.push(`${domain} has critical gaps that are costing you leads right now.`);
+    insights.push(`Right now, ${domain} is close to invisible to homeowners searching for your services.`);
   }
 
   // City pages — almost always relevant for a local installer
   const cityPages = findings.find((f) => f.id === "city_pages");
   if (cityPages && cityPages.score < cityPages.maxPoints / 2) {
-    insights.push("No strong city-page presence. This is the single highest-ROI SEO gap for a local installer.");
+    insights.push("No city pages means national brands are ranking for “blinds in [your town]” instead of you.");
   }
 
   // LocalBusiness schema
   const schema = findings.find((f) => f.id === "local_business_schema");
   if (schema && schema.score === 0) {
-    insights.push("Missing LocalBusiness structured data — Google can't show rich local results without it.");
+    insights.push("You’re missing the signals that put local businesses in Google’s map pack.");
   }
 
   // Phone visibility
   const phone = findings.find((f) => f.id === "phone_visibility");
   if (phone && phone.score <= 6) {
-    insights.push("Phone number isn't prominent or tappable — mobile visitors can't call you in one tap.");
+    insights.push("Your phone number isn’t one-tap callable on mobile. That’s the #1 action homeowners take.");
   }
 
   // Motorization
   const motor = findings.find((f) => f.id === "motorization");
   if (motor && motor.score === 0) {
-    insights.push("No motorization on the site — you're missing the highest-margin product category.");
+    insights.push("No motorization on the site — the best-paying leads in this industry can’t find you.");
   }
 
   // Trust signals
   const trust = findings.find((f) => f.id === "trust_signals");
   if (trust && trust.score < trust.maxPoints / 2) {
-    insights.push("Trust signals (reviews, years in business, brand partners) aren't working hard enough.");
+    insights.push("Weak trust signals. Homeowners choose based on reviews and years in business — show them, don’t hide them.");
   }
 
   // Stop at 5

@@ -410,9 +410,10 @@ function Hero() {
           margin: 0,
         }}
       >
-        Free Website Health Check
+        Find out why your website
         <br />
-        <span style={{ color: ORANGE }}>for Window Treatment Pros</span>
+        <span style={{ color: ORANGE }}>isn&apos;t getting leads</span>
+        <span style={{ color: TEXT_PRIMARY }}> — in 10 seconds.</span>
       </h1>
       <p
         style={{
@@ -420,13 +421,14 @@ function Hero() {
           color: TEXT_SECONDARY,
           lineHeight: 1.55,
           marginTop: 14,
-          maxWidth: 540,
+          maxWidth: 560,
           marginLeft: "auto",
           marginRight: "auto",
         }}
       >
-        Get a score, top issues, and what to fix — instantly. Built by a 3rd-generation
-        installer who has audited dozens of blind and shutter sites.
+        Built from real audits of window treatment businesses — by someone
+        who&apos;s run installs, managed teams, and fixed the problems
+        you&apos;re dealing with.
       </p>
     </div>
   );
@@ -565,14 +567,49 @@ function ScanForm({
 
       <div
         style={{
-          fontSize: 12,
-          color: TEXT_MUTED,
           marginTop: 14,
-          textAlign: "center",
-          letterSpacing: "-0.003em",
+          display: "flex",
+          justifyContent: "center",
+          gap: 14,
+          flexWrap: "wrap",
         }}
       >
-        No signup required. Takes about 10 seconds.
+        {[
+          "No signup required",
+          "Takes ~10 seconds",
+          "Instant results",
+        ].map((label, i, arr) => (
+          <span
+            key={label}
+            style={{
+              fontSize: 12.5,
+              color: TEXT_MUTED,
+              letterSpacing: "-0.003em",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: 4,
+                height: 4,
+                borderRadius: 999,
+                background: ORANGE,
+                marginRight: 8,
+                verticalAlign: "middle",
+              }}
+            />
+            {label}
+            {i < arr.length - 1 && (
+              <span style={{ color: "rgba(60,60,67,0.2)", marginLeft: 6 }} aria-hidden="true">
+                ·
+              </span>
+            )}
+          </span>
+        ))}
       </div>
     </form>
   );
@@ -591,6 +628,8 @@ function progressLabel(pct: number): string {
 function ScoreBlock({ summary }: { summary: Layer1Summary }) {
   const { score, grade, domain } = summary;
   const color = score >= 80 ? "#1d8052" : score >= 60 ? ORANGE : "#c6443a";
+  const interpretation = scoreInterpretation(score);
+  const comparison = scoreComparison(score);
   return (
     <div
       style={{
@@ -598,61 +637,111 @@ function ScoreBlock({ summary }: { summary: Layer1Summary }) {
         padding: "24px 22px",
         background: SURFACE_SOFT,
         borderRadius: 18,
-        display: "flex",
-        alignItems: "center",
-        gap: 20,
       }}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div
+          style={{
+            fontSize: 56,
+            fontWeight: 800,
+            color,
+            letterSpacing: "-0.03em",
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {score}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: TEXT_MUTED,
+              marginBottom: 2,
+            }}
+          >
+            Your score
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              letterSpacing: "-0.018em",
+              color: TEXT_PRIMARY,
+            }}
+          >
+            {grade}
+          </div>
+          <div
+            style={{
+              fontSize: 13.5,
+              color: TEXT_SECONDARY,
+              marginTop: 2,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {domain}
+          </div>
+        </div>
+      </div>
+
       <div
         style={{
-          fontSize: 56,
-          fontWeight: 800,
-          color,
-          letterSpacing: "-0.03em",
-          lineHeight: 1,
-          fontVariantNumeric: "tabular-nums",
+          marginTop: 18,
+          paddingTop: 16,
+          borderTop: HAIRLINE,
         }}
       >
-        {score}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 16,
             fontWeight: 600,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: TEXT_MUTED,
-            marginBottom: 2,
-          }}
-        >
-          Your score
-        </div>
-        <div
-          style={{
-            fontSize: 20,
-            fontWeight: 700,
-            letterSpacing: "-0.018em",
             color: TEXT_PRIMARY,
+            letterSpacing: "-0.012em",
+            lineHeight: 1.35,
           }}
         >
-          {grade}
+          {interpretation}
         </div>
-        <div
-          style={{
-            fontSize: 13.5,
-            color: TEXT_SECONDARY,
-            marginTop: 2,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {domain}
-        </div>
+        {comparison && (
+          <div
+            style={{
+              marginTop: 8,
+              display: "inline-block",
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: "-0.003em",
+              color: TEXT_SECONDARY,
+              background: "rgba(60,60,67,0.06)",
+              padding: "5px 12px",
+              borderRadius: 999,
+            }}
+          >
+            {comparison}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function scoreInterpretation(score: number): string {
+  if (score >= 80) return "Your site is pulling its weight. A few refinements would tighten it further.";
+  if (score >= 60) return "You’re leaving leads on the table every week.";
+  if (score >= 40) return "You’re likely missing leads every week — and they’re going to competitors.";
+  return "Right now, homeowners searching for you probably aren’t finding you. This is fixable.";
+}
+
+function scoreComparison(score: number): string | null {
+  if (score >= 80) return "Stronger than most window treatment sites we’ve audited";
+  if (score >= 60) return "About average for window treatment businesses";
+  if (score >= 40) return "Below average compared to similar businesses";
+  return "Well below average for window treatment businesses";
 }
 
 function TopThree({ findings }: { findings: FindingLite[] }) {
@@ -803,28 +892,73 @@ function EmailGate({
     >
       <div
         style={{
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: 700,
           letterSpacing: "-0.018em",
           color: TEXT_PRIMARY,
-          marginBottom: 4,
+          marginBottom: 6,
         }}
       >
-        See the full breakdown
+        Get your full action plan
       </div>
       <div
         style={{
-          fontSize: 14,
+          fontSize: 14.5,
           color: TEXT_SECONDARY,
           lineHeight: 1.5,
           marginBottom: 14,
           letterSpacing: "-0.005em",
         }}
       >
-        {additional > 0
-          ? `I'll open up the remaining ${additional} check${additional === 1 ? "" : "s"} — per-category breakdown, prioritized fixes, and what I'd actually do. Also delivered to your inbox.`
-          : "I'll open up the full per-category breakdown and email you a copy so you can share it with your team."}
+        I&apos;ll show you exactly what to fix first — prioritized like I would for a real client.
       </div>
+
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: "0 0 16px 0",
+          display: "grid",
+          gap: 6,
+        }}
+      >
+        {[
+          additional > 0
+            ? `Full breakdown of all ${additional + 3} issues`
+            : "Full breakdown of every issue",
+          "What to fix first",
+          "How to get more leads",
+        ].map((item) => (
+          <li
+            key={item}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 14,
+              color: TEXT_PRIMARY,
+              letterSpacing: "-0.005em",
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke={ORANGE}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ flexShrink: 0 }}
+              aria-hidden="true"
+            >
+              <path d="M4 10.5 L8 14 L16 6" />
+            </svg>
+            {item}
+          </li>
+        ))}
+      </ul>
+
       <div
         style={{
           display: "flex",
@@ -864,10 +998,11 @@ function EmailGate({
             border: "none",
             cursor: "pointer",
             letterSpacing: "-0.012em",
+            whiteSpace: "nowrap",
           }}
           className="active:scale-[0.97]"
         >
-          Send me the full report
+          Send my full report →
         </button>
       </div>
 
@@ -1086,7 +1221,7 @@ function BookCallCard({
           lineHeight: 1.2,
         }}
       >
-        Want help understanding this?
+        Want me to walk through this with you?
       </div>
       <div
         style={{
@@ -1097,8 +1232,8 @@ function BookCallCard({
           letterSpacing: "-0.005em",
         }}
       >
-        I&apos;ll walk through the report with you and show you what I&apos;d fix. Twenty minutes,
-        no pitch — just an installer-to-installer conversation. No obligation.
+        I&apos;ve seen exactly where businesses like yours lose leads — I can show you
+        what actually moves the needle. Twenty minutes, no pitch.
       </div>
 
       <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
@@ -1167,7 +1302,7 @@ function BookCallCard({
           letterSpacing: "-0.003em",
         }}
       >
-        Steve · ZeroRemake Studio · I&apos;ll text or email within 24 hours to set a time.
+        Steve · ZeroRemake Studio · I&apos;ll reach out within 24 hours to set a time.
       </div>
     </form>
   );

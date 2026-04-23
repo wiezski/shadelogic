@@ -83,6 +83,13 @@ export default function AuditPage() {
   const [scanProgress, setScanProgress] = useState(0);
   const [summary, setSummary] = useState<Layer1Summary | null>(null);
   const [email, setEmail] = useState("");
+  // Tracks the email delivery status after the prospect hits "Send my full
+  // report". Drives the confirmation / error banner shown under the form.
+  //   null    = haven't tried yet
+  //   sending = in flight
+  //   sent    = server confirmed Resend accepted the email
+  //   failed  = send errored (rare — Resend key issue, domain not verified, etc.)
+  const [unlockStatus, setUnlockStatus] = useState<null | "sending" | "sent" | "failed">(null);
 
   // Booking form state (Layer 3)
   const [bookName, setBookName] = useState("");
@@ -199,23 +206,27 @@ export default function AuditPage() {
       setError("That email doesn’t look right.");
       return;
     }
-    // Flip UI to unlocked immediately — the findings are already loaded
-    // with the Layer 1 summary; the server call just records the email
-    // and fires the branded report email in the background.
+    // Optimistically reveal the full findings (the data is already loaded
+    // in the Layer 1 summary). We still AWAIT the API response so we can
+    // tell the user whether email delivery actually succeeded.
     setStage("unlocked");
+    setUnlockStatus("sending");
     try {
       const res = await fetch("/api/audit/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: summary.id, email: trimmed }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        // Non-fatal — the UI is already unlocked; just log.
-        console.warn("[audit/unlock] server call failed:", data);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.emailSent) {
+        setUnlockStatus("sent");
+      } else {
+        console.warn("[audit/unlock] server reported failure:", data);
+        setUnlockStatus("failed");
       }
     } catch (err) {
       console.warn("[audit/unlock] network error:", err);
+      setUnlockStatus("failed");
     }
   }
 
@@ -294,6 +305,25 @@ export default function AuditPage() {
                 locked={stage !== "unlocked" && stage !== "booking" && stage !== "booked"}
               />
 
+              {/* Email-delivery confirmation banner. Appears only after
+                  the user has submitted their email in Layer 2. */}
+              {unlockStatus === "sent" && (
+                <UnlockBanner kind="success">
+                  Check your email — your full report is on the way.
+                </UnlockBanner>
+              )}
+              {unlockStatus === "failed" && (
+                <UnlockBanner kind="error">
+                  Something went wrong sending the email. Try again, or reply
+                  to <a href="mailto:support@zeroremake.com" style={{ color: "inherit", textDecoration: "underline" }}>support@zeroremake.com</a> and I&apos;ll get it to you directly.
+                </UnlockBanner>
+              )}
+              {unlockStatus === "sending" && stage === "unlocked" && (
+                <UnlockBanner kind="info">
+                  Sending your full report…
+                </UnlockBanner>
+              )}
+
               {/* Layer 2 — email gate */}
               {stage === "results" && (
                 <EmailGate
@@ -348,6 +378,7 @@ export default function AuditPage() {
                   setBookPhone("");
                   setBookNotes("");
                   setShowBookingForm(false);
+                  setUnlockStatus(null);
                   setError(null);
                   if (typeof window !== "undefined") {
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1832,6 +1863,42 @@ function relativeTime(iso: string): string {
   if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
   const d = Math.round(h / 24);
   return `${d} day${d === 1 ? "" : "s"} ago`;
+}
+
+// ─── Unlock email delivery banner ─────────────────────────────────
+
+function UnlockBanner({
+  kind,
+  children,
+}: {
+  kind: "success" | "error" | "info";
+  children: React.ReactNode;
+}) {
+  const palette =
+    kind === "success"
+      ? { bg: "rgba(48,164,108,0.10)", color: "#1d8052" }
+      : kind === "error"
+        ? { bg: "rgba(214,68,58,0.10)", color: "#c6443a" }
+        : { bg: "rgba(60,60,67,0.06)", color: TEXT_SECONDARY };
+  return (
+    <div
+      role="status"
+      style={{
+        marginTop: 20,
+        padding: "12px 16px",
+        background: palette.bg,
+        color: palette.color,
+        borderRadius: 12,
+        fontSize: 13.5,
+        fontWeight: 500,
+        letterSpacing: "-0.003em",
+        lineHeight: 1.5,
+        textAlign: "center",
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 // ─── Soft rate-limit notice (subtle, non-blocking) ────────────────

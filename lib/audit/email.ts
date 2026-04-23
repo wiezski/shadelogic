@@ -6,18 +6,53 @@
 // Two email shapes:
 //   1. `sendFullReportEmail` — the branded full-report email sent to the
 //      prospect after they unlock Layer 2.
-//   2. `sendInternalAlertEmail` — a short plain alert to Steve when
-//      someone completes Layer 2 or Layer 3.
+//   2. `sendInternalAlertEmail` — an owner notification to Steve, fired
+//      alongside the prospect email so he can follow up manually.
 //
 // Required env vars:
-//   RESEND_API_KEY          — Resend API key
+//   RESEND_API_KEY          — Resend API key (required; without it, sends
+//                             return a clear error without calling Resend)
 //   EMAIL_FROM_ADDRESS      — verified sender (default: noreply@zeroremake.com)
-//   AUDIT_INTERNAL_ALERT_TO — where to send internal alerts (default: wiezski@gmail.com)
+//   AUDIT_INTERNAL_ALERT_TO — where to send owner alerts (default: wiezski@gmail.com)
+//
+// Every send logs explicitly to stdout/stderr so Vercel's runtime logs
+// make it easy to see who got what and whether Resend accepted it.
 
 import type { AuditReport, Finding } from "./types";
 
 const FROM_DEFAULT = "noreply@zeroremake.com";
 const INTERNAL_DEFAULT = "wiezski@gmail.com";
+
+// ── Resend key validation ───────────────────────────────────────────
+
+/**
+ * Check that Resend is configured and log a clear, actionable message
+ * if it isn't. Returns the key or null.
+ */
+function getResendKey(): string | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error(
+      "[audit/email] Resend API key missing or invalid — set RESEND_API_KEY in Vercel env vars. All audit emails will fail until this is set.",
+    );
+    return null;
+  }
+  if (!apiKey.startsWith("re_") || apiKey.length < 20) {
+    console.error(
+      "[audit/email] Resend API key missing or invalid — RESEND_API_KEY doesn't look like a Resend key (expected re_…). Check the value in Vercel env vars.",
+    );
+    return null;
+  }
+  return apiKey;
+}
+
+// ── Low-level send (single source of truth for Resend) ─────────────
+
+interface SendResult {
+  ok: boolean;
+  error?: string;
+  id?: string;
+}
 
 async function sendRaw(params: {
   to: string;
@@ -25,16 +60,26 @@ async function sendRaw(params: {
   html: string;
   fromName?: string;
   replyTo?: string;
-}): Promise<{ ok: boolean; error?: string; id?: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
+  /** Short tag for logs — e.g. "full_report" or "owner_alert". */
+  kind: string;
+  /** The domain this send relates to, for log correlation. */
+  domain?: string;
+}): Promise<SendResult> {
+  const apiKey = getResendKey();
   if (!apiKey) {
-    console.warn("[audit/email] RESEND_API_KEY not set — email skipped");
-    return { ok: false, error: "RESEND_API_KEY not configured" };
+    return { ok: false, error: "Resend API key missing or invalid" };
   }
 
   const fromAddr = process.env.EMAIL_FROM_ADDRESS || FROM_DEFAULT;
   const fromName = params.fromName || "ZeroRemake";
   const from = `${fromName} <${fromAddr}>`;
+
+  console.log(
+    `[audit/email] Sending ${params.kind} to:`,
+    params.to,
+    params.domain ? `for domain: ${params.domain}` : "",
+    `subject: "${params.subject}"`,
+  );
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -51,16 +96,38 @@ async function sendRaw(params: {
         reply_to: params.replyTo || "steve@zeroremake.com",
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.error("[audit/email] Resend error:", data);
-      return { ok: false, error: data.message || "Resend error" };
+      const message = data?.message || `Resend returned HTTP ${res.status}`;
+      console.error(
+        `[audit/email] ${params.kind} FAILED to:`,
+        params.to,
+        params.domain ? `domain: ${params.domain}` : "",
+        "error:",
+        message,
+        "raw:",
+        data,
+      );
+      return { ok: false, error: message };
     }
-    return { ok: true, id: data.id };
+    console.log(
+      `[audit/email] ${params.kind} sent successfully to:`,
+      params.to,
+      params.domain ? `domain: ${params.domain}` : "",
+      "message_id:",
+      data?.id || "(no id returned)",
+    );
+    return { ok: true, id: data?.id };
   } catch (err) {
-    const e = err as Error;
-    console.error("[audit/email] send failed:", e);
-    return { ok: false, error: e.message };
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[audit/email] ${params.kind} FAILED to:`,
+      params.to,
+      params.domain ? `domain: ${params.domain}` : "",
+      "error:",
+      message,
+    );
+    return { ok: false, error: message };
   }
 }
 
@@ -159,17 +226,19 @@ export function renderFullReportHtml(report: AuditReport): string {
 </body></html>`;
 }
 
-export async function sendFullReportEmail(to: string, report: AuditReport) {
+export async function sendFullReportEmail(to: string, report: AuditReport): Promise<SendResult> {
   return sendRaw({
     to,
     subject: `Your ${report.domain} website audit (${report.score}/100)`,
     html: renderFullReportHtml(report),
     fromName: "Steve at ZeroRemake",
     replyTo: "steve@zeroremake.com",
+    kind: "full_report",
+    domain: report.domain,
   });
 }
 
-// ── Internal alert (Steve gets notified on each Layer 2/3 event) ───
+// ── Owner notification — fired alongside the prospect email ────────
 
 export async function sendInternalAlertEmail(params: {
   kind: "email_captured" | "call_booked";
@@ -181,34 +250,72 @@ export async function sendInternalAlertEmail(params: {
   phone?: string | null;
   notes?: string | null;
   auditId: string;
-}) {
+}): Promise<SendResult> {
   const to = process.env.AUDIT_INTERNAL_ALERT_TO || INTERNAL_DEFAULT;
+  // Per product spec: "New audit lead: [domain] (Score: XX)" for the
+  // email_captured event. Keep the call_booked subject distinct so it
+  // sorts naturally in the inbox.
   const subject =
     params.kind === "call_booked"
-      ? `[Audit] Call booked: ${params.domain} (${params.score}/100)`
-      : `[Audit] Email captured: ${params.domain} (${params.score}/100)`;
+      ? `Call booked: ${params.domain} (Score: ${params.score})`
+      : `New audit lead: ${params.domain} (Score: ${params.score})`;
+
+  const topIssue = params.report?.topThree?.[0];
 
   const rows: string[] = [];
-  rows.push(`<tr><td><strong>Domain</strong></td><td>${params.domain}</td></tr>`);
-  rows.push(`<tr><td><strong>Score</strong></td><td>${params.score}/100</td></tr>`);
-  if (params.email) rows.push(`<tr><td><strong>Email</strong></td><td>${params.email}</td></tr>`);
-  if (params.name) rows.push(`<tr><td><strong>Name</strong></td><td>${params.name}</td></tr>`);
-  if (params.phone) rows.push(`<tr><td><strong>Phone</strong></td><td>${params.phone}</td></tr>`);
-  if (params.notes) rows.push(`<tr><td><strong>Notes</strong></td><td>${params.notes}</td></tr>`);
-  rows.push(`<tr><td><strong>ID</strong></td><td>${params.auditId}</td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Domain</td><td style="font-weight:600;">${params.domain}</td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Score</td><td style="font-weight:600;">${params.score}/100</td></tr>`);
+  if (params.email) rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Email</td><td>${params.email}</td></tr>`);
+  if (params.name) rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Name</td><td>${params.name}</td></tr>`);
+  if (params.phone) rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Phone</td><td>${params.phone}</td></tr>`);
+  if (params.notes) rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Notes</td><td>${params.notes}</td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Audit ID</td><td style="font-family:monospace;font-size:12px;color:#6b7280;">${params.auditId}</td></tr>`);
 
-  const topThree = (params.report?.topThree || []).map((f) => `<li>${f.title} — ${f.detail}</li>`).join("");
+  const topIssueBlock = topIssue
+    ? `<div style="margin-top:20px;padding:14px 18px;background:#fafaf9;border-radius:10px;">
+        <div style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Top issue</div>
+        <div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:4px;">${topIssue.title}</div>
+        <div style="font-size:13.5px;color:#374151;line-height:1.5;">${topIssue.detail}</div>
+      </div>`
+    : "";
 
-  const html = `<!doctype html><html><body style="font-family:-apple-system,sans-serif;padding:16px;">
-    <h2 style="margin:0 0 8px 0;">${params.kind === "call_booked" ? "Call booked" : "Email captured"}</h2>
-    <table cellpadding="6" style="border-collapse:collapse;font-size:14px;">${rows.join("")}</table>
-    ${topThree ? `<h3 style="margin-top:16px;">Top 3 issues</h3><ul>${topThree}</ul>` : ""}
+  const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;color:#1c1c1e;">
+    <h2 style="margin:0 0 12px 0;font-size:18px;font-weight:700;">${params.kind === "call_booked" ? "Call booked" : "New audit lead"}</h2>
+    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">${rows.join("")}</table>
+    ${topIssueBlock}
+    <div style="margin-top:24px;font-size:12px;color:#9ca3af;">
+      Sent by zeroremake.com/audit
+    </div>
   </body></html>`;
 
   return sendRaw({
     to,
     subject,
     html,
-    fromName: "ZeroRemake Audit Tool",
+    fromName: "ZeroRemake Audit",
+    kind: params.kind === "call_booked" ? "owner_call_alert" : "owner_lead_alert",
+    domain: params.domain,
+  });
+}
+
+// ── Plain-text test email (used by /api/test-email) ─────────────────
+
+export async function sendTestEmail(to: string): Promise<SendResult> {
+  const html = `<!doctype html><html><body style="font-family:-apple-system,sans-serif;padding:20px;color:#1c1c1e;">
+    <h2 style="margin:0 0 12px 0;font-size:18px;font-weight:700;">Test email working</h2>
+    <p style="margin:0 0 12px 0;font-size:14px;color:#374151;">
+      If you got this, email is working.
+    </p>
+    <p style="margin:0;font-size:12px;color:#9ca3af;">
+      Sent from zeroremake.com/api/test-email at ${new Date().toISOString()}.
+    </p>
+  </body></html>`;
+
+  return sendRaw({
+    to,
+    subject: "Test email working",
+    html,
+    fromName: "ZeroRemake Audit",
+    kind: "test_probe",
   });
 }

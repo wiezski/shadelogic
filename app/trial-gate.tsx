@@ -21,7 +21,7 @@ const OVERLAY_ALLOW_PATHS = [
 // any UI on these (no banner, no overlay). A trial countdown banner on
 // a public lead magnet would leak private billing state to visitors and
 // break the marketing shell.
-const PUBLIC_MARKETING_PATHS = ["/audit", "/admin"];
+const PUBLIC_MARKETING_PATHS = ["/audit", "/admin", "/sun-calculator"];
 
 /**
  * TrialGate — SaaS trial enforcement.

@@ -14,7 +14,7 @@ const CATEGORIES = [
 ];
 
 // Hide on public-facing portals and marketing pages.
-const HIDE_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/audit", "/admin"];
+const HIDE_ROUTES = ["/b/", "/q/", "/i/", "/intake", "/login", "/signup", "/audit", "/admin", "/sun-calculator"];
 
 export function FeedbackWidget() {
   const { user } = useAuth();

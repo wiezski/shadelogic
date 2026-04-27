@@ -2,19 +2,20 @@
 // POST /api/signup/welcome-email
 //
 // Fired (non-blocking) from the signup flow after the user, company, and
-// profile rows are all inserted. Sends a branded welcome email with the
-// trial end date + a link to the setup guide.
-//
-// Auth: accepts the newly-created user's session (standard Supabase auth
-// header). We re-fetch their profile + company server-side so the email
-// content can't be spoofed by a bad payload.
+// profile rows are all inserted. Sends a branded welcome email to the new
+// user AND fires a fire-and-forget admin notification to the founder so
+// they can reach out personally.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../../lib/email";
-import { welcomeEmail } from "../../../../lib/email-templates";
+import { welcomeEmail, adminSignupNotification } from "../../../../lib/email-templates";
 
 export const dynamic = "force-dynamic";
+
+// Where founder-facing alerts go. Override via AUDIT_INTERNAL_ALERT_TO env
+// var if Steve wants them at a different inbox later.
+const ADMIN_ALERT_TO = process.env.AUDIT_INTERNAL_ALERT_TO || "wiezski@gmail.com";
 
 export async function POST(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -81,6 +82,34 @@ export async function POST(req: NextRequest) {
     type: "custom",
     companyId: profile.company_id,
   });
+
+  // Fire the admin notification in parallel — non-blocking. Skip if the
+  // signup looks like a test account so Steve's inbox stays clean.
+  const SKIP_DOMAINS = ["@zeroremake.com"];
+  const SKIP_EMAILS = ["mwiezbowski@gmail.com"]; // family/test accounts
+  const isTestSignup =
+    SKIP_DOMAINS.some(d => email.toLowerCase().endsWith(d)) ||
+    SKIP_EMAILS.includes(email.toLowerCase());
+
+  if (!isTestSignup) {
+    const adminTpl = adminSignupNotification({
+      ownerName: profile.full_name || "(no name)",
+      ownerEmail: email,
+      companyName: company.name || "(no name)",
+      plan: company.plan || "trial",
+      trialEndsAt: company.trial_ends_at,
+      signedUpAt: new Date().toISOString(),
+      companyId: profile.company_id,
+    });
+    sendEmail({
+      to: ADMIN_ALERT_TO,
+      subject: adminTpl.subject,
+      html: adminTpl.html,
+      replyTo: adminTpl.replyTo,
+      type: "custom",
+      companyId: profile.company_id,
+    }).catch(err => console.error("[admin signup notify failed]", err));
+  }
 
   return NextResponse.json({ ok: result.success, error: result.error });
 }

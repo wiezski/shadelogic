@@ -178,12 +178,33 @@ async function logEmail(
 // Wraps content in a clean, branded email layout.
 
 export function emailLayout(body: string, companyName?: string): string {
-  // Footer note: show the installer's business name for customer-facing
-  // emails. For system emails sent TO an installer (no companyName passed
-  // in) — trial reminders, password reset — we fall back to "ZeroRemake"
-  // since those genuinely come from us.
+  // Customer-facing emails get the installer's business name. System emails
+  // sent TO an installer (welcome, trial reminders) get the ZeroRemake logo
+  // header so they read like a real product email instead of a transactional
+  // notification.
   const brand = companyName || "ZeroRemake";
   const isSystemEmail = !companyName;
+  const logoUrl = "https://zeroremake.com/icon-192.png";
+
+  // Branded ZR header for system emails — small wordmark + logo, sets the
+  // tone before the subject body. Customer emails skip it (the installer's
+  // own brand fills that role on quote/invoice/appointment emails).
+  const header = isSystemEmail
+    ? `<div class="brand-bar">
+         <img src="${logoUrl}" width="36" height="36" alt="ZeroRemake" class="brand-logo" />
+         <span class="brand-name">ZeroRemake</span>
+       </div>`
+    : "";
+
+  // Personal sign-off block on system emails — feels like a person, not a
+  // template. Reply-to threading naturally since `from` is wiezski@.
+  const signOff = isSystemEmail
+    ? `<div class="signoff">
+         <p style="margin-bottom: 4px;">— Steve</p>
+         <p class="muted" style="margin: 0;">Founder, ZeroRemake</p>
+       </div>`
+    : "";
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -192,25 +213,33 @@ export function emailLayout(body: string, companyName?: string): string {
   <style>
     body { margin: 0; padding: 0; background: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .wrap { max-width: 560px; margin: 0 auto; padding: 32px 16px; }
+    .brand-bar { display: flex; align-items: center; gap: 10px; padding: 0 4px 18px; }
+    .brand-logo { border-radius: 8px; display: block; }
+    .brand-name { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
     .card { background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     .footer { text-align: center; padding: 20px 0 0; font-size: 12px; color: #9ca3af; }
-    h1 { margin: 0 0 16px; font-size: 20px; color: #111827; font-weight: 700; }
+    h1 { margin: 0 0 16px; font-size: 22px; color: #111827; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
     p { margin: 0 0 14px; font-size: 15px; line-height: 1.6; color: #374151; }
-    .btn { display: inline-block; background: #e63000; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 8px 0; }
-    .detail { background: #f9fafb; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .btn { display: inline-block; background: #d65a31; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; font-size: 15px; margin: 8px 0; }
+    .detail { background: #f9fafb; border-radius: 10px; padding: 18px; margin: 16px 0; }
     .detail-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
     .detail-label { color: #6b7280; }
     .detail-value { color: #111827; font-weight: 500; }
     .muted { color: #9ca3af; font-size: 13px; }
+    .signoff { margin-top: 24px; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #374151; }
   </style>
 </head>
 <body>
   <div class="wrap">
+    ${header}
     <div class="card">
       ${body}
+      ${signOff}
     </div>
     <div class="footer">
-      ${isSystemEmail ? "ZeroRemake" : `Sent by ${brand}`}
+      ${isSystemEmail
+        ? `ZeroRemake · <a href="https://zeroremake.com" style="color: #9ca3af; text-decoration: underline;">zeroremake.com</a>`
+        : `Sent by ${brand}`}
     </div>
   </div>
 </body>

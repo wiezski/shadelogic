@@ -327,40 +327,94 @@ export function orderReadyForInstall(params: {
 }
 
 // ── 9. Welcome Email (fires on signup) ───────────────────────
+// Written first-person from Steve so it reads like a real product email,
+// not an autoresponder. Reply-to threads back to him directly.
 
 export function welcomeEmail(params: {
   firstName: string;
   companyName: string;
   trialEndsAt: string;
 }) {
-  const subject = `Welcome to ZeroRemake, ${params.firstName}!`;
+  const subject = `Welcome to ZeroRemake, ${params.firstName} — quick note from Steve`;
   const loginUrl = `${APP_URL}/login`;
   const setupUrl = `${APP_URL}/setup-guide`;
 
   const html = emailLayout(`
-    <h1>Welcome aboard 👋</h1>
-    <p>Thanks for signing up, ${params.firstName}. Your ZeroRemake account for <strong>${params.companyName}</strong> is ready to go.</p>
+    <h1>Hey ${params.firstName} — welcome aboard.</h1>
 
-    <p><strong>Your 14-day free trial runs through ${fmtDate(params.trialEndsAt)}.</strong> No card required. You'll get a reminder before it ends.</p>
+    <p>I'm Steve, the founder of ZeroRemake. Just wanted to say thanks personally for giving us a shot. Your account for <strong>${params.companyName}</strong> is set up and waiting for you.</p>
 
-    <p>To get the most out of ZeroRemake fast:</p>
+    <p>You're on the <strong>14-day free trial</strong> through <strong>${fmtDate(params.trialEndsAt)}</strong> — no card needed. I'll send one heads-up email before it ends so you can decide what plan fits.</p>
+
+    <p>If you want to hit the ground running, here's what I'd do in your first 15 minutes:</p>
 
     <div class="detail">
-      <div class="detail-row"><span class="detail-label">1.</span><span class="detail-value">Add your first customer — start tracking leads right away</span></div>
-      <div class="detail-row"><span class="detail-label">2.</span><span class="detail-value">Create a measure job — capture windows, photos, measurements</span></div>
-      <div class="detail-row"><span class="detail-label">3.</span><span class="detail-value">Send a quote — your customer can review + sign online</span></div>
+      <div class="detail-row"><span class="detail-label">1.</span><span class="detail-value">Add a real customer — get a feel for the lead pipeline</span></div>
+      <div class="detail-row"><span class="detail-label">2.</span><span class="detail-value">Create a measure job — windows, photos, measurements all in one place</span></div>
+      <div class="detail-row"><span class="detail-label">3.</span><span class="detail-value">Send your first quote — customer signs online, deposit comes straight to you</span></div>
     </div>
 
     <p style="text-align: center;">
-      <a href="${loginUrl}" class="btn">Sign In</a>
+      <a href="${loginUrl}" class="btn">Open your dashboard</a>
     </p>
 
-    <p class="muted">Want a more detailed walkthrough? <a href="${setupUrl}">Open the setup guide →</a></p>
+    <p>I built ZeroRemake because I watched my dad run his blinds business out of paper folders for years. If anything feels broken, slow, or just plain weird — <strong>reply to this email</strong>. It comes straight to me and I'll usually fix it the same day.</p>
 
-    <p class="muted">Got questions? Just reply to this email.</p>
-  `, "ZeroRemake");
+    <p class="muted">If you want a guided walkthrough, the <a href="${setupUrl}">setup guide</a> covers everything in about 10 minutes.</p>
+  `, undefined);
 
   return { subject, html };
+}
+
+// ── 10. Admin Notification — fires to the founder on every new signup ──
+// Sent to wiezski@gmail.com (or AUDIT_INTERNAL_ALERT_TO env override) so
+// Steve hears about every new tenant in real time and can reach out personally.
+
+export function adminSignupNotification(params: {
+  ownerName: string;
+  ownerEmail: string;
+  companyName: string;
+  plan: string;
+  trialEndsAt: string | null;
+  signedUpAt: string;
+  companyId: string;
+}) {
+  const subject = `🆕 New signup: ${params.companyName} (${params.ownerName})`;
+  const adminUrl = `${APP_URL}/admin`;
+
+  const trialRow = params.trialEndsAt
+    ? `<div class="detail-row"><span class="detail-label">Trial ends</span><span class="detail-value">${fmtDate(params.trialEndsAt)}</span></div>`
+    : "";
+
+  const html = emailLayout(`
+    <h1>New ZeroRemake signup</h1>
+
+    <p>Someone just signed up. Worth a personal hello?</p>
+
+    <div class="detail">
+      <div class="detail-row"><span class="detail-label">Company</span><span class="detail-value">${params.companyName}</span></div>
+      <div class="detail-row"><span class="detail-label">Owner</span><span class="detail-value">${params.ownerName}</span></div>
+      <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value"><a href="mailto:${params.ownerEmail}" style="color: #d65a31;">${params.ownerEmail}</a></span></div>
+      <div class="detail-row"><span class="detail-label">Plan</span><span class="detail-value">${params.plan}</span></div>
+      ${trialRow}
+      <div class="detail-row"><span class="detail-label">Signed up</span><span class="detail-value">${fmtDate(params.signedUpAt)} at ${fmtTime(params.signedUpAt)}</span></div>
+      <div class="detail-row"><span class="detail-label">Company ID</span><span class="detail-value" style="font-family: monospace; font-size: 12px;">${params.companyId}</span></div>
+    </div>
+
+    <p style="text-align: center;">
+      <a href="${adminUrl}" class="btn">Open admin</a>
+    </p>
+
+    <p class="muted">Reply to this email to send them a personal note (it'll go to ${params.ownerEmail}).</p>
+  `, undefined);
+
+  return {
+    subject,
+    html,
+    // Set the Reply-To header to the new signup's address so Steve can
+    // hit "reply" and write to them directly. Handled by sendEmail caller.
+    replyTo: params.ownerEmail,
+  };
 }
 
 export function trialReminder1Day(params: {

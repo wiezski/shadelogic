@@ -13,7 +13,14 @@ export default function BlindsVsShadesClient() {
   return (
     <div className="blinds-tool-root flex-1">
       <Container>
-        <header className="pt-10 pb-6 md:pt-16 md:pb-8">
+        <div
+          className="pt-4 pb-1 text-[14px] font-semibold tracking-[-0.01em]"
+          style={{ color: "var(--tool-text)" }}
+        >
+          Window Tools
+        </div>
+
+        <header className="pt-6 pb-6 md:pt-10 md:pb-8">
           <h1
             className="max-w-[24ch] text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] md:text-[40px]"
             style={{ color: "var(--tool-text)" }}
@@ -33,9 +40,9 @@ export default function BlindsVsShadesClient() {
         <DecisionTool />
 
         <footer className="mt-8 mb-12 text-[12px] leading-[1.5]" style={{ color: "var(--tool-text-tertiary)" }}>
-          ShadeLogic — independent decision tools for homeowners. We don&rsquo;t
-          sell window treatments; we help you figure out what to look for
-          before you do.
+          Independent decision tools for homeowners. We don&rsquo;t sell
+          window treatments; we help you figure out what to look for before
+          you do.
         </footer>
       </Container>
     </div>

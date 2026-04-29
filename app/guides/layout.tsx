@@ -14,8 +14,8 @@ import "./_styles.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "ShadeLogic Guides — honest advice on window treatments",
-    template: "%s | ShadeLogic Guides",
+    default: "Window Treatment Guides — honest advice for homeowners",
+    template: "%s | Window Treatment Guides",
   },
   description:
     "Practical homeowner guides on choosing window treatments — written from real installer experience. No marketing, just what actually works.",
@@ -37,17 +37,17 @@ export default function GuidesLayout({
     <div className="guides-root flex-1">
       <Container>
         <header className="guides-chrome-header">
-          <Link href="/tools/blinds-vs-shades" style={{ color: "var(--tool-text)" }}>
-            ShadeLogic
+          <Link href="/guides" style={{ color: "var(--tool-text)" }}>
+            Window Treatment Guides
           </Link>
         </header>
 
         <main>{children}</main>
 
         <footer className="guides-chrome-footer">
-          ShadeLogic — independent decision tools and guides for homeowners.
-          We don&rsquo;t sell window treatments; we help you figure out what
-          to look for before you do.
+          Independent decision tools and guides for homeowners. We don&rsquo;t
+          sell window treatments; we help you figure out what to look for
+          before you do.
         </footer>
       </Container>
     </div>

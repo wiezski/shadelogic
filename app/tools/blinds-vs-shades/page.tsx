@@ -11,14 +11,14 @@ import "./_styles.css";
  */
 
 export const metadata: Metadata = {
-  title: "Blinds vs Shades Decision Tool | ShadeLogic",
+  title: "Blinds vs Shades Decision Tool | Window Tools",
   description:
     "Find the right window treatment using a real-world decision engine based on light, privacy, and installation factors.",
   alternates: { canonical: "/tools/blinds-vs-shades" },
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
-    title: "Blinds vs Shades Decision Tool | ShadeLogic",
+    title: "Blinds vs Shades Decision Tool | Window Tools",
     description:
       "Honest, plain-English window treatment recommendations based on real installer experience.",
   },

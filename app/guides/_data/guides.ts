@@ -1,5 +1,5 @@
 /**
- * ShadeLogic — homeowner SEO guides.
+ * Homeowner SEO guides.
  *
  * Each guide is structured data (not raw markdown) so the renderer can
  * apply consistent typography and so we don't need a markdown parser

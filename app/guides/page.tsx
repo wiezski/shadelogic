@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { GUIDES, ALL_GUIDE_SLUGS } from "./_data/guides";
 
 /*
- * /guides — index of all ShadeLogic homeowner guides.
+ * /guides — index of all homeowner guides.
  *
  * Server component. Reads the guide list from the existing data source
  * so adding a new guide automatically updates this page. No external
@@ -12,7 +12,7 @@ import { GUIDES, ALL_GUIDE_SLUGS } from "./_data/guides";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://zeroremake.com";
 
 export const metadata: Metadata = {
-  title: { absolute: "Window Treatment Guides | ShadeLogic" },
+  title: { absolute: "Window Treatment Guides" },
   description:
     "Practical homeowner advice on choosing window treatments — written from real installer experience. What actually works, not what the showroom says.",
   alternates: { canonical: `${SITE_URL}/guides` },
@@ -20,14 +20,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/guides`,
-    title: "Window Treatment Guides | ShadeLogic",
+    title: "Window Treatment Guides",
     description:
       "Practical homeowner advice on choosing window treatments — written from real installer experience.",
-    siteName: "ShadeLogic",
+    siteName: "Window Treatment Guides",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Window Treatment Guides | ShadeLogic",
+    title: "Window Treatment Guides",
     description: "Practical homeowner advice on window treatments.",
   },
 };
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 export default function GuidesIndexPage() {
   return (
     <article className="guides-article my-6 md:my-10">
-      <p className="guides-eyebrow">ShadeLogic</p>
+      <p className="guides-eyebrow">Browse all guides</p>
       <h1>Window Treatment Guides</h1>
       <p className="lead">
         Practical advice based on real-world use &mdash; not showroom theory.

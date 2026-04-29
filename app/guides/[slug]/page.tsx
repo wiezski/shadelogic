@@ -51,7 +51,7 @@ export async function generateMetadata({
       url: canonical,
       title: guide.metaTitle,
       description: guide.description,
-      siteName: "ShadeLogic",
+      siteName: "Window Treatment Guides",
     },
     twitter: {
       card: "summary_large_image",
@@ -74,7 +74,7 @@ export default async function GuidePage({
 
   return (
     <article className="guides-article my-6 md:my-10">
-      <p className="guides-eyebrow">ShadeLogic guide</p>
+      <p className="guides-eyebrow">Guide</p>
       <h1>{guide.title}</h1>
 
       {guide.opening.map((para, i) => (

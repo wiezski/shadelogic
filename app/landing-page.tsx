@@ -675,6 +675,7 @@ export function LandingPage() {
             <Link href="/signup" className="hover:underline">Sign Up</Link>
             <a href="#features" className="hover:underline">Features</a>
             <a href="#pricing" className="hover:underline">Pricing</a>
+            <a href="/tools/blinds-vs-shades" className="hover:underline">Blinds vs Shades Decision Engine</a>
             <a href="mailto:support@zeroremake.com" className="hover:underline">Contact</a>
             <a
               href="https://www.facebook.com/zeroremake/"

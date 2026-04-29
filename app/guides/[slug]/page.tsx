@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GUIDES, ALL_GUIDE_SLUGS } from "../_data/guides";
+import { GUIDES, ALL_GUIDE_SLUGS, type Guide, type GuideBlock } from "../_data/guides";
 
 /*
  * /guides/[slug] — dynamic SEO guide pages.
@@ -9,8 +9,11 @@ import { GUIDES, ALL_GUIDE_SLUGS } from "../_data/guides";
  * Server component. Statically generated at build time via
  * generateStaticParams; per-slug metadata via generateMetadata.
  *
- * Each page renders structured guide content + a CTA link to the
- * decision tool + related guides for internal linking.
+ * Each guide can supply content in two shapes:
+ *  - Legacy: opening[] + body[] + whereWrong[] + whenChanges[]
+ *  - Block:  blocks[] (h2/h3/p/ul) + optional summary[] + optional cta override
+ *
+ * The renderer picks based on whether `blocks` is present.
  */
 
 type RouteParams = { slug: string };
@@ -72,40 +75,34 @@ export default async function GuidePage({
   const guide = GUIDES[slug];
   if (!guide) notFound();
 
+  const ctaPreamble =
+    guide.cta?.preamble ?? "Not sure what fits your exact setup?";
+  const ctaLinkText = guide.cta?.linkText ?? "Use the decision tool";
+
   return (
     <article className="guides-article my-6 md:my-10">
       <p className="guides-eyebrow">Guide</p>
       <h1>{guide.title}</h1>
 
-      {guide.opening.map((para, i) => (
-        <p key={`o-${i}`} className={i === 0 ? "lead" : undefined}>
-          {para}
-        </p>
-      ))}
+      {guide.blocks ? <BlockContent blocks={guide.blocks} /> : <LegacyContent guide={guide} />}
 
-      {guide.body.map((para, i) => (
-        <p key={`b-${i}`}>{para}</p>
-      ))}
-
-      <h2>Where people get this wrong</h2>
-      <ul>
-        {guide.whereWrong.map((item, i) => (
-          <li key={`ww-${i}`}>{item}</li>
-        ))}
-      </ul>
-
-      <h2>When this advice changes</h2>
-      <ul>
-        {guide.whenChanges.map((item, i) => (
-          <li key={`wc-${i}`}>{item}</li>
-        ))}
-      </ul>
+      {/* Optional final summary */}
+      {guide.summary && guide.summary.length > 0 && (
+        <>
+          <h2>Quick summary</h2>
+          <ul>
+            {guide.summary.map((item, i) => (
+              <li key={`s-${i}`}>{item}</li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {/* Decision-tool CTA */}
       <div className="guides-cta">
-        <p className="guides-cta-text">Not sure what fits your exact setup?</p>
+        <p className="guides-cta-text">{ctaPreamble}</p>
         <Link href="/tools/blinds-vs-shades" className="guides-cta-link">
-          Use the decision tool
+          {ctaLinkText}
           <span aria-hidden>→</span>
         </Link>
       </div>
@@ -133,5 +130,76 @@ export default async function GuidePage({
         </section>
       )}
     </article>
+  );
+}
+
+// ── Block-based content renderer ────────────────────────────────
+
+function BlockContent({ blocks }: { blocks: GuideBlock[] }) {
+  return (
+    <>
+      {blocks.map((block, i) => {
+        switch (block.type) {
+          case "h2":
+            return <h2 key={i}>{block.text}</h2>;
+          case "h3":
+            return <h3 key={i}>{block.text}</h3>;
+          case "p":
+            return (
+              <p key={i} className={block.lead ? "lead" : undefined}>
+                {block.text}
+              </p>
+            );
+          case "ul":
+            return (
+              <ul key={i}>
+                {block.items.map((item, j) => (
+                  <li key={j}>{item}</li>
+                ))}
+              </ul>
+            );
+        }
+      })}
+    </>
+  );
+}
+
+// ── Legacy content renderer (used by guides without `blocks`) ───
+
+function LegacyContent({ guide }: { guide: Guide }) {
+  return (
+    <>
+      {guide.opening?.map((para, i) => (
+        <p key={`o-${i}`} className={i === 0 ? "lead" : undefined}>
+          {para}
+        </p>
+      ))}
+
+      {guide.body?.map((para, i) => (
+        <p key={`b-${i}`}>{para}</p>
+      ))}
+
+      {guide.whereWrong && guide.whereWrong.length > 0 && (
+        <>
+          <h2>Where people get this wrong</h2>
+          <ul>
+            {guide.whereWrong.map((item, i) => (
+              <li key={`ww-${i}`}>{item}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {guide.whenChanges && guide.whenChanges.length > 0 && (
+        <>
+          <h2>When this advice changes</h2>
+          <ul>
+            {guide.whenChanges.map((item, i) => (
+              <li key={`wc-${i}`}>{item}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
   );
 }

@@ -9,47 +9,227 @@
  * Slugs are stable URLs and must not change once indexed by Google.
  */
 
+/**
+ * Flexible content block types for guides that need more structure
+ * than the legacy opening/body/whereWrong/whenChanges shape allows.
+ */
+export type GuideBlock =
+  | { type: "h2"; text: string }
+  | { type: "h3"; text: string }
+  | { type: "p"; text: string; lead?: boolean }
+  | { type: "ul"; items: string[] };
+
 export type Guide = {
   slug: string;
   title: string;        // page H1 / display title
   metaTitle: string;    // SEO <title>
   description: string;  // SEO meta description (1–2 sentences)
-  opening: string[];    // intro paragraphs (1–2)
-  body: string[];       // main paragraphs (3–6)
-  whereWrong: string[]; // "Where people get this wrong" bullets
-  whenChanges: string[]; // "When this advice changes" bullets
+
+  // Legacy structured content (used by 9 of the 10 guides). All optional;
+  // a guide using `blocks` instead can omit these.
+  opening?: string[];    // intro paragraphs (1–2)
+  body?: string[];       // main paragraphs (3–6)
+  whereWrong?: string[]; // "Where people get this wrong" bullets
+  whenChanges?: string[]; // "When this advice changes" bullets
+
+  // New richer block structure. When present, the renderer uses this
+  // instead of the legacy fields. Supports h2/h3 headings, paragraphs
+  // (optionally lead), and bullet lists in any order.
+  blocks?: GuideBlock[];
+
+  // Optional final summary bullets. Rendered under a "Quick summary"
+  // heading after the main content.
+  summary?: string[];
+
+  // Optional override for the per-guide CTA copy. When omitted, the
+  // page uses the default ("Not sure what fits your exact setup?" /
+  // "Use the decision tool").
+  cta?: { preamble: string; linkText: string };
+
   related: string[];    // 2–3 related guide slugs
 };
 
 export const GUIDES: Record<string, Guide> = {
   "blinds-vs-shades-for-bedrooms": {
     slug: "blinds-vs-shades-for-bedrooms",
-    title: "Blinds vs shades for bedrooms",
-    metaTitle: "Blinds vs Shades for Bedrooms — What Actually Works",
+    title: "Blinds vs Shades for Bedrooms: What Actually Works at Night",
+    metaTitle: "Blinds vs Shades for Bedrooms — What Actually Works at Night",
     description:
-      "An installer's take on choosing between blinds and shades for a bedroom — what works for darkness, privacy, and morning light, and what most people get wrong.",
-    opening: [
-      "The right call for a bedroom hinges on how dark you actually need to sleep. Bedrooms split into two camps — people who need genuine darkness and people who just want privacy and reasonable light control. Both have clear winners.",
+      "A practical guide to choosing between blinds and shades for a bedroom — based on what actually goes wrong after thousands of installs, not how it looks in the showroom.",
+    blocks: [
+      // Intro
+      {
+        type: "p",
+        lead: true,
+        text: "Bedrooms are the room people regret their window treatment choice in the most. Not the kitchen, not the living room. The bedroom.",
+      },
+      {
+        type: "p",
+        text: "The reason is simple: a window treatment that looks great in a showroom under bright lighting can completely fail you in the eight hours a day you actually need it most. After thousands of installs and years of seeing what people complain about later, the same issues come up — about light, about privacy, about sleep — and almost none of them have anything to do with how the treatment looks.",
+      },
+      { type: "p", text: "If you want a quick answer:" },
+      {
+        type: "ul",
+        items: [
+          "Choose shades if darkness and privacy matter most",
+          "Choose blinds if daytime light control matters more than nighttime darkness",
+        ],
+      },
+      {
+        type: "p",
+        text: "But within shades, there's a big difference. Roller shades — especially blackout rollers — often have large gaps on the sides. That's one of the biggest letdowns people run into. Even with blackout fabric, those gaps can let in a surprising amount of light and affect privacy at night. Cellular (honeycomb) shades have much smaller gaps. Both can use side channels at a premium, but that's an upgrade — not the default.",
+      },
+      {
+        type: "p",
+        text: "This guide isn't about aesthetics. It's about whether you can sleep through a 5 AM June sunrise, whether someone walking by at night can see your silhouette, and whether the streetlight outside is going to bother you for the next decade.",
+      },
+
+      // The real problem at night
+      { type: "h2", text: "The real problem at night" },
+      {
+        type: "p",
+        text: "Most homeowners think about privacy in daylight terms. They picture themselves standing in their bedroom at noon, looking out, and not wanting to be seen. Almost every window treatment handles that. Daylight privacy is rarely the actual problem.",
+      },
+      { type: "p", text: "The actual problem is night." },
+      {
+        type: "p",
+        text: "The moment your bedside lamp goes on, the physics flips. The inside of your room is now brighter than the outside. Anything you could see out through during the day — sheer fabrics, screen shades, blinds tilted up — neighbors can now see in through, in the opposite direction.",
+      },
+      {
+        type: "p",
+        text: "This catches a lot of people off guard. They pick a sheer or \"light-filtering\" fabric because it looked beautiful in the showroom. They install it. They turn on the lamp at night and realize they're standing in a fishbowl until they fully close the shade.",
+      },
+      {
+        type: "p",
+        text: "This is the single most common bedroom regret. It's also completely avoidable if you understand the mechanic before you buy.",
+      },
+
+      // Why blinds often work
+      { type: "h2", text: "Why blinds often work — and where they fall short" },
+      {
+        type: "p",
+        text: "Wood and faux-wood blinds actually work well in a lot of bedrooms. When fully closed, they can make a room fairly dark and provide solid privacy at night.",
+      },
+      {
+        type: "p",
+        text: "That said, there are a few realities that show up in real homes:",
+      },
+      { type: "h3", text: "Light gaps on the sides" },
+      {
+        type: "p",
+        text: "The gaps are usually minimal, especially on a good install. But they're still there. During the day, you won't notice them. At night, if there's a streetlight or a neighbor's light nearby, you can get thin slivers of light coming through.",
+      },
+      { type: "h3", text: "Slat light leakage" },
+      {
+        type: "p",
+        text: "Even when fully closed, light can pass through where the slats meet and through the route holes. Higher-end products hide this better, but blinds are not a true blackout solution. They get dark — not completely dark.",
+      },
+      { type: "h3", text: "Bottom rail behavior" },
+      {
+        type: "p",
+        text: "The bottom rail interacting differently from window to window is completely normal, even if the blinds are the same size. Some systems actually tip slightly upward when fully closed, which can reduce light leakage at the bottom. Most people never notice this. A small percentage do.",
+      },
+      { type: "h3", text: "Stacking and usability" },
+      {
+        type: "p",
+        text: "Blinds stack at the top when raised, and that can take up noticeable glass space on shorter windows. They're also heavier than shades, and even cordless versions can feel a bit cumbersome to raise and lower — especially if furniture is in the way. In practice, blinds are often set once and not adjusted constantly.",
+      },
+
+      // What shades do better
+      { type: "h2", text: "What shades do better — and where they don't" },
+      { type: "h3", text: "Cellular shades (honeycomb)" },
+      {
+        type: "p",
+        text: "Cellular shades solve most of what blinds struggle with in bedrooms.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Fabric is continuous",
+          "Side gaps are smaller than rollers",
+          "With blackout fabric, rooms get very dark",
+        ],
+      },
+      {
+        type: "p",
+        text: "At night, without strong exterior light, a blackout cellular shade makes the room feel very dark. During the day, it's still dark — but you'll notice light at the edges, especially if the sun is hitting the window directly.",
+      },
+      {
+        type: "p",
+        text: "Side channels take it further, but they're usually only necessary for:",
+      },
+      {
+        type: "ul",
+        items: ["nurseries", "shift workers", "very light-sensitive sleepers"],
+      },
+      {
+        type: "p",
+        text: "Cellular shades also offer top-down/bottom-up. You can drop the top of the shade while keeping the bottom up. The upper part of the window exposes for light and a slice of view; the bottom stays private.",
+      },
+      { type: "h3", text: "Roller shades" },
+      {
+        type: "p",
+        text: "Roller shades are simple and clean — but in bedrooms, they have a specific drawback: side gaps are large.",
+      },
+      {
+        type: "p",
+        text: "Even with blackout fabric, those gaps can let in noticeable light and reduce privacy at night. This is one of the most common disappointments with roller shades.",
+      },
+      { type: "p", text: "They also:" },
+      {
+        type: "ul",
+        items: [
+          "do not offer top-down/bottom-up",
+          "function in a binary way (up or down)",
+          "don't allow for daytime \"see out without being seen\"",
+        ],
+      },
+
+      // Common mistakes people make
+      { type: "h2", text: "Common mistakes people make" },
+      {
+        type: "ul",
+        items: [
+          "Picking sheer or light-filtering fabric because it looks good in the showroom",
+          "Assuming blackout fabric means zero light",
+          "Not accounting for nighttime privacy",
+          "Underestimating how much side gaps matter",
+          "Choosing aesthetics first and dealing with function later",
+        ],
+      },
+
+      // What actually works
+      { type: "h2", text: "What actually works" },
+      {
+        type: "p",
+        text: "In real homes, these are the solutions that consistently hold up over time:",
+      },
+      {
+        type: "ul",
+        items: [
+          "Typical bedroom: light-filtering cellular shades are often enough. Blackout is only necessary if you really want a very dark room.",
+          "Needs more darkness: blackout cellular shade. Add side channels only if you're very sensitive to light.",
+          "Wants daytime visibility: blinds are a good option, but won't fully darken the room.",
+          "Street-facing bedroom: cellular with top-down/bottom-up is one of the best setups available.",
+          "Maximum darkness: combine layers — blackout shade + blackout drapery.",
+          "Drapery note: works well if oversized beyond the window, but not perfect alone.",
+          "When in doubt: layer.",
+        ],
+      },
     ],
-    body: [
-      "For people who need true darkness: blackout cellular shades, with side channels if you wake to morning sun. Blackout cellulars seal tighter than blackout drapery alone — the fabric blocks more light through the panel and the side gap is roughly 3/8 inch overall instead of the full inch on a roller without channels.",
-      "For people who just want privacy at night and tolerate morning light: a light-filtering cellular shade, or wood 2-inch blinds if the room reads more traditional. Both deliver full privacy when closed and let soft natural light into the room when down. A 60-inch cellular stacks down to about 3 inches at the top; wood blinds stack down to 8–10 inches, which on a short window can eat a meaningful share of the glass.",
-      "For privacy and a view at the same time: wood blinds, faux blinds, plantation shutters, or top-down/bottom-up cellular. Tilt the blinds up during the day to see out without being seen in. TDBU lets you drop the top of a cellular while keeping the bottom up — strong solution on a bedroom window where someone might be walking by at chest height.",
-      "Avoid sheer cellular or sheer roller shades in a bedroom unless you're layering drapery behind them. With your bedside lamp on, the room reverses — anyone outside at night can see in until the shade is fully closed and the light is off. That's a daily annoyance most people don't anticipate in the showroom.",
-      "Roman shades fit traditional bedrooms beautifully. Pair them with a blackout liner if dark matters; without a liner, expect filtered light and visible silhouettes against the fabric.",
+    summary: [
+      "Bedrooms are about night performance, not daytime looks",
+      "Blinds work well but won't fully block light",
+      "Cellular shades provide the best balance",
+      "Roller shades often disappoint due to side gaps",
+      "Blackout is not always necessary",
+      "Top-down/bottom-up is extremely useful",
+      "Layering is the most reliable solution",
     ],
-    whereWrong: [
-      "Buying sheer or screen fabric for a bedroom because it \"looks airy\" — beautiful in the showroom, broken at night.",
-      "Assuming blackout drapery alone equals true blackout — drapery panels leak at the top, sides, and the panel meeting point.",
-      "Adding side channels to an adult bedroom out of caution when blackout fabric alone would have been enough.",
-      "Picking shutters in a small bedroom without thinking about how much wall space the panels eat when open.",
-    ],
-    whenChanges: [
-      "Children's nurseries and rooms for light-sensitive infants — consider blackout cellular with side channels.",
-      "Day sleepers and shift workers — require blackout plus side channels; the edge bleed matters.",
-      "Bathroom-adjacent bedrooms with high humidity — avoid real wood blinds and real wood shutters.",
-      "Bedrooms with streetlights or motion-sensor lights right outside — move from room-darkening to true blackout.",
-    ],
+    cta: {
+      preamble: "If you're not sure what fits your exact situation, use the tool:",
+      linkText: "Use the Blinds vs Shades Decision Tool",
+    },
     related: [
       "window-treatments-privacy-at-night",
       "blackout-vs-room-darkening",

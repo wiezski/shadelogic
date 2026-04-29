@@ -122,6 +122,21 @@
   }
 }
 
+.guides-article h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  color: var(--tool-text);
+  margin: 22px 0 6px;
+}
+@media (min-width: 768px) {
+  .guides-article h3 {
+    font-size: 17px;
+    margin-top: 26px;
+  }
+}
+
 .guides-article p {
   font-size: 16px;
   line-height: 1.65;

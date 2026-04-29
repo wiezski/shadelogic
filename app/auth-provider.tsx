@@ -25,6 +25,8 @@ const PUBLIC_ROUTES = [
   "/audit", // public lead magnet — must work in incognito / logged out
   "/admin", // internal admin page — has its own cookie-based gate
   "/sun-calculator", // public homeowner calculator
+  "/tools", // public homeowner calculators (consumer mini-site, isolated under /app/tools)
+  "/guides", // public homeowner SEO guides (consumer content, isolated under /app/guides)
 ];
 
 export type TenantBranding = {

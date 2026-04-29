@@ -33,6 +33,8 @@ const HIDE_NAV_ROUTES = [
   "/audit", // public lead magnet — owns its own nav
   "/admin", // internal admin page — owns its own shell
   "/sun-calculator", // public calculator — owns its own nav
+  "/tools", // consumer calculator mini-site — owns its own chrome (isolated under /app/tools)
+  "/guides", // consumer SEO guides — own their own chrome (isolated under /app/guides)
 ];
 
 // ── Task Modes (imported from shared config) ──────────────────

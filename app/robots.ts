@@ -11,6 +11,8 @@ export default function robots(): MetadataRoute.Robots {
           "/",
           "/audit",
           "/sun-calculator",
+          "/tools/blinds-vs-shades",
+          "/guides/",
           "/login",
           "/signup",
           "/forgot-password",

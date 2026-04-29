@@ -269,6 +269,34 @@
   color: var(--tool-text);
 }
 
+/* ── Index list (browse all guides) ──────────────────────────── */
+.guides-index-list {
+  margin-top: 28px;
+}
+.guides-index-entry {
+  padding: 20px 0;
+  border-top: 1px solid var(--tool-divider);
+}
+.guides-index-entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.guides-index-entry h2 {
+  margin: 0 0 6px;
+}
+.guides-index-entry p {
+  margin: 0;
+}
+.guides-index-link {
+  color: var(--tool-text);
+  transition: color 150ms ease;
+}
+.guides-index-link:hover {
+  color: var(--tool-accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 /* ── Footer disclosure ────────────────────────────────────────── */
 .guides-chrome-footer {
   margin-top: 24px;

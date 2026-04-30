@@ -508,12 +508,26 @@ function Hero() {
         <span style={{ color: ORANGE }}>isn&apos;t getting leads</span>
         <span style={{ color: TEXT_PRIMARY }}> — in 10 seconds.</span>
       </h1>
+      {/* Subheadline — keeps the SEO + clarity hit ("what is this page?")
+          without crowding the existing operator-voice paragraph below it. */}
+      <p
+        style={{
+          fontSize: 17,
+          color: TEXT_SECONDARY,
+          fontWeight: 500,
+          letterSpacing: "-0.01em",
+          marginTop: 12,
+          marginBottom: 0,
+        }}
+      >
+        Free website analyzer for window treatment businesses.
+      </p>
       <p
         style={{
           fontSize: 16,
           color: TEXT_SECONDARY,
           lineHeight: 1.55,
-          marginTop: 14,
+          marginTop: 10,
           maxWidth: 560,
           marginLeft: "auto",
           marginRight: "auto",
@@ -710,6 +724,20 @@ function ScanForm({
           </span>
         ))}
       </div>
+      {/* Sets expectations: scanning is free + anonymous; email is the
+          opt-in step IF they want the deeper report. */}
+      <p
+        style={{
+          marginTop: 10,
+          marginBottom: 0,
+          fontSize: 12.5,
+          color: TEXT_MUTED,
+          textAlign: "center",
+          letterSpacing: "-0.003em",
+        }}
+      >
+        No signup required. Enter email only if you want full results.
+      </p>
     </form>
   );
 }

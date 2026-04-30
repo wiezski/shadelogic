@@ -297,10 +297,9 @@ export default function AuditPage() {
               <QuickInsights insights={summary.quickInsights} />
 
               {/* Full report: always rendered. Blurred/dimmed when the
-                  user hasn't captured email. The primary email CTA
-                  sits INSIDE FullReport, right under the heading —
-                  so the decision moment is aligned with the value
-                  they're about to unlock. */}
+                  user hasn't captured email. After they submit email,
+                  the body switches to an inbox-confirmation card — the
+                  full content lives in their email, not on the page. */}
               <FullReport
                 findings={summary.findings}
                 summary={summary}
@@ -309,19 +308,16 @@ export default function AuditPage() {
                 setEmail={setEmail}
                 onSubmitEmail={unlockReport}
                 emailError={error}
+                emailSubmitted={unlockStatus !== null}
               />
 
-              {/* Email-delivery confirmation banner. Appears only after
-                  the user has submitted their email in Layer 2. */}
-              {unlockStatus === "sent" && (
-                <UnlockBanner kind="success">
-                  Check your email — your full report is on the way.
-                </UnlockBanner>
-              )}
+              {/* Status banners. The success message is now rendered inside
+                  FullReport itself (the inbox-confirmation card), so we only
+                  need to flag the in-flight and failure states here. */}
               {unlockStatus === "failed" && (
                 <UnlockBanner kind="error">
-                  Something went wrong sending the email. Try again, or email me
-                  at <a href="mailto:steve@zeroremake.com" style={{ color: "inherit", textDecoration: "underline" }}>steve@zeroremake.com</a> and I&apos;ll get it to you directly.
+                  Something went wrong sending the email. Try again, or reply to
+                  this page&apos;s contact form and we&apos;ll get it to you directly.
                 </UnlockBanner>
               )}
               {unlockStatus === "sending" && stage === "unlocked" && (
@@ -768,18 +764,22 @@ function AnimatedScore({ target, color }: { target: number; color: string }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target]);
+  // Render as "46 / 100" with the "/100" smaller + muted so the eye still
+  // lands on the number first. Avoids the ambiguity of a bare "46".
   return (
     <div
       style={{
-        fontSize: 56,
-        fontWeight: 800,
+        display: "flex",
+        alignItems: "baseline",
+        gap: 4,
         color,
         letterSpacing: "-0.03em",
         lineHeight: 1,
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      {value}
+      <span style={{ fontSize: 56, fontWeight: 800 }}>{value}</span>
+      <span style={{ fontSize: 22, fontWeight: 700, opacity: 0.55 }}>/ 100</span>
     </div>
   );
 }
@@ -901,6 +901,23 @@ function ScoreBlock({ summary }: { summary: Layer1Summary }) {
             {comparison}
           </div>
         )}
+      </div>
+
+      {/* Score basis + trust line. Sits at the bottom of the score block so
+          users know what the number is measuring and that it's not a guess. */}
+      <div
+        style={{
+          marginTop: 16,
+          paddingTop: 12,
+          borderTop: HAIRLINE,
+          fontSize: 12,
+          color: TEXT_MUTED,
+          letterSpacing: "-0.003em",
+          lineHeight: 1.5,
+        }}
+      >
+        Based on key checks for window treatment websites · Generated instantly
+        based on real window treatment site audits
       </div>
     </div>
   );
@@ -1336,6 +1353,11 @@ function FullReport({
   setEmail,
   onSubmitEmail,
   emailError = null,
+  // When the user has submitted their email, we no longer reveal the full
+  // report inline — the user goes to their inbox to read it. This flag
+  // tells the component to render an inbox-confirmation panel instead of
+  // either the locked-blur or the full unlocked findings.
+  emailSubmitted = false,
 }: {
   findings: Finding[];
   summary: Layer1Summary;
@@ -1344,6 +1366,7 @@ function FullReport({
   setEmail?: (v: string) => void;
   onSubmitEmail?: (e: React.FormEvent) => void;
   emailError?: string | null;
+  emailSubmitted?: boolean;
 }) {
   // Exclude Top 3 from the full-list section so we don't repeat them
   // right after the Top 3 block. Only the remaining findings are shown
@@ -1374,6 +1397,60 @@ function FullReport({
     pointerEvents: locked ? "none" : "auto",
     userSelect: locked ? "none" : "auto",
   };
+
+  // Once the user has submitted their email, the report goes to their
+  // inbox — not the page. Replace the entire breakdown body with a calm
+  // inbox-confirmation card so they know to look there, with a fallback
+  // hint about spam/promotions filtering.
+  if (emailSubmitted) {
+    return (
+      <div style={{ marginTop: 36, position: "relative" }}>
+        <div
+          style={{
+            fontSize: 24,
+            fontWeight: 800,
+            letterSpacing: "-0.022em",
+            color: TEXT_PRIMARY,
+            marginBottom: 4,
+          }}
+        >
+          Full breakdown
+        </div>
+        <div
+          style={{
+            marginTop: 14,
+            padding: "22px 22px",
+            background: SURFACE_SOFT,
+            borderRadius: 16,
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 17,
+              fontWeight: 700,
+              color: TEXT_PRIMARY,
+              letterSpacing: "-0.012em",
+              lineHeight: 1.35,
+              marginBottom: 6,
+            }}
+          >
+            Full report sent to your email. Check your inbox.
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: TEXT_SECONDARY,
+              letterSpacing: "-0.003em",
+              lineHeight: 1.5,
+            }}
+          >
+            If you don&apos;t see it, check spam or promotions.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ marginTop: 36, position: "relative" }}>
@@ -1744,7 +1821,7 @@ function BookCallCard({
           letterSpacing: "-0.003em",
         }}
       >
-        Steve · ZeroRemake Studio · I&apos;ll reach out within 24 hours to set a time.
+        Prepared by ZeroRemake · We&apos;ll reach out within 24 hours to set a time.
       </div>
     </form>
   );

@@ -178,7 +178,7 @@ export function renderFullReportHtml(report: AuditReport): string {
       ${report.domain}
     </div>
     <div style="font-size:14px;color:#6b7280;margin-bottom:28px;">
-      Your full website audit, prepared by Steve at ZeroRemake Studio.
+      Your full website audit, prepared by ZeroRemake.
     </div>
 
     <div style="display:flex;align-items:center;gap:20px;background:#fafaf9;padding:20px 22px;border-radius:14px;margin-bottom:28px;">
@@ -205,8 +205,8 @@ export function renderFullReportHtml(report: AuditReport): string {
     <div style="margin-top:36px;padding:24px;background:#fafaf9;border-radius:16px;">
       <div style="font-size:19px;font-weight:700;color:#1c1c1e;margin-bottom:10px;letter-spacing:-0.015em;">Want help fixing this?</div>
       <div style="font-size:14.5px;color:#374151;line-height:1.6;margin-bottom:16px;">
-        Reply to this email or schedule a quick call. I'll walk through your site and
-        show you what I'd fix first — based on what actually drives leads.
+        Reply to this email or schedule a quick call. We'll walk through your
+        site and show what to fix first — based on what actually drives leads.
         Twenty minutes, no pitch.
       </div>
       <a href="https://zeroremake.com/audit?book=${encodeURIComponent(report.domain)}"
@@ -216,12 +216,11 @@ export function renderFullReportHtml(report: AuditReport): string {
     </div>
 
     <div style="margin-top:36px;font-size:13px;color:#6b7280;line-height:1.55;">
-      — Steve · ZeroRemake Studio<br/>
-      I've run installs, managed teams, and fixed the ops problems you're probably dealing with. ZeroRemake exists because the tools out there weren't getting the job done.
+      — Prepared by ZeroRemake
     </div>
 
     <div style="margin-top:28px;padding-top:18px;border-top:1px solid #eee;font-size:11px;color:#9ca3af;line-height:1.5;">
-      This report is based on a snapshot of the home page. A deeper scan covering competitor comparison and multi-page analysis is available — just reply to this email.
+      This report is based on a snapshot of the home page. A deeper scan covering competitor comparison and multi-page analysis is available — reply to this email to request one.
     </div>
   </div>
 </body></html>`;
@@ -232,7 +231,7 @@ export async function sendFullReportEmail(to: string, report: AuditReport): Prom
     to,
     subject: `Your ${report.domain} website audit (${report.score}/100)`,
     html: renderFullReportHtml(report),
-    fromName: "Steve at ZeroRemake",
+    fromName: "ZeroRemake",
     replyTo: "steve@zeroremake.com",
     kind: "full_report",
     domain: report.domain,

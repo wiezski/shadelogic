@@ -91,6 +91,15 @@ export default function AuditPage() {
   //   failed  = send errored (rare — Resend key issue, domain not verified, etc.)
   const [unlockStatus, setUnlockStatus] = useState<null | "sending" | "sent" | "failed">(null);
 
+  // Set when the scanner couldn't reach the target site (anti-bot block).
+  // Triggers the BlockedScanCard manual-review email-capture flow instead
+  // of the generic error-under-input display.
+  const [blocked, setBlocked] = useState<{
+    url: string;
+    domain: string;
+    reason: string;
+  } | null>(null);
+
   // Booking form state (Layer 3)
   const [bookName, setBookName] = useState("");
   const [bookPhone, setBookPhone] = useState("");
@@ -156,6 +165,7 @@ export default function AuditPage() {
 
   async function performScan(rawUrl: string, opts: { force: boolean }) {
     setError(null);
+    setBlocked(null); // Clear any previous blocked-scan card on retry
     if (!rawUrl) {
       setError("Paste the URL of the site you want to check.");
       return;
@@ -181,10 +191,19 @@ export default function AuditPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        // Scan couldn't reach site / invalid URL / etc. Stay friendly.
+        // Site blocked our scanner (anti-bot / firewall). Switch to the
+        // manual-review flow instead of showing a dead-end error.
+        if (data.blocked && data.url && data.domain) {
+          setBlocked({
+            url: data.url,
+            domain: data.domain,
+            reason: data.error || "Blocked by target site",
+          });
+          setStage(summary && opts.force ? "results" : "input");
+          return;
+        }
+        // Generic scan failure — keep existing error-under-input display.
         setError(data.error || "Something went wrong running the scan.");
-        // Re-scan failures shouldn't wipe existing results — only fail back
-        // to the input stage if we never had results.
         setStage(summary && opts.force ? "results" : "input");
         return;
       }
@@ -285,6 +304,17 @@ export default function AuditPage() {
               loading={stage === "scanning"}
               progress={scanProgress}
               error={error}
+            />
+          )}
+
+          {/* Blocked-scan manual-review flow. Renders below the scan form
+              when the target site refused our scanner — offers an email
+              capture so we can run a manual audit and email the result. */}
+          {blocked && (stage === "input" || stage === "scanning") && (
+            <BlockedScanCard
+              url={blocked.url}
+              domain={blocked.domain}
+              reason={blocked.reason}
             />
           )}
 
@@ -744,6 +774,226 @@ function progressLabel(pct: number): string {
   if (pct < 70) return "Checking schema and meta tags…";
   if (pct < 85) return "Looking at city-page coverage…";
   return "Scoring…";
+}
+
+// ─── Blocked-scan manual-review card ───────────────────────────────
+// Shown when the automated scanner couldn't reach the target site
+// (anti-bot protection, firewall, etc.). Offers a manual review path:
+// user leaves their email, we get a notification, and we run the audit
+// by hand and email the result back.
+
+function BlockedScanCard({
+  url,
+  domain,
+  reason,
+}: {
+  url: string;
+  domain: string;
+  reason: string;
+}) {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setErr("That email doesn't look right.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const utm = typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+      const res = await fetch("/api/audit/manual-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          email: trimmed,
+          reason,
+          utm_source: utm.get("utm_source") || undefined,
+          utm_medium: utm.get("utm_medium") || undefined,
+          utm_campaign: utm.get("utm_campaign") || undefined,
+          utm_term: utm.get("utm_term") || undefined,
+          utm_content: utm.get("utm_content") || undefined,
+          referer: typeof document !== "undefined" ? document.referrer : undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(data.error || "Couldn't save that. Try again in a moment.");
+        return;
+      }
+      setSubmitted(true);
+    } catch {
+      setErr("Network error. Try again in a moment.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 18,
+        padding: "22px 22px",
+        background: SURFACE_SOFT,
+        borderRadius: 18,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: TEXT_MUTED,
+          marginBottom: 8,
+        }}
+      >
+        {domain}
+      </div>
+
+      {!submitted ? (
+        <>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: TEXT_PRIMARY,
+              letterSpacing: "-0.012em",
+              lineHeight: 1.45,
+              marginBottom: 8,
+            }}
+          >
+            This site blocks automated scans (which is pretty common).
+          </div>
+          <div
+            style={{
+              fontSize: 14.5,
+              color: TEXT_SECONDARY,
+              letterSpacing: "-0.005em",
+              lineHeight: 1.55,
+              marginBottom: 16,
+            }}
+          >
+            If you want, enter your email and I&apos;ll run a manual review and send
+            you a full breakdown of what&apos;s working, what&apos;s missing, and
+            how to improve it.
+          </div>
+
+          <form onSubmit={submit}>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                background: INPUT_FILL,
+                padding: 5,
+                borderRadius: 999,
+                alignItems: "stretch",
+              }}
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your email"
+                autoComplete="email"
+                disabled={submitting}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  padding: "9px 14px",
+                  fontSize: 14.5,
+                  color: TEXT_PRIMARY,
+                  letterSpacing: "-0.012em",
+                }}
+              />
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  background: ORANGE,
+                  color: "#fff",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  padding: "9px 18px",
+                  borderRadius: 999,
+                  border: "none",
+                  cursor: submitting ? "default" : "pointer",
+                  letterSpacing: "-0.012em",
+                  whiteSpace: "nowrap",
+                  opacity: submitting ? 0.7 : 1,
+                }}
+                className="active:scale-[0.97]"
+              >
+                {submitting ? "Sending…" : "Send my audit"}
+              </button>
+            </div>
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12.5,
+                color: TEXT_MUTED,
+                letterSpacing: "-0.003em",
+              }}
+            >
+              No spam. Just the audit.
+            </div>
+            {err && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: "8px 12px",
+                  background: "rgba(214,68,58,0.08)",
+                  color: "#c6443a",
+                  fontSize: 13,
+                  borderRadius: 10,
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                {err}
+              </div>
+            )}
+          </form>
+        </>
+      ) : (
+        <>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: TEXT_PRIMARY,
+              letterSpacing: "-0.012em",
+              lineHeight: 1.45,
+              marginBottom: 6,
+            }}
+          >
+            Got it — we&apos;ll send your audit by email.
+          </div>
+          <div
+            style={{
+              fontSize: 14,
+              color: TEXT_SECONDARY,
+              letterSpacing: "-0.005em",
+              lineHeight: 1.5,
+            }}
+          >
+            Manual reviews usually go out within 24 hours. Check spam or
+            promotions if you don&apos;t see it.
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 // ─── Layer 1: results ────────────────────────────────────────────

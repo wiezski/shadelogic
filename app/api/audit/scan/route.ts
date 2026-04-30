@@ -20,7 +20,7 @@
 // request body ("Re-scan site" button).
 
 import { NextRequest, NextResponse } from "next/server";
-import { scanUrl, normalizeUrl, buildQuickInsights } from "@/lib/audit/scanner";
+import { scanUrl, normalizeUrl, buildQuickInsights, BlockedScanError } from "@/lib/audit/scanner";
 import type { Finding } from "@/lib/audit/types";
 import { getAuditAdminClient } from "@/lib/audit/db";
 
@@ -214,6 +214,16 @@ export async function POST(req: NextRequest) {
     try {
       report = await scanUrl(rawUrl);
     } catch (e) {
+      // Blocked-by-target failures get a `blocked: true` flag so the UI can
+      // offer a manual-review email-capture flow instead of a generic error.
+      // Other scan errors (timeouts, server 5xx, network) keep the existing
+      // generic-error JSON shape.
+      if (e instanceof BlockedScanError) {
+        return NextResponse.json(
+          { error: e.message, blocked: true, domain: e.domain, url: rawUrl },
+          { status: 422 },
+        );
+      }
       const msg = e instanceof Error ? e.message : "Unknown scan error";
       return NextResponse.json({ error: msg }, { status: 422 });
     }

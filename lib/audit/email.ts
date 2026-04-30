@@ -298,6 +298,50 @@ export async function sendInternalAlertEmail(params: {
   });
 }
 
+// ── Manual-review request alert ────────────────────────────────────
+// Fired when a visitor's scan was blocked by the target site's anti-bot
+// protection AND they opted into a manual review by leaving their email.
+// Steve does the audit by hand and replies to the user directly.
+
+export async function sendManualReviewAlertEmail(params: {
+  domain: string;
+  url: string;
+  email: string;
+  reason: string;
+  auditId: string;
+}): Promise<SendResult> {
+  const to = process.env.AUDIT_INTERNAL_ALERT_TO || INTERNAL_DEFAULT;
+  const subject = `Manual review requested: ${params.domain}`;
+
+  const rows: string[] = [];
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Domain</td><td style="font-weight:600;">${params.domain}</td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">URL</td><td><a href="${params.url}" style="color:#0a84ff;">${params.url}</a></td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">User email</td><td><a href="mailto:${params.email}" style="color:#0a84ff;">${params.email}</a></td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Reason</td><td>${params.reason}</td></tr>`);
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Audit ID</td><td style="font-family:monospace;font-size:12px;color:#6b7280;">${params.auditId}</td></tr>`);
+
+  const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;color:#1c1c1e;">
+    <h2 style="margin:0 0 12px 0;font-size:18px;font-weight:700;">Manual audit review requested</h2>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#374151;line-height:1.5;">
+      The automated scanner couldn't reach this site (target blocks bots). The user opted into a manual review and is waiting for an emailed report.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">${rows.join("")}</table>
+    <div style="margin-top:24px;font-size:12px;color:#9ca3af;">
+      Sent by zeroremake.com/audit
+    </div>
+  </body></html>`;
+
+  return sendRaw({
+    to,
+    subject,
+    html,
+    fromName: "ZeroRemake Audit",
+    kind: "owner_manual_review_alert",
+    domain: params.domain,
+    replyTo: params.email,
+  });
+}
+
 // ── Plain-text test email (used by /api/test-email) ─────────────────
 
 export async function sendTestEmail(to: string): Promise<SendResult> {

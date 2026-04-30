@@ -191,6 +191,24 @@ export function buildQuickInsights(findings: Finding[], score: number, domain: s
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 const RETRY_DELAY_MS = 2000;
 
+// Status codes where the target site is deliberately blocking us (anti-bot,
+// firewall, etc.). These are different from transient server errors — no
+// amount of retrying from our IP will get past them. The UI offers a
+// manual-review email-capture flow for these cases instead of a generic error.
+const BLOCKED_STATUSES = new Set([403, 429]);
+
+/** Thrown when the target site blocks our scanner. UI offers manual review. */
+export class BlockedScanError extends Error {
+  status: number;
+  domain: string;
+  constructor(status: number, domain: string, message: string) {
+    super(message);
+    this.name = "BlockedScanError";
+    this.status = status;
+    this.domain = domain;
+  }
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -198,11 +216,10 @@ function sleep(ms: number) {
 // Friendly error messages for the cases users actually encounter. Keeps the
 // "this tool is broken" reaction at bay by naming the cause and the fix.
 function explainHttpError(status: number, domain: string): string {
-  if (status === 429) {
-    return `${domain} has anti-bot protection (likely Cloudflare) that's temporarily blocking automated scans from our server. This usually clears in 15–30 minutes — try again then, or scan a different site.`;
-  }
-  if (status === 403) {
-    return `${domain} blocked our scanner (HTTP 403). Their firewall or bot protection is set to deny non-human visitors. Try a different site, or contact ${domain}'s admin to allow scans.`;
+  if (status === 429 || status === 403) {
+    // Blocked-by-target case. Short message because the UI replaces this with
+    // the manual-review CTA card; the message itself rarely shows.
+    return `${domain} blocks automated scans.`;
   }
   if (status === 503 || status === 502 || status === 504) {
     return `${domain}'s server didn't respond properly (HTTP ${status}). Their site may be temporarily down or overloaded. Try again in a few minutes.`;
@@ -250,6 +267,9 @@ export async function scanUrl(rawUrl: string): Promise<AuditReport> {
   }
 
   if (!res.ok) {
+    if (BLOCKED_STATUSES.has(res.status)) {
+      throw new BlockedScanError(res.status, domain, explainHttpError(res.status, domain));
+    }
     throw new Error(explainHttpError(res.status, domain));
   }
 

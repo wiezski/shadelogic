@@ -239,32 +239,189 @@ export const GUIDES: Record<string, Guide> = {
 
   "window-treatments-privacy-at-night": {
     slug: "window-treatments-privacy-at-night",
-    title: "Best window treatments for privacy at night",
-    metaTitle: "Best Window Treatments for Privacy at Night",
+    title: "Privacy at Night: Why Your Window Treatments Stop Working After Sundown",
+    metaTitle: "Privacy at Night — Why Window Treatments Stop Working After Dark",
     description:
-      "Most window treatments give you daytime privacy but reverse at night. Here's what actually works once your interior lights come on.",
-    opening: [
-      "Most window treatments give you daytime privacy. Far fewer give you actual night privacy. The difference comes down to a physics problem most homeowners don't realize until after they've installed the wrong product.",
+      "A practical explanation of why window treatments behave differently at night, what actually works, and what to expect based on real-world installs.",
+    blocks: [
+      // ── Intro ────────────────────────────────────────────────
+      {
+        type: "p",
+        lead: true,
+        text: "Most window treatments work fine during the day.",
+      },
+      { type: "p", text: "That's not when people have problems." },
+      { type: "p", text: "The problem shows up at night." },
+      { type: "p", text: "You've probably heard it—or experienced it yourself:" },
+      {
+        type: "p",
+        text: "“Everything looks great during the day… but at night I feel like I’m in a fishbowl.”",
+      },
+      { type: "p", text: "That's not bad blinds. That's physics." },
+      { type: "p", text: "And it's the part almost nobody explains before you buy." },
+      {
+        type: "p",
+        text: "If you're shopping for window coverings—or already frustrated with what you have—this is what's actually going on.",
+      },
+
+      // ── Why privacy changes at night ─────────────────────────
+      { type: "h2", text: "Why privacy changes at night" },
+      { type: "p", text: "During the day, the sun is the dominant light source." },
+      { type: "p", text: "Outside is bright, inside is darker." },
+      { type: "p", text: "At night, that flips." },
+      { type: "p", text: "Now your house becomes the brightest thing on the block." },
+      {
+        type: "p",
+        text: "Your lamps, TVs, and overhead lights become the new “sun”—but inside your home.",
+      },
+      { type: "p", text: "Light doesn't just stop at the glass. It pushes outward." },
+      {
+        type: "p",
+        text: "That means anything that lets you see out during the day can behave very differently at night.",
+      },
+      {
+        type: "p",
+        text: "This is the fishbowl effect—and it's the number one reason people get surprised by their window treatments.",
+      },
+      { type: "p", text: "Almost everything is evaluated during the day." },
+      { type: "p", text: "Almost nobody checks it at night before buying." },
+
+      // ── What people think will work — but doesn't ───────────
+      { type: "h2", text: "What people think will work — but doesn't" },
+
+      { type: "h3", text: "“If I can see out, they can't see in.”" },
+      { type: "p", text: "True during the day. Not true at night." },
+      { type: "p", text: "Visibility always favors the brighter side." },
+
+      { type: "h3", text: "“Light-filtering means private.”" },
+      { type: "p", text: "This depends on the fabric." },
+      {
+        type: "p",
+        text: "There are different levels of light-filtering materials. Many do a very good job of obscuring visibility at night—you generally cannot see clearly through them.",
+      },
+      {
+        type: "p",
+        text: "What people worry about is silhouettes. In most real situations, you're not seeing a clear outline of a person. At most, you might detect faint movement—and even that usually requires someone to be very close to the window.",
+      },
+
+      { type: "h3", text: "“Blackout fabric solves everything.”" },
+      {
+        type: "p",
+        text: "Blackout fabric blocks light through the fabric itself—but it doesn't automatically solve edge conditions or viewing angles.",
+      },
+      { type: "p", text: "What people can see depends on:" },
+      { type: "ul", items: ["side gaps", "window depth", "viewing angle"] },
+
+      // ── How different products actually perform at night ────
+      { type: "h2", text: "How different products actually perform at night" },
+
+      { type: "h3", text: "Blinds (wood, faux wood, aluminum)" },
+      { type: "p", text: "With slats fully closed, blinds are a strong baseline." },
+      {
+        type: "ul",
+        items: [
+          "Minimal side gaps",
+          "Small light leakage between slats",
+          "Very difficult to see detail inside",
+        ],
+      },
+      {
+        type: "p",
+        text: "Even with lights on, clear silhouettes are uncommon unless someone is very close and lighting is extreme.",
+      },
+      { type: "p", text: "Big mistake: leaving slats partially tilted at night." },
+
+      { type: "h3", text: "Cellular (honeycomb) shades" },
+      { type: "p", text: "The most consistent performer for nighttime privacy." },
+      {
+        type: "ul",
+        items: ["Continuous fabric", "Minimal gaps", "Strong coverage"],
+      },
+      {
+        type: "p",
+        text: "One of the easiest “set it and forget it” solutions.",
+      },
+
+      { type: "h3", text: "Roller shades" },
+      { type: "p", text: "Roller shades work well, but expectations matter." },
+      {
+        type: "p",
+        text: "Typical side gaps are around ½ inch per side. These do not create direct visibility into the room.",
+      },
+      {
+        type: "p",
+        text: "However, visibility can occur from certain angles—especially on wider windows or where mullions create spacing.",
+      },
+      {
+        type: "p",
+        text: "People don't see through the fabric—but may see around it depending on angle.",
+      },
+
+      { type: "h3", text: "Sheer, solar, and light-filtering shades" },
+      { type: "p", text: "These vary significantly by fabric." },
+      {
+        type: "ul",
+        items: [
+          "Some provide strong nighttime privacy",
+          "Others allow more visibility",
+        ],
+      },
+      {
+        type: "p",
+        text: "Solar shades preserve view during the day, which means they can allow more visibility at night depending on lighting.",
+      },
+      { type: "p", text: "Fabric choice matters more than category." },
+
+      // ── The real-world problems that show up ────────────────
+      { type: "h2", text: "The real-world problems that show up" },
+      {
+        type: "ul",
+        items: [
+          "Street-facing rooms where people feel more exposed than expected",
+          "Movement or light shifts visible from outside",
+          "Roller shades behaving differently depending on angle",
+          "Homeowners checking from outside and realizing more is visible than expected",
+        ],
+      },
+      { type: "p", text: "The pattern is always the same:" },
+      { type: "p", text: "It looked fine during the day." },
+      { type: "p", text: "Questions show up at night." },
+
+      // ── What actually works ─────────────────────────────────
+      { type: "h2", text: "What actually works" },
+
+      { type: "h3", text: "Blinds (fully closed)" },
+      { type: "p", text: "Strong baseline. Just make sure they're fully closed." },
+
+      { type: "h3", text: "Cellular shades" },
+      { type: "p", text: "Most consistent single-product solution." },
+
+      { type: "h3", text: "Roller shades (with correct expectations)" },
+      { type: "p", text: "Work well, but understand angle-based visibility." },
+
+      { type: "h3", text: "Layering (shade + drapery)" },
+      { type: "p", text: "Best overall solution." },
+
+      { type: "h3", text: "Side channels" },
+      {
+        type: "p",
+        text: "Useful for high-privacy situations. Not always necessary.",
+      },
     ],
-    body: [
-      "The basic rule: at night, the inside of your house is brighter than the outside. Anything you can see out through during the day reverses — outside-in becomes the easier direction. So a sheer cellular, a screen shade, or a sheer-vane roller all let neighbors see into your lit room until you fully close them.",
-      "Best night privacy: blackout cellular shades, room-darkening cellular shades, opaque rollers with a cassette, or solid Roman shades with a privacy liner. These read as solid fabric when down — neighbors see a closed shade, not your silhouette and not the room's lighting fixtures.",
-      "Wood blinds and shutters work differently. Tilted up during the day, they block daytime visibility while you can still see down and out — the angle does the work. At night that trick stops working. With interior lights on, neighbors can see lights and shapes through the slat closure gaps. The right play is to fully close them once it's dark.",
-      "Drapery alone is not a strong night-privacy product. A heavy lined drapery does most of the work but always leaks at the panel meeting point and the sides. If night privacy is critical, pair drapery with a shade behind it — the shade handles privacy, the drapery handles softness.",
-      "Vertical blinds: the \"see out, block in\" trick that works on horizontal blinds doesn't apply. With verticals, if you can see out, they can see in. Closed they're fine; open or tilted they're not. There's no daytime one-way mode the way horizontal slats give you.",
+    summary: [
+      "Nighttime privacy is different than daytime",
+      "Interior lighting changes visibility",
+      "Light-filtering fabrics vary",
+      "Blinds provide strong privacy when closed",
+      "Cellular shades are most consistent",
+      "Roller shades depend on angles",
+      "Details matter more than category",
+      "Layering gives the most control",
     ],
-    whereWrong: [
-      "Confusing \"I have privacy from the street during the day\" with \"I have privacy at night.\"",
-      "Picking a sheer fabric for a master bedroom because it filters light beautifully — true, but useless once the lamp goes on.",
-      "Trusting a \"privacy\" label on a fabric without checking how see-through it is when backlit.",
-      "Buying a shade that needs to be fully closed for privacy on a window they want partially closed.",
-    ],
-    whenChanges: [
-      "Window faces a tree line, a fence, or a neighbor 30+ feet away — sheer fabrics may give you all the privacy you actually need.",
-      "Upper-floor windows where line-of-sight from below is impossible.",
-      "Rooms where you genuinely don't have lights on at night.",
-      "Coastal or rural homes with no neighbor visibility.",
-    ],
+    cta: {
+      preamble: "If you're not sure what fits your exact situation, use the tool:",
+      linkText: "Use the Blinds vs Shades Decision Tool",
+    },
     related: [
       "window-treatments-light-and-privacy",
       "blackout-vs-room-darkening",

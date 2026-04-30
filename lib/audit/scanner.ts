@@ -185,6 +185,37 @@ export function buildQuickInsights(findings: Finding[], score: number, domain: s
 
 // ── Main entry ──────────────────────────────────────────────────────
 
+// Status codes that are likely transient — worth retrying once. 429 (rate
+// limit) is the main one; 502/503/504 happen when the target's CDN or origin
+// is briefly unhappy and a 2-second wait usually resolves it.
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+const RETRY_DELAY_MS = 2000;
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// Friendly error messages for the cases users actually encounter. Keeps the
+// "this tool is broken" reaction at bay by naming the cause and the fix.
+function explainHttpError(status: number, domain: string): string {
+  if (status === 429) {
+    return `${domain} has anti-bot protection (likely Cloudflare) that's temporarily blocking automated scans from our server. This usually clears in 15–30 minutes — try again then, or scan a different site.`;
+  }
+  if (status === 403) {
+    return `${domain} blocked our scanner (HTTP 403). Their firewall or bot protection is set to deny non-human visitors. Try a different site, or contact ${domain}'s admin to allow scans.`;
+  }
+  if (status === 503 || status === 502 || status === 504) {
+    return `${domain}'s server didn't respond properly (HTTP ${status}). Their site may be temporarily down or overloaded. Try again in a few minutes.`;
+  }
+  if (status === 404) {
+    return `That URL didn't exist on ${domain} (HTTP 404). Double-check the address — most sites work with just the domain (e.g. heberblinds.com).`;
+  }
+  if (status >= 500) {
+    return `${domain}'s server returned an error (HTTP ${status}). Likely a temporary issue on their end — try again in a few minutes.`;
+  }
+  return `${domain} returned an unexpected response (HTTP ${status}). Try again, or scan a different site.`;
+}
+
 export async function scanUrl(rawUrl: string): Promise<AuditReport> {
   const normalized = normalizeUrl(rawUrl);
   if (!normalized) {
@@ -192,21 +223,34 @@ export async function scanUrl(rawUrl: string): Promise<AuditReport> {
   }
   const { url, domain } = normalized;
 
-  // Fetch the HTML
+  // Fetch the HTML — try once, retry on transient failures.
   let res: Response;
   try {
     res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS);
+
+    // If the first attempt hit a known-transient status, wait briefly and
+    // retry once. Single retry keeps user-visible latency bounded (max ~12s
+    // including timeouts) while clearing most flaky responses.
+    if (RETRYABLE_STATUSES.has(res.status)) {
+      await sleep(RETRY_DELAY_MS);
+      try {
+        res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS);
+      } catch {
+        // If the retry attempt itself errors, fall through with the original
+        // response — explainHttpError will still produce a useful message.
+      }
+    }
   } catch (e) {
     const err = e as Error;
     throw new Error(
       err.name === "AbortError"
-        ? "Site took too long to respond (10s timeout)."
-        : `Couldn't reach ${domain}: ${err.message}`,
+        ? `${domain} took too long to respond (10s timeout). Their site may be slow or down — try again in a minute.`
+        : `Couldn't reach ${domain}. Double-check the URL, or try again in a minute. (${err.message})`,
     );
   }
 
   if (!res.ok) {
-    throw new Error(`Site returned HTTP ${res.status} ${res.statusText}`);
+    throw new Error(explainHttpError(res.status, domain));
   }
 
   const html = await res.text();

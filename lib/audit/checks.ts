@@ -85,32 +85,98 @@ export const checkCityPages: CheckFn = (ctx) => {
   const { $ } = ctx;
 
   // Detect city/service-area pages by URL structure rather than by city name.
-  // Counts distinct slugs under common service-area path conventions, so
-  // detection works for any geography (Utah, Michigan, Texas, etc.).
-  // Matches: /service-areas/<slug>, /locations/<slug>, /areas-we-serve/<slug>,
-  //          /cities/<slug>
-  const serviceAreaPattern =
+  // Two URL conventions are common in this industry:
+  //
+  //   MODERN — under a parent path that names the section:
+  //     /service-areas/<city>/, /locations/<city>/,
+  //     /areas-we-serve/<city>/, /cities/<city>/
+  //
+  //   LEGACY — city baked into the filename (older PHP-era SEO style):
+  //     /shutters-anchorage-ak.php, /blinds-provo-ut/, /houston-blinds.html
+  //
+  // We detect both, dedupe by full pathname, and classify each match so the
+  // messaging layer can flag legacy structures via Finding.meta.isModernStructure.
+  const modernPattern =
     /\/(?:service-areas|service-area|locations|location|areas-we-serve|areas|cities|city)\/([^/?#]+)/i;
 
-  const citySlugs = new Set<string>();
+  // Legacy pattern A — state-code suffix:
+  // matches paths like "/shutters-anchorage-ak.php" or "/blinds-provo-ut/".
+  // The 2-letter state code at the end is the strong signal here.
+  const legacyStateSuffixPattern =
+    /\/[a-z][a-z0-9-]*-(?:ak|al|ar|az|ca|co|ct|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|va|vt|wa|wi|wv|wy)(?:\.(?:php|html?|htm))?(?:\/|$|\?|#)/i;
+
+  // Legacy pattern B — product-suffix:
+  // matches paths like "/provo-blinds/" or "/anchorage-shutters.html".
+  // We exclude well-known product subtype prefixes (wood, faux, mini, etc.)
+  // to avoid false positives like "/wood-blinds/" or "/roller-shades/".
+  const legacyProductSuffixPattern =
+    /\/([a-z][a-z0-9-]*)-(?:blinds|shutters|shades|window-treatments|drapery|draperies)(?:\.(?:php|html?|htm))?(?:\/|$|\?|#)/i;
+
+  const PRODUCT_SUBTYPE_PREFIXES = new Set([
+    "wood", "faux", "faux-wood", "real-wood", "mini", "cellular", "roller",
+    "roman", "vertical", "horizontal", "plantation", "motorized", "manual",
+    "custom", "premium", "designer", "classic", "modern", "traditional",
+    "contemporary", "smart", "automatic", "automated", "aluminum", "vinyl",
+    "fabric", "sheer", "blackout", "exterior", "interior", "indoor", "outdoor",
+    "wood-blinds", "faux-wood-blinds", "window", "honeycomb", "panel", "track",
+    "double-cell", "single-cell", "light-filtering", "room-darkening",
+  ]);
+
+  type StructureKind = "modern" | "legacy";
+  const detected = new Map<string, StructureKind>(); // dedupe by pathname
+
   $("a[href]").each((_, el) => {
     const href = ($(el).attr("href") || "").toLowerCase();
     if (!href) return;
-    // Skip external and anchor/mailto/tel links
     if (href.startsWith("http") && !href.includes(ctx.domain)) return;
     if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
 
-    const match = href.match(serviceAreaPattern);
-    if (match && match[1]) {
-      const slug = match[1].trim();
-      // Filter out empty slugs and obvious index/listing slugs
+    let pathname: string;
+    try {
+      const u = href.startsWith("http") ? new URL(href) : new URL(href, `https://${ctx.domain}`);
+      pathname = u.pathname.toLowerCase();
+    } catch {
+      return;
+    }
+    if (!pathname || pathname === "/") return;
+
+    // Modern pattern first — strongest signal.
+    const modernMatch = pathname.match(modernPattern);
+    if (modernMatch && modernMatch[1]) {
+      const slug = modernMatch[1].trim();
       if (slug && slug.length > 1 && slug !== "index") {
-        citySlugs.add(slug);
+        // Modern wins over legacy for the same path.
+        detected.set(pathname, "modern");
+        return;
+      }
+    }
+
+    // Legacy A — state code suffix.
+    if (legacyStateSuffixPattern.test(pathname)) {
+      if (!detected.has(pathname)) detected.set(pathname, "legacy");
+      return;
+    }
+
+    // Legacy B — product suffix, with product-subtype exclusion.
+    const productMatch = pathname.match(legacyProductSuffixPattern);
+    if (productMatch && productMatch[1]) {
+      const prefix = productMatch[1].trim();
+      // Skip if prefix looks like a product subtype rather than a city.
+      if (!PRODUCT_SUBTYPE_PREFIXES.has(prefix) && prefix.length >= 3) {
+        if (!detected.has(pathname)) detected.set(pathname, "legacy");
       }
     }
   });
 
-  const count = citySlugs.size;
+  const count = detected.size;
+  let modernCount = 0;
+  let legacyCount = 0;
+  for (const kind of detected.values()) {
+    if (kind === "modern") modernCount++;
+    else legacyCount++;
+  }
+  // Modern if ANY modern pages exist. Pure-legacy sites get the false flag.
+  const isModernStructure = modernCount > 0;
   let score = 0;
   let severity: Finding["severity"] = "critical";
   let detail = "";
@@ -149,6 +215,11 @@ export const checkCityPages: CheckFn = (ctx) => {
     recommendation,
     score,
     maxPoints: 12,
+    meta: {
+      isModernStructure,
+      modernCount,
+      legacyCount,
+    },
   };
 };
 
@@ -257,6 +328,14 @@ export const checkMotorization: CheckFn = (ctx) => {
     detail =
       "Motorization appears to have a dedicated presence on the site. This is the segment where the highest-margin jobs tend to come from — customers with 3–5x the average ticket.";
     recommendation = "May not be fully leveraged unless real installed motorized work is featured — actual homes, the specific brands carried. That tends to be what closes the high-ticket buyer rather than generic product imagery.";
+  } else if (hasDedicated) {
+    // Dedicated motorization page exists, but homepage doesn't reinforce it
+    // with multiple keyword mentions. The dedicated page is itself a strong
+    // signal, so this scores 5 (important) rather than 2 (passing-mention).
+    score = 5;
+    severity = "important";
+    detail = "Motorization appears to have a dedicated page on the site, but the homepage may not be strongly reinforcing that capability — homeowners landing on the homepage first might not realize this product line is offered at depth.";
+    recommendation = "May not be fully leveraged unless motorization is also surfaced on the homepage — a dedicated page can only convert traffic that finds it. Featuring real installed motorized work in the homepage hero or above the fold tends to lift this category meaningfully, especially since motorized buyers tend to spend 3–5x the average ticket.";
   } else if (matches.length >= 2) {
     score = 5;
     severity = "important";
@@ -634,7 +713,11 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
   // Treat prominent links to a contact / quote / schedule page as a positive
   // booking signal even when no inline form exists on the homepage. Many sites
   // route booking through a dedicated landing page rather than embedding a form.
-  const contactLinkPattern = /(?:^|\/)(?:contact|contact-us|quote|get-a-quote|request-a-quote|schedule)(?:\/|$|\?|#)/;
+  // Trailing-segment terminators include `.php`, `.html`, `.htm` so older
+  // PHP/HTML installer sites with paths like `/contact-us.php` or
+  // `/quote.html` aren't silently missed.
+  const contactLinkPattern =
+    /(?:^|\/)(?:contact|contact-us|quote|get-a-quote|request-a-quote|schedule)(?:\/|\.(?:php|html?|htm)|$|\?|#)/;
   const hasContactLink = $("a[href]").toArray().some((el) => {
     const h = ($(el).attr("href") || "").toLowerCase();
     if (!h) return false;

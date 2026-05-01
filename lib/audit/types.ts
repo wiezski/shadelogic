@@ -27,6 +27,12 @@ export interface Finding {
   score: number;
   /** Max points this check can contribute to the total. */
   maxPoints: number;
+  /**
+   * Optional classification signals the messaging layer can read to
+   * tailor copy (e.g. modern vs legacy URL structure for city pages).
+   * Not displayed directly. Backward compatible.
+   */
+  meta?: Record<string, unknown>;
 }
 
 export interface AuditReport {

@@ -16,19 +16,6 @@ function normalizeText(s: string): string {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-// Common Utah service cities (customize this once we have a town-list engine
-// for each state; for now we're anchored to Steve's primary market).
-const UTAH_CITIES = [
-  "provo", "orem", "lehi", "mapleton", "springville", "spanish-fork", "spanishfork",
-  "american-fork", "americanfork", "pleasant-grove", "pleasantgrove",
-  "salt-lake-city", "saltlakecity", "sandy", "draper", "south-jordan", "southjordan",
-  "west-jordan", "westjordan", "murray", "midvale", "cottonwood", "holladay",
-  "bountiful", "layton", "ogden", "kaysville", "farmington", "syracuse",
-  "saratoga-springs", "saratogasprings", "eagle-mountain", "eaglemountain",
-  "park-city", "parkcity", "heber", "highland", "alpine", "cedar-hills", "cedarhills",
-  "st-george", "stgeorge", "washington", "hurricane",
-];
-
 // ── Blind-business-fit checks (60 pts) ──────────────────────────────
 
 // 1. Phone visibility (12 pts)
@@ -97,29 +84,33 @@ export const checkPhoneVisibility: CheckFn = (ctx) => {
 export const checkCityPages: CheckFn = (ctx) => {
   const { $ } = ctx;
 
-  // Look for internal links whose path contains a known city slug.
-  const cityPattern = new RegExp(
-    `/(?:${UTAH_CITIES.join("|")})(?:/|$|-blinds|-shutters|-shades|-window)`,
-    "i",
-  );
+  // Detect city/service-area pages by URL structure rather than by city name.
+  // Counts distinct slugs under common service-area path conventions, so
+  // detection works for any geography (Utah, Michigan, Texas, etc.).
+  // Matches: /service-areas/<slug>, /locations/<slug>, /areas-we-serve/<slug>,
+  //          /cities/<slug>
+  const serviceAreaPattern =
+    /\/(?:service-areas|service-area|locations|location|areas-we-serve|areas|cities|city)\/([^/?#]+)/i;
 
-  const cityLinks = new Set<string>();
+  const citySlugs = new Set<string>();
   $("a[href]").each((_, el) => {
     const href = ($(el).attr("href") || "").toLowerCase();
     if (!href) return;
-    // Skip external and anchor links
+    // Skip external and anchor/mailto/tel links
     if (href.startsWith("http") && !href.includes(ctx.domain)) return;
     if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
-    if (cityPattern.test(href)) {
-      // Extract the path portion
-      try {
-        const u = href.startsWith("http") ? new URL(href) : new URL(href, `https://${ctx.domain}`);
-        cityLinks.add(u.pathname.toLowerCase());
-      } catch { /* skip */ }
+
+    const match = href.match(serviceAreaPattern);
+    if (match && match[1]) {
+      const slug = match[1].trim();
+      // Filter out empty slugs and obvious index/listing slugs
+      if (slug && slug.length > 1 && slug !== "index") {
+        citySlugs.add(slug);
+      }
     }
   });
 
-  const count = cityLinks.size;
+  const count = citySlugs.size;
   let score = 0;
   let severity: Finding["severity"] = "critical";
   let detail = "";
@@ -305,9 +296,9 @@ export const checkTrustSignals: CheckFn = (ctx) => {
 
   const signals: { name: string; found: boolean }[] = [
     { name: "Review count or rating", found: /\d+\s*(?:\+|stars?|reviews?|★)/i.test(bodyText) || /\b4\.[5-9]\s*stars?\b/i.test(bodyText) || /\b5[-\s]?star\b/i.test(bodyText) },
-    { name: "Years in business", found: /\b(?:\d{1,2})\s*(?:\+\s*)?years?\s+(?:in business|experience|of service|serving)\b/i.test(bodyText) || /since\s+(?:19|20)\d{2}/i.test(bodyText) || /established\s+(?:19|20)\d{2}/i.test(bodyText) },
+    { name: "Years in business", found: /\b(?:\d{1,2})\s*(?:\+\s*)?years?\s+(?:in business|experience|of service|serving)\b/i.test(bodyText) || /since\s+(?:19|20)\d{2}/i.test(bodyText) || /established\s+(?:19|20)\d{2}/i.test(bodyText) || /founded\s+(?:in\s+)?(?:19|20)\d{2}/i.test(bodyText) },
     { name: "BBB accreditation", found: /\bbbb\b|better business bureau/i.test(bodyText) },
-    { name: "Hunter Douglas / brand partnership", found: /hunter douglas|gallery dealer|certified pro|norman|graber|levolor/i.test(bodyText) },
+    { name: "Brand partnerships", found: /hunter douglas|gallery dealer|certified pro|norman|graber|levolor|hunterdouglas/i.test(bodyText) },
     { name: "Google reviews link", found: $("a[href*='google.com/maps']").length > 0 || $("a[href*='g.page']").length > 0 || /google reviews?/i.test(bodyText) },
     { name: "Warranty / guarantee", found: /warranty|guaranteed?|satisfaction|lifetime/i.test(bodyText) },
   ];
@@ -632,12 +623,28 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
 
   const bookingKeywords = [
     "book online", "schedule online", "book a consultation", "schedule a consultation",
+    "schedule an appointment", "design consultation", "free consultation",
     "free quote", "request a quote", "get a quote", "free estimate", "request estimate",
     "calendly", "book now", "schedule now",
   ];
   const textHasBooking = bookingKeywords.some((k) => bodyText.includes(k));
   const hasCalendly = $("a[href*='calendly.com'], iframe[src*='calendly.com']").length > 0 ||
     $("a[href*='acuityscheduling'], iframe[src*='acuityscheduling']").length > 0;
+
+  // Treat prominent links to a contact / quote / schedule page as a positive
+  // booking signal even when no inline form exists on the homepage. Many sites
+  // route booking through a dedicated landing page rather than embedding a form.
+  const contactLinkPattern = /(?:^|\/)(?:contact|contact-us|quote|get-a-quote|request-a-quote|schedule)(?:\/|$|\?|#)/;
+  const hasContactLink = $("a[href]").toArray().some((el) => {
+    const h = ($(el).attr("href") || "").toLowerCase();
+    if (!h) return false;
+    if (h.startsWith("#") || h.startsWith("mailto:") || h.startsWith("tel:")) return false;
+    return contactLinkPattern.test(h);
+  });
+
+  // For scoring purposes, treat a clear contact-page link the same as an
+  // inline form — both represent a booking pathway from the homepage.
+  const hasBookingPath = hasForm || hasContactLink;
 
   let score = 0;
   let severity: Finding["severity"];
@@ -649,13 +656,13 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
     severity = "pass";
     detail = "Online booking appears to be integrated (Calendly or similar), giving homeowners a path to schedule a measure without the callback wait.";
     recommendation = "May not be fully leveraged unless lower-friction first steps — like texting or quick pricing — are also obvious. Many homeowners prefer a smaller commitment than a calendar booking on the first visit, so offering both tends to capture a wider slice of ready-to-act traffic.";
-  } else if (hasForm && textHasBooking) {
+  } else if (hasBookingPath && textHasBooking) {
     score = 3;
     severity = "pass";
     detail = "A quote/consultation form appears to be implemented and surfaced in the page copy, giving homeowners a clear path to convert.";
     recommendation =
       "Booking or quote options may not be optimized for how customers want to engage. Many homeowners prefer a lower-friction first step such as texting or a quick instant quote — adding those alongside the form tends to capture ready-to-act traffic that won’t fill out a multi-field request.";
-  } else if (hasForm) {
+  } else if (hasBookingPath) {
     score = 2;
     severity = "important";
     detail = "A form appears on the page, but its “book” or “request quote” call to action may not be strongly featured — which likely leaves visitors unsure what the next step is.";

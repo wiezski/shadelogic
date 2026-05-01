@@ -177,6 +177,12 @@ export const checkCityPages: CheckFn = (ctx) => {
   }
   // Modern if ANY modern pages exist. Pure-legacy sites get the false flag.
   const isModernStructure = modernCount > 0;
+
+  // Diagnostic — confirms which code revision is live for this domain.
+  // Safe to remove once detection is verified working in production.
+  console.log(
+    `[city_pages_v2] domain=${ctx.domain} count=${count} modern=${modernCount} legacy=${legacyCount} isModern=${isModernStructure}`,
+  );
   let score = 0;
   let severity: Finding["severity"] = "critical";
   let detail = "";

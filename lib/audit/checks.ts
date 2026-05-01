@@ -133,20 +133,20 @@ export const checkCityPages: CheckFn = (ctx) => {
   } else if (count >= 3) {
     score = 7;
     severity = "important";
-    detail = `City-page coverage appears partial — ${count} pages identified, which is a foundation. National brands (Sunburst, 3 Day Blinds, Bumble Bee) tend to run 10+ per metro, so the local SEO footprint is likely not structured to capture every town-level search in your service area.`;
-    recommendation = "Expanding to a page per town in your service area tends to be the highest-ROI content available to a local installer. Each page should feel locally written rather than templated, since templated city pages tend to underperform.";
+    detail = `City-page coverage appears partial — ${count} pages identified, which is a foundation. National brands (Sunburst, 3 Day Blinds, Bumble Bee) tend to run 10+ per metro, so competitors with stronger location coverage may be capturing searches like “blinds in [city]” across the rest of your service area.`;
+    recommendation = "Expanding to a page per town in your service area tends to be the highest-ROI content available to a local installer. Each page tends to perform best when it feels locally written rather than templated — Google can usually tell the difference, and so can homeowners.";
   } else if (count === 1 || count === 2) {
     score = 3;
     severity = "critical";
-    detail = `Only ${count} city page identified — meaning your local SEO footprint is likely not structured to maximize visibility across your service area.`;
+    detail = `Only ${count} city page identified — meaning local SEO coverage may not be fully leveraged across your service area, and competitors with stronger location pages may be capturing searches like “blinds in [city]” instead.`;
     recommendation =
-      "Building a page for every town you serve tends to be the highest-ROI content a local installer can produce. A homeowner Googling “shutters Provo” should land on your Provo page — not the national brand that got there first.";
+      "Building a page for every town you serve tends to be the highest-ROI content a local installer can produce. A homeowner Googling “shutters Provo” tends to land on the page that looks most clearly built for Provo — and right now that page may not be yours.";
   } else {
     score = 0;
     severity = "critical";
-    detail = "City pages may not be fully leveraged on this site. When homeowners in your service area search for blinds or shutters by town, those searches are likely going to competitors with city-specific pages built out.";
+    detail = "City pages may not be fully leveraged to capture local search traffic. Competitors with stronger location pages may be capturing searches like “blinds in [city]” or “shutters in [city]” instead.";
     recommendation =
-      "One of your biggest SEO opportunities is a dedicated page per city you serve. Homeowners search by town, Google rewards the specificity, and the slot is wide open for most local operators — but only for a little while longer.";
+      "Building a dedicated page per city you serve tends to be one of the highest-ROI SEO opportunities for a local installer. Homeowners search by town, Google rewards specificity, and the slot is wide open for most operators — but it tends to close as larger competitors build out their footprint.";
   }
 
   return {
@@ -434,7 +434,7 @@ export const checkTitleTag: CheckFn = (ctx) => {
     score = 0;
     severity = "critical";
     detail = "Title tag may not be implemented on this page.";
-    recommendation = "The title tag is what Google shows in search results and what the browser tab reads — it tends to be the most-seen copy on your site, so leaving it blank likely caps click-throughs from search.";
+    recommendation = "The title tag tends to be the most-seen copy on your site — it’s what Google shows in search results and what the browser tab reads. When it isn’t strongly implemented, click-through from search is likely capped well below what the rankings would otherwise support.";
   } else if (len < 20) {
     score = 1;
     severity = "important";
@@ -500,7 +500,7 @@ export const checkH1: CheckFn = (ctx) => {
     score = 0;
     severity = "important";
     detail = "Main heading structure may not be strongly implemented on this page.";
-    recommendation = "Every page benefits from one clear main heading. Without it, the page tends to read as unfocused to both visitors and search engines — likely limiting how well it ranks and converts.";
+    recommendation = "Pages tend to perform best with one clear main heading. When a strong H1 isn’t implemented, the page often reads as unfocused to both visitors and search engines — likely limiting how well it ranks and converts.";
   } else if (count > 1) {
     score = 1;
     severity = "important";
@@ -556,7 +556,7 @@ export const checkLocalBusinessSchema: CheckFn = (ctx) => {
   } else if (hasOrganization) {
     score = 2;
     severity = "important";
-    detail = "You have basic Organization schema but not LocalBusiness — meaning Google likely isn’t reading you as a local service business in your area, which tends to keep listings out of the Map Pack.";
+    detail = "Basic Organization schema appears in place, but LocalBusiness schema may not be implemented — meaning Google likely isn’t reading the site as a local service business in your area, which tends to keep listings out of the Map Pack.";
     recommendation =
       "Without the LocalBusiness signals, Google often treats a site as a generic web page rather than a local service business. That tends to be the difference between showing up in the map pack — where homeowners actually book — and being skipped over.";
   } else {
@@ -647,25 +647,25 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
   if (hasCalendly) {
     score = 4;
     severity = "pass";
-    detail = "Online booking appears to be integrated (Calendly or similar). That tends to lift conversion notably — homeowners can schedule a measure without the callback wait.";
-    recommendation = "May not be fully leveraged unless it surfaces real-time availability rather than acting as a glorified contact form. Instant scheduling tends to be the actual conversion unlock.";
+    detail = "Online booking appears to be integrated (Calendly or similar), giving homeowners a path to schedule a measure without the callback wait.";
+    recommendation = "May not be fully leveraged unless lower-friction first steps — like texting or quick pricing — are also obvious. Many homeowners prefer a smaller commitment than a calendar booking on the first visit, so offering both tends to capture a wider slice of ready-to-act traffic.";
   } else if (hasForm && textHasBooking) {
     score = 3;
     severity = "pass";
     detail = "A quote/consultation form appears to be implemented and surfaced in the page copy, giving homeowners a clear path to convert.";
     recommendation =
-      "May not be fully leveraged versus real-time scheduling, which tends to outperform form-only flows by ~30% — the callback wait is where would-be bookings often drop off.";
+      "Booking or quote options may not be optimized for how customers want to engage. Many homeowners prefer a lower-friction first step such as texting or a quick instant quote — adding those alongside the form tends to capture ready-to-act traffic that won’t fill out a multi-field request.";
   } else if (hasForm) {
     score = 2;
     severity = "important";
-    detail = "A form exists, but the “book” or “request quote” call to action may not be strongly featured — likely leaving visitors unsure what the next step is.";
-    recommendation = "A form tends to convert in proportion to how clearly its job is named. Generic “Contact Us” framing often underperforms — making the next step obvious and action-oriented usually lifts submissions.";
+    detail = "A form appears on the page, but its “book” or “request quote” call to action may not be strongly featured — which likely leaves visitors unsure what the next step is.";
+    recommendation = "Booking or quote options may not be optimized for how customers want to engage. A clearly named action (and ideally a lower-friction alternative like text-for-quote) tends to convert better than generic “Contact Us” framing, which often underperforms with ready-to-act traffic.";
   } else {
     score = 0;
     severity = "critical";
-    detail = "Online booking may not be strongly implemented on this page. Homeowners who are ready to book (often at 9 PM after dinner) need a clear path forward — without one, they’re likely to try the next site that offers it.";
+    detail = "Online booking or quote options may not be strongly implemented on this page. Many homeowners prefer a lower-friction first step such as texting or a quick instant quote — when those options aren’t obvious, ready-to-act traffic likely tries the next site that offers them.";
     recommendation =
-      "Converting the 9 PM browser into tomorrow’s measure is how local installers tend to double their lead volume without spending more on ads. A clear online-booking flow is usually the unlock.";
+      "Capturing the 9 PM browser tends to be how local installers double lead volume without spending more on ads. Offering multiple low-friction paths (text-for-quote, instant pricing, online booking) usually outperforms a single high-commitment form.";
   }
 
   return { id: "online_booking", category: "content_conversion", severity, title: "Online booking / quote request", detail, recommendation, score, maxPoints: 4 };

@@ -367,17 +367,11 @@ export default function AuditPage() {
                 />
               )}
 
-              {/* Parallel Layer 2.5 — "or book a call" CTA. Available
-                  from results onward; reveals the booking form below. */}
+              {/* Parallel Layer 2.5 — "or book a call" CTA. Now routes to
+                  /walkthrough (dedicated booking page) for a clearer path
+                  and a shareable URL. */}
               {(stage === "results" || stage === "unlocked") && !showBookingForm && (
-                <CallCTA onClick={() => {
-                  setShowBookingForm(true);
-                  requestAnimationFrame(() => {
-                    if (typeof window !== "undefined") {
-                      window.scrollBy({ top: 180, behavior: "smooth" });
-                    }
-                  });
-                }} />
+                <CallCTA />
               )}
 
               {/* Layer 3 — booking form */}
@@ -1526,7 +1520,10 @@ function EmailGate({
 
 // ─── Parallel Layer 2 CTA: book a call (opens the booking form) ──
 
-function CallCTA({ onClick }: { onClick: () => void }) {
+// CallCTA — links to the dedicated /walkthrough booking page. Used to open
+// an inline booking form on this page; now routes to the standalone page so
+// there's a single source of truth for booking and the URL is shareable.
+function CallCTA() {
   return (
     <div
       style={{
@@ -1549,9 +1546,8 @@ function CallCTA({ onClick }: { onClick: () => void }) {
       >
         Or — skip the reading
       </div>
-      <button
-        type="button"
-        onClick={onClick}
+      <Link
+        href="/walkthrough"
         style={{
           background: "transparent",
           color: ORANGE,
@@ -1565,12 +1561,13 @@ function CallCTA({ onClick }: { onClick: () => void }) {
           display: "inline-flex",
           alignItems: "center",
           gap: 8,
+          textDecoration: "none",
         }}
         className="transition-opacity active:opacity-60"
       >
         See what I&apos;d fix first (20-min call)
         <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>→</span>
-      </button>
+      </Link>
       <div
         style={{
           marginTop: 12,
@@ -2010,20 +2007,20 @@ function BookCallCard({
           label="Your name"
           value={name}
           onChange={setName}
-          placeholder="Lin Skinner"
+          placeholder="Your name"
         />
         <LabeledInput
           label="Phone (optional)"
           value={phone}
           onChange={setPhone}
-          placeholder="(801) 555-1234"
+          placeholder="(555) 555-5555"
           type="tel"
         />
         <LabeledTextarea
           label="Anything specific you'd like to cover?"
           value={notes}
           onChange={setNotes}
-          placeholder="Feel free to leave blank."
+          placeholder="Optional"
         />
       </div>
 

@@ -209,7 +209,7 @@ export function renderFullReportHtml(report: AuditReport): string {
         site and show what to fix first — based on what actually drives leads.
         Twenty minutes, no pitch.
       </div>
-      <a href="https://zeroremake.com/audit?book=${encodeURIComponent(report.domain)}"
+      <a href="https://zeroremake.com/walkthrough"
         style="display:inline-block;background:#d65a31;color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;text-decoration:none;">
         Schedule a quick call
       </a>
@@ -339,6 +339,50 @@ export async function sendManualReviewAlertEmail(params: {
     kind: "owner_manual_review_alert",
     domain: params.domain,
     replyTo: params.email,
+  });
+}
+
+// ── Walkthrough request alert ──────────────────────────────────────
+// Fired when someone fills out the /walkthrough form. Routes the lead
+// straight to Steve so he can call them back within 24 hours.
+
+export async function sendWalkthroughRequestAlertEmail(params: {
+  name: string;
+  phone: string | null;
+  notes: string | null;
+  requestId: string;
+}): Promise<SendResult> {
+  const to = process.env.AUDIT_INTERNAL_ALERT_TO || INTERNAL_DEFAULT;
+  const subject = `Walkthrough request: ${params.name}`;
+
+  const rows: string[] = [];
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Name</td><td style="font-weight:600;">${params.name}</td></tr>`);
+  if (params.phone) {
+    rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Phone</td><td><a href="tel:${params.phone}" style="color:#0a84ff;">${params.phone}</a></td></tr>`);
+  }
+  if (params.notes) {
+    rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;vertical-align:top;">Notes</td><td>${params.notes.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td></tr>`);
+  }
+  rows.push(`<tr><td style="color:#6b7280;padding:4px 12px 4px 0;">Request ID</td><td style="font-family:monospace;font-size:12px;color:#6b7280;">${params.requestId}</td></tr>`);
+
+  const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;color:#1c1c1e;">
+    <h2 style="margin:0 0 12px 0;font-size:18px;font-weight:700;">New walkthrough request</h2>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#374151;line-height:1.5;">
+      Someone filled out the /walkthrough form. They're expecting a call within 24 hours.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">${rows.join("")}</table>
+    <div style="margin-top:24px;font-size:12px;color:#9ca3af;">
+      Sent by zeroremake.com/walkthrough
+    </div>
+  </body></html>`;
+
+  return sendRaw({
+    to,
+    subject,
+    html,
+    fromName: "ZeroRemake",
+    kind: "owner_walkthrough_alert",
+    domain: "walkthrough",
   });
 }
 

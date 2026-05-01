@@ -40,12 +40,12 @@ export const checkPhoneVisibility: CheckFn = (ctx) => {
   if (headerHasPhone && telLinks > 0) {
     score = 12;
     severity = "pass";
-    detail = "Phone visibility appears strong — a number is featured in the header and looks one-tap callable on mobile, which tends to be the single most-used action on a local service site. May not be fully leveraged if calling is the only contact path, since many homeowners (especially under-40) prefer a lower-friction first step like texting.";
-    recommendation = "May not be fully leveraged unless paired with a lower-friction option like text-to-quote or click-to-text. A call-only contact path tends to underserve the segment that prefers texting before talking — and that segment is a meaningful slice of inbound interest. Also worth confirming the number appears on every page (mobile sticky header included) and the displayed number matches the tel: link exactly.";
+    detail = "Phone visibility appears strong — a number is featured in the header and looks one-tap callable on mobile, which tends to be the single most-used action on a local service site. May be limiting how much inbound interest converts if calling is the only contact path, since many homeowners (especially under-40) prefer a lower-friction first step like texting.";
+    recommendation = "Likely leaving opportunity on the table unless paired with a lower-friction option like text-to-quote or click-to-text. A call-only contact path tends to underserve the segment that prefers texting before talking — and that segment is a meaningful slice of inbound interest. Also worth confirming the number appears on every page (mobile sticky header included) and the displayed number matches the tel: link exactly.";
   } else if (headerHasPhone) {
     score = 8;
     severity = "important";
-    detail = "Phone visibility in the header may not be fully leveraged for mobile callers — a tappable tel: link doesn’t appear to be wired up, so visitors likely have to memorize or copy-paste the number.";
+    detail = "Phone visibility in the header isn’t doing the work it could be doing for mobile callers — a tappable tel: link doesn’t appear to be wired up, so visitors likely have to memorize or copy-paste the number.";
     recommendation =
       "Making the phone number one-tap callable on mobile tends to be one of the highest-leverage fixes available. The #1 action homeowners take before booking is calling — and unnecessary friction here likely costs measurable conversions.";
   } else if (telLinks > 0) {
@@ -204,7 +204,7 @@ export const checkCityPages: CheckFn = (ctx) => {
   } else {
     score = 0;
     severity = "critical";
-    detail = "City pages may not be fully leveraged to capture local search traffic. Competitors with stronger location pages may be capturing searches like “blinds in [city]” or “shutters in [city]” instead.";
+    detail = "City pages aren’t positioned to capture as much local search traffic as they could. Competitors with stronger location pages may be capturing searches like “blinds in [city]” or “shutters in [city]” instead.";
     recommendation =
       "Building a dedicated page per city you serve tends to be one of the highest-ROI SEO opportunities for a local installer. Homeowners search by town, Google rewards specificity, and the slot is wide open for most operators — but it tends to close as larger competitors build out their footprint.";
   }
@@ -354,7 +354,7 @@ export const checkMotorization: CheckFn = (ctx) => {
   } else {
     score = 0;
     severity = "critical";
-    detail = "Motorization may not be fully leveraged on this site. These are the best leads in the business — whole-home jobs, bigger tickets — and current visibility likely isn’t capturing those searches.";
+    detail = "Motorization is likely leaving opportunity on the table on this site. These are the best leads in the business — whole-home jobs, bigger tickets — and current visibility likely isn’t capturing those searches.";
     recommendation =
       "Motorization is where the biggest tickets tend to live. Without a clear, dedicated presence, those searches likely route to competitors who have one — and they tend to be among the easiest leads to win once a site shows up for them at all.";
   }
@@ -522,7 +522,7 @@ export const checkTitleTag: CheckFn = (ctx) => {
     score = 4;
     severity = "pass";
     detail = `Title appears well-sized at ${len} characters: "${title}".`;
-    recommendation = "May not be fully leveraged unless it mentions a city or region — that’s where local search intent tends to live, and titles that include location often outperform generic ones in click-through.";
+    recommendation = "Isn’t doing as much work as it could unless it mentions a city or region — that’s where local search intent tends to live, and titles that include location often outperform generic ones in click-through.";
   }
 
   return { id: "title_tag", category: "technical_seo", severity, title: "Homepage title tag", detail, recommendation, score, maxPoints: 4 };
@@ -678,7 +678,7 @@ export const checkAltText: CheckFn = (ctx) => {
     score = 4;
     severity = "pass";
     detail = `Alt text coverage appears strong — ${pct}% of images (${withAlt}/${total}) have descriptions in place.`;
-    recommendation = "May not be fully leveraged unless those descriptions are descriptive enough to compete in image search. “Roman shades in a Provo master bedroom” tends to outrank “shade2.jpg” by a wide margin.";
+    recommendation = "May not be as effective as it could be unless those descriptions are descriptive enough to compete in image search. “Roman shades in a Provo master bedroom” tends to outrank “shade2.jpg” by a wide margin.";
   } else if (pct >= 60) {
     score = 2;
     severity = "important";
@@ -795,7 +795,7 @@ export const checkGallery: CheckFn = (ctx) => {
   } else {
     score = 0;
     severity = "critical";
-    detail = "Visual proof of installed work may not be fully leveraged on this page. Window treatments are a visual purchase, so without strong photo coverage the biggest objection (“will it look right in my home?”) likely isn’t getting answered.";
+    detail = "Visual proof of installed work isn’t doing the work it could be doing on this page. Window treatments are a visual purchase, so without strong photo coverage the biggest objection (“will it look right in my home?”) likely isn’t getting answered.";
     recommendation =
       "Window treatments are a visual purchase. When proof of work isn’t prominent, the “will it look right in my home?” objection tends to stall the sale — strong installed-photo coverage is one of the most reliable conversion lifts available.";
   }
@@ -825,7 +825,7 @@ export const checkBlog: CheckFn = (ctx) => {
   } else {
     score = 0;
     severity = "important";
-    detail = "Content marketing may not be fully leveraged on this site — likely limiting how much organic traffic the site captures over time.";
+    detail = "Content marketing may be limiting how much traffic the site drives over time — likely under-performing relative to what the category will support.";
     recommendation =
       "Content compounds; ads don’t. Answering the questions you hear at every measure appointment — insulation, motorization, child safety — tends to become evergreen lead flow once it’s live.";
   }

@@ -99,11 +99,14 @@ export const checkCityPages: CheckFn = (ctx) => {
   const modernPattern =
     /\/(?:service-areas|service-area|locations|location|areas-we-serve|areas|cities|city)\/([^/?#]+)/i;
 
-  // Legacy pattern A — state-code suffix:
-  // matches paths like "/shutters-anchorage-ak.php" or "/blinds-provo-ut/".
-  // The 2-letter state code at the end is the strong signal here.
+  // Legacy pattern A — product-prefixed, state-code suffix:
+  // matches paths whose filename or segment STARTS with a product word and
+  // ends with a 2-letter state code, e.g. "/shutters-anchorage-ak.php" or
+  // "/blinds-provo-ut/". Requiring the product prefix filters out blog
+  // posts and content URLs that happen to end with "-ak.php" but aren't
+  // actually city service pages (e.g. "/why-anchorage-homes-lose-heat-ak.php").
   const legacyStateSuffixPattern =
-    /\/[a-z][a-z0-9-]*-(?:ak|al|ar|az|ca|co|ct|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|va|vt|wa|wi|wv|wy)(?:\.(?:php|html?|htm))?(?:\/|$|\?|#)/i;
+    /\/(?:blinds|shutters|shades|drapery|draperies|window-treatments|window-blinds|window-shutters|window-shades|window-treatment|shutter|blind|shade)-[a-z][a-z0-9-]*-(?:ak|al|ar|az|ca|co|ct|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|va|vt|wa|wi|wv|wy)(?:\.(?:php|html?|htm))?(?:\/|$|\?|#)/i;
 
   // Legacy pattern B — product-suffix:
   // matches paths like "/provo-blinds/" or "/anchorage-shutters.html".
@@ -177,12 +180,6 @@ export const checkCityPages: CheckFn = (ctx) => {
   }
   // Modern if ANY modern pages exist. Pure-legacy sites get the false flag.
   const isModernStructure = modernCount > 0;
-
-  // Diagnostic — confirms which code revision is live for this domain.
-  // Safe to remove once detection is verified working in production.
-  console.log(
-    `[city_pages_v2] domain=${ctx.domain} count=${count} modern=${modernCount} legacy=${legacyCount} isModern=${isModernStructure}`,
-  );
   let score = 0;
   let severity: Finding["severity"] = "critical";
   let detail = "";

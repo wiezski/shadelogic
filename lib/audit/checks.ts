@@ -40,8 +40,8 @@ export const checkPhoneVisibility: CheckFn = (ctx) => {
   if (headerHasPhone && telLinks > 0) {
     score = 12;
     severity = "pass";
-    detail = "Phone visibility appears strong — a number is featured in the header and looks one-tap callable on mobile, which tends to be the single most-used action on a local service site.";
-    recommendation = "May not be fully leveraged unless the same number appears on every page (especially mobile sticky headers) and the displayed number matches the tel: link exactly. Friction here is what tends to lose calls.";
+    detail = "Phone visibility appears strong — a number is featured in the header and looks one-tap callable on mobile, which tends to be the single most-used action on a local service site. May not be fully leveraged if calling is the only contact path, since many homeowners (especially under-40) prefer a lower-friction first step like texting.";
+    recommendation = "May not be fully leveraged unless paired with a lower-friction option like text-to-quote or click-to-text. A call-only contact path tends to underserve the segment that prefers texting before talking — and that segment is a meaningful slice of inbound interest. Also worth confirming the number appears on every page (mobile sticky header included) and the displayed number matches the tel: link exactly.";
   } else if (headerHasPhone) {
     score = 8;
     severity = "important";
@@ -119,8 +119,8 @@ export const checkCityPages: CheckFn = (ctx) => {
   if (count >= 7) {
     score = 12;
     severity = "pass";
-    detail = `City-page coverage appears solid — ${count} city-specific pages identified, giving the site a foundation to rank on “blinds in [town]” searches across the service area.`;
-    recommendation = "May not be fully leveraged unless each page reads like it was written for a homeowner in that specific town — templated copy tends to underperform locally written copy in both rankings and conversions.";
+    detail = `City-page coverage appears solid — ${count} city-specific pages identified, giving the site a foundation to rank on “blinds in [town]” searches. May not be fully leveraged if those pages aren’t strongly surfaced or linked from key pages — buried service-area pages tend to underperform their potential.`;
+    recommendation = "May not be fully leveraged on two fronts: (1) each page tends to perform best when it reads locally written rather than templated — Google rewards specificity, and homeowners can tell; (2) the pages should be linked prominently from the homepage and product pages, since deeply-nested service-area pages tend to lose internal link equity and rank below where they could.";
   } else if (count >= 3) {
     score = 7;
     severity = "important";
@@ -193,9 +193,9 @@ export const checkProductCategories: CheckFn = (ctx) => {
     severity = "pass";
     detail = `Dedicated product category pages appear in place for ${categoryNavLinks.length} lines (${categoryNavLinks
       .map((c) => c.key)
-      .join(", ")}). That structure tends to support clearer routing for shoppers searching by product type.`;
+      .join(", ")}). That structure tends to support clearer routing for shoppers searching by product type. May not be fully leveraged unless each category is also visible above the fold on the homepage — buried in a sub-menu, those pages tend to capture less of the demand they could.`;
     recommendation =
-      "May not be fully leveraged unless each category page earns its rank with real install photos, brands carried, a starting price, and a review quote. Stub pages tend to underperform meaningfully against more-specialized competitors.";
+      "May not be fully leveraged on two fronts: (1) each category should be surfaced clearly on the homepage so shoppers can confirm specialization in 2 seconds — sub-menu-only placement tends to underperform; (2) each category page should earn its rank with real install photos, brands carried, a starting price, and a review quote. Stub pages tend to underperform meaningfully against more-specialized competitors.";
   } else if (present.length >= 3 && categoryNavLinks.length < 3) {
     score = 5;
     severity = "important";
@@ -321,12 +321,12 @@ export const checkTrustSignals: CheckFn = (ctx) => {
     title: "Trust signals on the page",
     detail:
       count === signals.length
-        ? "Trust signal coverage appears strong — multiple credibility cues (reviews, years in business, brand partnerships, warranty) are visible on the page. Homeowners tend to choose on trust before price, so this is foundational."
+        ? "Trust signal coverage appears strong — multiple credibility cues (reviews, years in business, brand partnerships, warranty) are present on the page. May not be fully leveraged unless those signals are surfaced above the fold and on mobile, since homeowners tend to make a credibility judgment in the first few seconds before scrolling."
         : `Trust signals may not be fully leveraged on this page — we identified ${count} of ${signals.length} common credibility cues (${signals.filter((s) => s.found).map((s) => s.name).join(", ") || "none clearly visible"}). Homeowners tend to choose based on trust before price, so limited visibility of those signals likely costs conversions.`,
     recommendation:
       missing.length > 0
-        ? `Homeowners tend to scan for reasons to trust a local business in the first few seconds. Surfacing the signals that don’t appear prominently shown (${missing.join(", ")}) — above the fold rather than buried on an About page — usually lifts conversions immediately.`
-        : "May not be fully leveraged unless these stay visible above the fold, especially on mobile. The first impression tends to be a credibility scan more than a feature scan.",
+        ? `Homeowners tend to scan for reasons to trust a local business in the first few seconds. Surfacing the signals that don’t appear prominently shown (${missing.join(", ")}) — above the fold rather than buried on an About page — usually lifts conversions immediately. The signals that exist already may also not be fully leveraged unless they sit in that first-scroll real estate.`
+        : "May not be fully leveraged unless these stay visible above the fold, especially on mobile. The first impression tends to be a credibility scan more than a feature scan, and signals discovered later in the page tend to do less work than signals shown immediately.",
     score,
     maxPoints: weight,
   };
@@ -382,12 +382,12 @@ export const checkMobileUsability: CheckFn = (ctx) => {
     title: "Mobile usability",
     detail:
       issues.length === 0
-        ? "Mobile foundation appears solid — responsive viewport, a tappable phone link, and page weight in a reasonable range. That matters because over 70% of homeowners tend to shop for window treatments from their phone."
-        : `Mobile experience may not be fully optimized: ${issues.join("; ")}. Most homeowners tend to shop for blinds and shutters from their phone, so friction here likely limits performance.`,
+        ? "Mobile foundation appears solid — responsive viewport, a tappable phone link, and page weight in a reasonable range. May not be fully leveraged unless real-world load speed and tap-target quality are also tight, since perceived speed on a phone is what tends to determine whether a homeowner stays on the page long enough to convert."
+        : `Mobile experience may not be fully optimized: ${issues.join("; ")}. Most homeowners tend to shop for blinds and shutters from their phone, so any friction in load time or tap-target quality likely limits how much of that traffic converts.`,
     recommendation:
       issues.length === 0
-        ? "May not be fully leveraged unless tested on real devices every few months. What looks fine on desktop can trip up a thumb on mobile, and small tap-target issues tend to compound on small screens."
-        : "Over 70% of buyers tend to shop on mobile. A responsive, fast, one-tap-friendly site is usually the first impression that earns the call — when that experience isn’t tight, conversion likely suffers.",
+        ? "May not be fully leveraged unless tested on a real phone over a 4G connection every few months. What feels fast on desktop can feel sluggish on a thumb-driven mobile session, and small delays tend to compound across the conversion path."
+        : "Over 70% of buyers tend to shop on mobile, and the difference between a 2-second load and a 5-second load is usually the difference between a lead and a bounce. A responsive, fast, one-tap-friendly site is what earns the call — when that experience isn’t tight, conversion likely suffers.",
     score,
     maxPoints: 8,
   };
@@ -654,14 +654,14 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
   if (hasCalendly) {
     score = 4;
     severity = "pass";
-    detail = "Online booking appears to be integrated (Calendly or similar), giving homeowners a path to schedule a measure without the callback wait.";
-    recommendation = "May not be fully leveraged unless lower-friction first steps — like texting or quick pricing — are also obvious. Many homeowners prefer a smaller commitment than a calendar booking on the first visit, so offering both tends to capture a wider slice of ready-to-act traffic.";
+    detail = "Online booking appears to be integrated (Calendly or similar), giving homeowners a path to schedule a measure without the callback wait. May not be fully leveraged if scheduling is the only path forward — high-commitment CTAs like “book consultation” tend to convert a smaller slice of traffic than lower-friction options used alongside them.";
+    recommendation = "May not be fully leveraged unless lower-friction first steps — like text-for-quote or a quick instant pricing tool — are also surfaced. A “Schedule Appointment” or “Book Consultation” asks for a meaningful commitment up front; pairing it with a smaller-ask option tends to capture the ready-to-act traffic that won’t commit to a calendar slot on the first visit.";
   } else if (hasBookingPath && textHasBooking) {
     score = 3;
     severity = "pass";
-    detail = "A quote/consultation form appears to be implemented and surfaced in the page copy, giving homeowners a clear path to convert.";
+    detail = "A booking or quote pathway appears to be implemented and surfaced in the page copy, giving homeowners a clear next step. May not be fully leveraged if the CTA is high-commitment (“Schedule Appointment,” “Book Consultation”) without a lower-friction alternative beside it.";
     recommendation =
-      "Booking or quote options may not be optimized for how customers want to engage. Many homeowners prefer a lower-friction first step such as texting or a quick instant quote — adding those alongside the form tends to capture ready-to-act traffic that won’t fill out a multi-field request.";
+      "Booking or quote options may not be optimized for how customers want to engage. Many homeowners prefer a lower-friction first step such as text-for-quote or a quick instant quote — adding those alongside the existing pathway tends to capture ready-to-act traffic that won’t fill out a multi-field request or commit to a calendar slot.";
   } else if (hasBookingPath) {
     score = 2;
     severity = "important";
@@ -693,8 +693,8 @@ export const checkGallery: CheckFn = (ctx) => {
   if (galleryLinks > 0 && imgCount > 8) {
     score = 3;
     severity = "pass";
-    detail = `A gallery page appears to be linked, with ${imgCount} images on the homepage. Visual proof tends to be one of the strongest conversion tools for window treatment leads.`;
-    recommendation = "May not be fully leveraged unless before/after pairs are included. For a visual purchase, the transformation shot tends to be the most persuasive piece a site can show.";
+    detail = `A gallery page appears to be linked, with ${imgCount} images on the homepage. Visual proof tends to be one of the strongest conversion tools for window treatment leads. May not be fully leveraged unless those photos are real installed work (not stock imagery) and include before/after pairs — the transformation shot tends to do most of the persuasive work in this category.`;
+    recommendation = "May not be fully leveraged unless before/after pairs of real installed work are featured. Stock photos and product-only shots tend to underperform actual rooms, since the question homeowners are silently asking is “will it look right in my home?” — and only a real-install photo answers that.";
   } else if (imgCount > 8) {
     score = 2;
     severity = "important";

@@ -53,20 +53,20 @@ export const checkPhoneVisibility: CheckFn = (ctx) => {
   if (headerHasPhone && telLinks > 0) {
     score = 12;
     severity = "pass";
-    detail = "Phone is prominent in the header and tappable on mobile. Homeowners can reach you in one tap from any page.";
-    recommendation = "Keep it exactly as-is. This is the single most-used action on a local service site.";
+    detail = "Phone visibility appears strong — a number is featured in the header and looks one-tap callable on mobile, which tends to be the single most-used action on a local service site.";
+    recommendation = "May not be fully leveraged unless the same number appears on every page (especially mobile sticky headers) and the displayed number matches the tel: link exactly. Friction here is what tends to lose calls.";
   } else if (headerHasPhone) {
     score = 8;
     severity = "important";
-    detail = "Phone is visible in the header, but it isn’t a tappable tel: link — which means mobile visitors have to memorize it or copy-paste.";
+    detail = "Phone visibility in the header may not be fully leveraged for mobile callers — a tappable tel: link doesn’t appear to be wired up, so visitors likely have to memorize or copy-paste the number.";
     recommendation =
-      "Make your phone number one-tap callable on mobile. This is the #1 action homeowners take before booking, and friction here directly costs you calls.";
+      "Making the phone number one-tap callable on mobile tends to be one of the highest-leverage fixes available. The #1 action homeowners take before booking is calling — and unnecessary friction here likely costs measurable conversions.";
   } else if (telLinks > 0) {
     score = 6;
     severity = "important";
-    detail = `There are ${telLinks} click-to-call link(s) on the page, but not in the header where homeowners look first.`;
+    detail = `Click-to-call links appear on the page (${telLinks} found), but a phone number may not be strongly implemented in the header — which is where homeowners tend to look first.`;
     recommendation =
-      "Get your phone number into the header, above the fold, on every page. Homeowners look there first — if it’s not there, they leave.";
+      "Surfacing the phone number in the header, above the fold, on every page tends to lift call volume notably for local installers. When it isn’t the first thing visible, those calls likely route elsewhere.";
   } else if (phoneAnywhere) {
     score = 3;
     severity = "critical";
@@ -128,13 +128,13 @@ export const checkCityPages: CheckFn = (ctx) => {
   if (count >= 7) {
     score = 12;
     severity = "pass";
-    detail = `You have ${count} city-specific pages on this site. When someone Googles “blinds in [their town],” you have a page to rank for it.`;
-    recommendation = "Keep expanding your service-area coverage. Just make sure each page reads like it was written for a homeowner in that specific town — not a template.";
+    detail = `City-page coverage appears solid — ${count} city-specific pages identified, giving the site a foundation to rank on “blinds in [town]” searches across the service area.`;
+    recommendation = "May not be fully leveraged unless each page reads like it was written for a homeowner in that specific town — templated copy tends to underperform locally written copy in both rankings and conversions.";
   } else if (count >= 3) {
     score = 7;
     severity = "important";
-    detail = `You have ${count} city pages — a start. But the national brands (Sunburst, 3 Day Blinds, Bumble Bee) run 10+ per metro, and they’re taking the searches you could own.`;
-    recommendation = `Fill in the rest of your service area. Every town you skip is a shot at “blinds in [that town]” you’re handing to national competitors. Each page needs to feel local — not a template.`;
+    detail = `City-page coverage appears partial — ${count} pages identified, which is a foundation. National brands (Sunburst, 3 Day Blinds, Bumble Bee) tend to run 10+ per metro, so the local SEO footprint is likely not structured to capture every town-level search in your service area.`;
+    recommendation = "Expanding to a page per town in your service area tends to be the highest-ROI content available to a local installer. Each page should feel locally written rather than templated, since templated city pages tend to underperform.";
   } else if (count === 1 || count === 2) {
     score = 3;
     severity = "critical";
@@ -200,17 +200,17 @@ export const checkProductCategories: CheckFn = (ctx) => {
   if (categoryNavLinks.length >= 3) {
     score = 10;
     severity = "pass";
-    detail = `You have dedicated pages for ${categoryNavLinks.length} product categories (${categoryNavLinks
+    detail = `Dedicated product category pages appear in place for ${categoryNavLinks.length} lines (${categoryNavLinks
       .map((c) => c.key)
-      .join(", ")}). A homeowner shopping for any of them lands on a page that matches.`;
+      .join(", ")}). That structure tends to support clearer routing for shoppers searching by product type.`;
     recommendation =
-      "Make each category page earn its rank — real install photos, brands you carry, a starting price, a review quote. Stubs don’t convert.";
+      "May not be fully leveraged unless each category page earns its rank with real install photos, brands carried, a starting price, and a review quote. Stub pages tend to underperform meaningfully against more-specialized competitors.";
   } else if (present.length >= 3 && categoryNavLinks.length < 3) {
     score = 5;
     severity = "important";
-    detail = `You mention the products in your copy, but only ${categoryNavLinks.length} category(ies) have their own page. Homeowners Google by product type — and they click the result that looks specialized in what they want.`;
+    detail = `Product mentions appear in copy, but only ${categoryNavLinks.length} category(ies) seem to have their own dedicated page. Homeowners tend to Google by product type and click the result that looks most specialized — likely limiting how this site captures those searches.`;
     recommendation =
-      "Each major product line should feel like its own shop. A shutter buyer spends 2–3x the blinds-only buyer — don’t let your site read like a blinds-only shop.";
+      "Each major product line tends to perform best when it reads like its own shop. Shutter buyers, for example, tend to spend 2–3x the blinds-only buyer, so a site that doesn’t look specialized in shutters may not be fully leveraging that demand.";
   } else if (present.length >= 1) {
     score = 3;
     severity = "important";
@@ -264,26 +264,26 @@ export const checkMotorization: CheckFn = (ctx) => {
     score = 8;
     severity = "pass";
     detail =
-      "Motorization has its own spot on the site. That’s where the highest-margin jobs come from — the customers with 3–5x the average ticket.";
-    recommendation = "Keep showing real installed motorized work — actual homes, the brands you carry. That’s what closes the high-ticket buyer.";
+      "Motorization appears to have a dedicated presence on the site. This is the segment where the highest-margin jobs tend to come from — customers with 3–5x the average ticket.";
+    recommendation = "May not be fully leveraged unless real installed motorized work is featured — actual homes, the specific brands carried. That tends to be what closes the high-ticket buyer rather than generic product imagery.";
   } else if (matches.length >= 2) {
     score = 5;
     severity = "important";
-    detail = "You mention motorization, but it doesn’t have its own page in navigation. Motorization buyers are the best leads you can get — whole-home jobs, higher tickets, repeat customers.";
+    detail = "Motorization is mentioned in copy, but a dedicated page may not be implemented in navigation. These buyers tend to be the best leads in the business — whole-home jobs, higher tickets, repeat customers — so this likely limits how well the site captures that demand.";
     recommendation =
-      "Motorized buyers are the best-paying customers in this business. They need a dedicated page that shows you take this product line seriously — otherwise they click to someone who does.";
+      "Motorized buyers tend to be the best-paying customers in this category. Without a dedicated page that signals serious capability in motorization, those leads often click to a competitor who shows it more prominently.";
   } else if (matches.length === 1) {
     score = 2;
     severity = "important";
-    detail = "Motorization shows up once on the page, in passing — which likely isn’t enough for homeowners who came specifically to ask about it.";
+    detail = "Motorization appears mentioned once on the page, in passing — which may not be strongly enough implemented for homeowners who came specifically searching for it.";
     recommendation =
-      "Homeowners Googling “motorized shades” are typically ready to spend. A passing mention may not be enough to convince them you actually do this work at volume — and that gap likely sends those leads elsewhere.";
+      "Homeowners Googling “motorized shades” tend to be ready to spend. A passing mention may not signal serious capability, and that perception gap likely sends those leads to a competitor whose site looks more committed to the product line.";
   } else {
     score = 0;
     severity = "critical";
     detail = "Motorization may not be fully leveraged on this site. These are the best leads in the business — whole-home jobs, bigger tickets — and current visibility likely isn’t capturing those searches.";
     recommendation =
-      "Motorization is where the biggest tickets live. Without a clear, dedicated presence for it, you’re likely missing those searches entirely — and those tend to be the easiest leads to win once you show up for them at all.";
+      "Motorization is where the biggest tickets tend to live. Without a clear, dedicated presence, those searches likely route to competitors who have one — and they tend to be among the easiest leads to win once a site shows up for them at all.";
   }
 
   return {
@@ -330,12 +330,12 @@ export const checkTrustSignals: CheckFn = (ctx) => {
     title: "Trust signals on the page",
     detail:
       count === signals.length
-        ? "Strong trust signal coverage — reviews, years in business, brand partnerships, warranty all present. Homeowners have plenty of reasons to choose you."
-        : `Trust signals may not be fully leveraged on this page — we identified ${count} of ${signals.length} common ones (${signals.filter((s) => s.found).map((s) => s.name).join(", ") || "none"}). Homeowners tend to choose based on trust before price, so limited visibility of those signals likely costs conversions.`,
+        ? "Trust signal coverage appears strong — multiple credibility cues (reviews, years in business, brand partnerships, warranty) are visible on the page. Homeowners tend to choose on trust before price, so this is foundational."
+        : `Trust signals may not be fully leveraged on this page — we identified ${count} of ${signals.length} common credibility cues (${signals.filter((s) => s.found).map((s) => s.name).join(", ") || "none clearly visible"}). Homeowners tend to choose based on trust before price, so limited visibility of those signals likely costs conversions.`,
     recommendation:
       missing.length > 0
-        ? `Homeowners scan for reasons to trust you in the first few seconds. Surfacing the signals that aren’t prominently shown (${missing.join(", ")}) — above the fold rather than buried on an About page — tends to lift conversions immediately.`
-        : "Keep these visible above the fold, especially on mobile. That’s the first thing homeowners see.",
+        ? `Homeowners tend to scan for reasons to trust a local business in the first few seconds. Surfacing the signals that don’t appear prominently shown (${missing.join(", ")}) — above the fold rather than buried on an About page — usually lifts conversions immediately.`
+        : "May not be fully leveraged unless these stay visible above the fold, especially on mobile. The first impression tends to be a credibility scan more than a feature scan.",
     score,
     maxPoints: weight,
   };
@@ -365,19 +365,19 @@ export const checkMobileUsability: CheckFn = (ctx) => {
   if (hasViewport && viewportIsResponsive) {
     score += 4;
   } else {
-    issues.push(hasViewport ? "Viewport meta disables zooming — bad for accessibility" : "No responsive viewport meta tag");
+    issues.push(hasViewport ? "viewport meta appears to disable zooming, which may limit accessibility" : "responsive viewport meta may not be implemented");
   }
 
   if (telLinks) {
     score += 2;
   } else {
-    issues.push("No tappable phone link (tel:)");
+    issues.push("phone may not be implemented as a tappable tel: link");
   }
 
   if (!heavyPage) {
     score += 2;
   } else {
-    issues.push(`Page is heavy (${scriptCount} scripts, ${imgCount} images) — likely slow on mobile 4G`);
+    issues.push(`page weight is heavy (${scriptCount} scripts, ${imgCount} images) — likely limiting mobile performance over 4G`);
   }
 
   if (score >= 7) severity = "pass";
@@ -391,12 +391,12 @@ export const checkMobileUsability: CheckFn = (ctx) => {
     title: "Mobile usability",
     detail:
       issues.length === 0
-        ? "Responsive viewport, tappable phone link, and the page isn’t overloaded. Good mobile foundation — which matters, because over 70% of homeowners shop for window treatments from their phone."
-        : `Mobile experience may not be fully optimized: ${issues.join("; ")}. Most homeowners shop for blinds and shutters from their phone, so friction here likely limits performance.`,
+        ? "Mobile foundation appears solid — responsive viewport, a tappable phone link, and page weight in a reasonable range. That matters because over 70% of homeowners tend to shop for window treatments from their phone."
+        : `Mobile experience may not be fully optimized: ${issues.join("; ")}. Most homeowners tend to shop for blinds and shutters from their phone, so friction here likely limits performance.`,
     recommendation:
       issues.length === 0
-        ? "Run a real-device test every few months. What looks fine on desktop can trip up a thumb on mobile."
-        : "Over 70% of your buyers are shopping on mobile. A responsive, fast, one-tap-friendly site tends to be the first impression that earns the call — when that experience isn’t tight, conversion suffers.",
+        ? "May not be fully leveraged unless tested on real devices every few months. What looks fine on desktop can trip up a thumb on mobile, and small tap-target issues tend to compound on small screens."
+        : "Over 70% of buyers tend to shop on mobile. A responsive, fast, one-tap-friendly site is usually the first impression that earns the call — when that experience isn’t tight, conversion likely suffers.",
     score,
     maxPoints: 8,
   };
@@ -412,10 +412,10 @@ export const checkHttps: CheckFn = (ctx) => {
     category: "technical_seo",
     severity: passing ? "pass" : "critical",
     title: "Site served over HTTPS",
-    detail: passing ? "Site is served over a secure HTTPS connection." : "Site is NOT served over HTTPS.",
+    detail: passing ? "Site appears to be served over a secure HTTPS connection." : "A secure HTTPS connection may not be implemented on this site, which likely limits performance — Chrome tends to flag insecure sites and Google tends to demote them in search results.",
     recommendation: passing
-      ? "Keep the certificate current — most hosts auto-renew, but check annually."
-      : "An insecure site tends to get flagged by Chrome and demoted by Google — which likely caps how well the site can perform in search. This one is table-stakes to fix.",
+      ? "May not be fully leveraged unless the certificate stays current. Most hosts auto-renew, but it’s worth confirming annually that nothing has lapsed."
+      : "An insecure site tends to be flagged by Chrome and demoted by Google, which likely caps how well it can perform in search. This one is table-stakes to address.",
     score: passing ? 3 : 0,
     maxPoints: 3,
   };
@@ -448,8 +448,8 @@ export const checkTitleTag: CheckFn = (ctx) => {
   } else {
     score = 4;
     severity = "pass";
-    detail = `Title is ${len} characters — well-sized. "${title}".`;
-    recommendation = "Make sure it mentions a city or region — that’s where local search intent lives.";
+    detail = `Title appears well-sized at ${len} characters: "${title}".`;
+    recommendation = "May not be fully leveraged unless it mentions a city or region — that’s where local search intent tends to live, and titles that include location often outperform generic ones in click-through.";
   }
 
   return { id: "title_tag", category: "technical_seo", severity, title: "Homepage title tag", detail, recommendation, score, maxPoints: 4 };
@@ -478,8 +478,8 @@ export const checkMetaDescription: CheckFn = (ctx) => {
   } else {
     score = 3;
     severity = "pass";
-    detail = `Meta description is ${len} characters — good length.`;
-    recommendation = "Refresh it annually to reflect your current positioning.";
+    detail = `Meta description appears well-sized at ${len} characters.`;
+    recommendation = "May not be fully leveraged unless refreshed periodically to reflect current positioning. Search snippets that go stale tend to underperform fresher copy that names the actual offer.";
   }
 
   return { id: "meta_description", category: "technical_seo", severity, title: "Meta description", detail, recommendation, score, maxPoints: 3 };
@@ -514,8 +514,8 @@ export const checkH1: CheckFn = (ctx) => {
   } else {
     score = 2;
     severity = "pass";
-    detail = `Single clear H1: "${first}".`;
-    recommendation = "Good. Mention your product + city if it reads naturally.";
+    detail = `A single H1 appears in place: "${first}".`;
+    recommendation = "May not be fully leveraged unless it mentions your product + city in a way that reads naturally. Headings that name what you do and where tend to lift both ranking and on-page conversion.";
   }
 
   return { id: "h1", category: "technical_seo", severity, title: "Heading structure (H1)", detail, recommendation, score, maxPoints: 2 };
@@ -545,14 +545,14 @@ export const checkLocalBusinessSchema: CheckFn = (ctx) => {
   if (hasLocalBusiness && hasReview) {
     score = 8;
     severity = "pass";
-    detail = "LocalBusiness + review schema are in place. Google can show your stars and service area directly in search results — that’s extra clicks with zero extra ad spend.";
-    recommendation = "Keep an eye on Search Console for structured-data errors. That’s where Google tells you if anything’s broken.";
+    detail = "LocalBusiness + review schema appear in place. That tends to give Google machine-readable signals it can use to show stars and service area directly in search results — extra clicks with zero extra ad spend.";
+    recommendation = "May not be fully leveraged unless monitored in Search Console for structured-data errors. That’s where Google flags broken markup that quietly costs the rich-result enhancement.";
   } else if (hasLocalBusiness) {
     score = 5;
     severity = "important";
-    detail = "You have LocalBusiness schema but no reviews schema. That means Google knows who you are, but it isn’t showing your stars in search results.";
+    detail = "LocalBusiness schema appears in place, but reviews schema may not be implemented — meaning Google likely isn’t pulling star ratings into your search snippets even when ranking well.";
     recommendation =
-      "Your search listing could be showing star ratings — it isn’t. That’s a 20–30% click-through boost you’re leaving on the table at the same search position.";
+      "Adding review schema tends to lift click-through 20–30% at the same search position. Without it, the listing likely shows up but doesn’t earn the click against competitors with stars visible.";
   } else if (hasOrganization) {
     score = 2;
     severity = "important";
@@ -599,18 +599,18 @@ export const checkAltText: CheckFn = (ctx) => {
     // No images to judge — give full credit but flag it gently
     score = 3;
     severity = "minor";
-    detail = "No images found on this page.";
-    recommendation = "For a visual business, your homepage needs project photos — before/afters, installed-in-a-home shots.";
+    detail = "Images may not be implemented on this page. For a visual business, project photos — before/afters, installed-in-a-home shots — tend to be one of the most persuasive conversion tools available.";
+    recommendation = "Adding installed work to the homepage tends to lift conversion meaningfully for visual purchases like window treatments. Without proof of work, the “will it look right in my home?” objection often goes unanswered.";
   } else if (pct >= 90) {
     score = 4;
     severity = "pass";
-    detail = `${pct}% of images (${withAlt}/${total}) have alt text.`;
-    recommendation = "Keep descriptive alt text — “Roman shades in a Provo master bedroom” beats “shade2.jpg” every time.";
+    detail = `Alt text coverage appears strong — ${pct}% of images (${withAlt}/${total}) have descriptions in place.`;
+    recommendation = "May not be fully leveraged unless those descriptions are descriptive enough to compete in image search. “Roman shades in a Provo master bedroom” tends to outrank “shade2.jpg” by a wide margin.";
   } else if (pct >= 60) {
     score = 2;
     severity = "important";
-    detail = `${pct}% of images have alt text. ${total - withAlt} images are missing descriptions.`;
-    recommendation = "Fill in the rest. Good alt text helps accessibility AND image search — your project photos could be ranking on their own.";
+    detail = `Alt text coverage appears partial — ${pct}% of images have descriptions, with ${total - withAlt} image(s) where alt text may not be implemented. That likely limits performance in Google image search.`;
+    recommendation = "Filling in the remaining alt text tends to add a small but real layer of free traffic from image search, plus improves accessibility for visitors using screen readers.";
   } else {
     score = 0;
     severity = "important";
@@ -647,14 +647,14 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
   if (hasCalendly) {
     score = 4;
     severity = "pass";
-    detail = "Online booking is integrated (Calendly or similar). Homeowners can schedule a measure without waiting for a callback — huge for conversion.";
-    recommendation = "Make sure it shows real-time availability, not just a contact form. The win is instant scheduling.";
+    detail = "Online booking appears to be integrated (Calendly or similar). That tends to lift conversion notably — homeowners can schedule a measure without the callback wait.";
+    recommendation = "May not be fully leveraged unless it surfaces real-time availability rather than acting as a glorified contact form. Instant scheduling tends to be the actual conversion unlock.";
   } else if (hasForm && textHasBooking) {
     score = 3;
     severity = "pass";
-    detail = "Quote/consultation form is present and called out in the page copy. Homeowners know how to convert.";
+    detail = "A quote/consultation form appears to be implemented and surfaced in the page copy, giving homeowners a clear path to convert.";
     recommendation =
-      "Real-time scheduling beats a form every time. Form-only flows lose roughly 30% of would-be bookings to the wait for a callback.";
+      "May not be fully leveraged versus real-time scheduling, which tends to outperform form-only flows by ~30% — the callback wait is where would-be bookings often drop off.";
   } else if (hasForm) {
     score = 2;
     severity = "important";
@@ -686,19 +686,19 @@ export const checkGallery: CheckFn = (ctx) => {
   if (galleryLinks > 0 && imgCount > 8) {
     score = 3;
     severity = "pass";
-    detail = `Gallery page linked with ${imgCount} images on the homepage. That’s visual proof — the thing that actually closes window treatment leads.`;
-    recommendation = "Add before/after pairs if you don’t have them. For a visual product, nothing persuades like the transformation shot.";
+    detail = `A gallery page appears to be linked, with ${imgCount} images on the homepage. Visual proof tends to be one of the strongest conversion tools for window treatment leads.`;
+    recommendation = "May not be fully leveraged unless before/after pairs are included. For a visual purchase, the transformation shot tends to be the most persuasive piece a site can show.";
   } else if (imgCount > 8) {
     score = 2;
     severity = "important";
-    detail = `${imgCount} images on the page but no dedicated gallery. Homeowners scrolling for inspiration can’t find more — so they leave to find it elsewhere.`;
-    recommendation = "Homeowners looking for inspiration need a place to keep scrolling. Your best closing tool is the photo of a room that looks like theirs.";
+    detail = `${imgCount} images appear on the page, but a dedicated gallery may not be linked. Homeowners scrolling for inspiration likely don’t have a clear place to keep scrolling — which tends to send them elsewhere.`;
+    recommendation = "Homeowners looking for inspiration tend to convert when there’s a place to keep scrolling. The photo of a room that looks like theirs is usually the closing tool.";
   } else if (instaLinks > 0) {
     score = 1;
     severity = "important";
-    detail = "You link to Instagram but there’s no gallery on the site itself. Most visitors won’t click off to Instagram — but they’ll scroll 30 photos if they’re already on your site.";
+    detail = "An Instagram link appears on the page, but a gallery on the site itself may not be implemented. Most visitors tend not to click off to Instagram — though they’ll often scroll 30 photos if they’re already on your site.";
     recommendation =
-      "Your Instagram work belongs on your own site. Visitors rarely click off to follow — but they’ll scroll your gallery if it’s right where they already are.";
+      "Bringing the Instagram work onto the site itself tends to convert better than relying on a follow-and-browse pattern. Visitors rarely follow off-site, but they’ll engage with a gallery that’s right where they already are.";
   } else {
     score = 0;
     severity = "critical";
@@ -726,9 +726,9 @@ export const checkBlog: CheckFn = (ctx) => {
   if (blogLinks.length > 0) {
     score = 3;
     severity = "pass";
-    detail = "Blog or resource section linked.";
+    detail = "A blog or resource section appears to be linked, giving the site a foundation for compounding organic traffic.";
     recommendation =
-      "Keep publishing. The compounding matters more than the cadence — once a month on a real customer question is plenty.";
+      "May not be fully leveraged unless updated consistently. Cadence tends to matter less than compounding — once a month answering a real customer question is usually enough.";
   } else {
     score = 0;
     severity = "important";

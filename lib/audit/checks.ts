@@ -606,6 +606,7 @@ export const checkLocalBusinessSchema: CheckFn = (ctx) => {
   const hasLocalBusiness =
     hay.includes('"localbusiness"') ||
     hay.includes('"homeandconstructionbusiness"') ||
+    hay.includes('"homegoodsstore"') ||
     hay.includes('"professionalservice"');
   const hasOrganization = hay.includes('"organization"');
   const hasReview = hay.includes('"review"') || hay.includes('"aggregaterating"');

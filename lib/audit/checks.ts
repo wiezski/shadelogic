@@ -400,7 +400,21 @@ export const checkTrustSignals: CheckFn = (ctx) => {
       return !negative;
     })() },
     { name: "Brand partnerships", found: /hunter douglas|gallery dealer|certified pro|norman|graber|levolor|hunterdouglas/i.test(bodyText) },
-    { name: "Google reviews link", found: $("a[href*='google.com/maps']").length > 0 || $("a[href*='g.page']").length > 0 || /google reviews?/i.test(bodyText) },
+    { name: "Google reviews link", found: (() => {
+      // Match any anchor whose href points at a Google reviews/maps surface.
+      // Covers classic Maps links, g.page short links, the writereview/reviews
+      // endpoints under search.google.com/local, and maps.google.com URLs that
+      // include review intent (?reviews=, /reviews, etc.).
+      const reviewLinkSelectors = [
+        "a[href*='google.com/maps']",
+        "a[href*='g.page']",
+        "a[href*='search.google.com/local/writereview']",
+        "a[href*='search.google.com/local/reviews']",
+        "a[href*='maps.google.com'][href*='review']",
+      ].join(", ");
+      if ($(reviewLinkSelectors).length > 0) return true;
+      return /google reviews?/i.test(bodyText);
+    })() },
     { name: "Warranty / guarantee", found: /warranty|guaranteed?|satisfaction|lifetime/i.test(bodyText) },
   ];
 

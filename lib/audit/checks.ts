@@ -390,7 +390,15 @@ export const checkTrustSignals: CheckFn = (ctx) => {
   const signals: { name: string; found: boolean }[] = [
     { name: "Review count or rating", found: /\d+\s*(?:\+|stars?|reviews?|★)/i.test(bodyText) || /\b4\.[5-9]\s*stars?\b/i.test(bodyText) || /\b5[-\s]?star\b/i.test(bodyText) },
     { name: "Years in business", found: /\b(?:\d{1,2})\s*(?:\+\s*)?years?\s+(?:in business|experience|of service|serving)\b/i.test(bodyText) || /since\s+(?:19|20)\d{2}/i.test(bodyText) || /established\s+(?:19|20)\d{2}/i.test(bodyText) || /founded\s+(?:in\s+)?(?:19|20)\d{2}/i.test(bodyText) || /started\s+in\s+(?:19|20)\d{2}/i.test(bodyText) || /\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten)\s+decades?\b/i.test(bodyText) || /\b\d+\s*years?\s+ago\b/i.test(bodyText) },
-    { name: "BBB accreditation", found: /\bbbb\b|better business bureau/i.test(bodyText) },
+    { name: "BBB accreditation", found: (() => {
+      // Positive: BBB tokens paired with accreditation/rating/member/approved language,
+      // or the canonical "accredited business" phrase used in BBB seals.
+      const positive = /(?:bbb[^.]{0,30}(?:accredited|a\+|a\s+rating|rating[:\s]+a\+?|member|approved)|(?:accredited|a\+|member|approved)[^.]{0,30}bbb|accredited\s+business|better\s+business\s+bureau\s+accredited)/i.test(bodyText);
+      if (!positive) return false;
+      // Negative disclaimers nearby — disqualify even if a positive token exists.
+      const negative = /(?:not\s+bbb\s+accredited|bbb[^.]{0,20}not\s+accredited|not\s+accredited[^.]{0,20}bbb|bbb\s+rating[:\s]+f\b|no\s+bbb|don'?t\s+use\s+bbb)/i.test(bodyText);
+      return !negative;
+    })() },
     { name: "Brand partnerships", found: /hunter douglas|gallery dealer|certified pro|norman|graber|levolor|hunterdouglas/i.test(bodyText) },
     { name: "Google reviews link", found: $("a[href*='google.com/maps']").length > 0 || $("a[href*='g.page']").length > 0 || /google reviews?/i.test(bodyText) },
     { name: "Warranty / guarantee", found: /warranty|guaranteed?|satisfaction|lifetime/i.test(bodyText) },

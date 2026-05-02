@@ -378,7 +378,7 @@ export const checkTrustSignals: CheckFn = (ctx) => {
 
   const signals: { name: string; found: boolean }[] = [
     { name: "Review count or rating", found: /\d+\s*(?:\+|stars?|reviews?|★)/i.test(bodyText) || /\b4\.[5-9]\s*stars?\b/i.test(bodyText) || /\b5[-\s]?star\b/i.test(bodyText) },
-    { name: "Years in business", found: /\b(?:\d{1,2})\s*(?:\+\s*)?years?\s+(?:in business|experience|of service|serving)\b/i.test(bodyText) || /since\s+(?:19|20)\d{2}/i.test(bodyText) || /established\s+(?:19|20)\d{2}/i.test(bodyText) || /founded\s+(?:in\s+)?(?:19|20)\d{2}/i.test(bodyText) },
+    { name: "Years in business", found: /\b(?:\d{1,2})\s*(?:\+\s*)?years?\s+(?:in business|experience|of service|serving)\b/i.test(bodyText) || /since\s+(?:19|20)\d{2}/i.test(bodyText) || /established\s+(?:19|20)\d{2}/i.test(bodyText) || /founded\s+(?:in\s+)?(?:19|20)\d{2}/i.test(bodyText) || /started\s+in\s+(?:19|20)\d{2}/i.test(bodyText) || /\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten)\s+decades?\b/i.test(bodyText) || /\b\d+\s*years?\s+ago\b/i.test(bodyText) },
     { name: "BBB accreditation", found: /\bbbb\b|better business bureau/i.test(bodyText) },
     { name: "Brand partnerships", found: /hunter douglas|gallery dealer|certified pro|norman|graber|levolor|hunterdouglas/i.test(bodyText) },
     { name: "Google reviews link", found: $("a[href*='google.com/maps']").length > 0 || $("a[href*='g.page']").length > 0 || /google reviews?/i.test(bodyText) },

@@ -717,8 +717,11 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
 
   const bookingKeywords = [
     "book online", "schedule online", "book a consultation", "schedule a consultation",
+    "schedule consultation", "schedule your consultation", "schedule your design consultation",
     "schedule an appointment", "design consultation", "free consultation",
+    "schedule a free", "in-home consultation", "free in-home consultation",
     "free quote", "request a quote", "get a quote", "free estimate", "request estimate",
+    "request a showing", "request a free showing", "book a showing", "book a measure",
     "calendly", "book now", "schedule now",
   ];
   const textHasBooking = bookingKeywords.some((k) => bodyText.includes(k));

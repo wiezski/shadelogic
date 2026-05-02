@@ -278,7 +278,7 @@ export const checkProductCategories: CheckFn = (ctx) => {
     severity = "pass";
     detail = `Dedicated product category pages appear in place for ${categoryNavLinks.length} lines (${categoryNavLinks
       .map((c) => c.key)
-      .join(", ")}). That structure tends to support clearer routing for shoppers searching by product type. May not be fully leveraged unless each category is also visible above the fold on the homepage — buried in a sub-menu, those pages tend to capture less of the demand they could.`;
+      .join(", ")}). That structure tends to support clearer routing for shoppers searching by product type. Isn’t positioned to capture as much traffic as it could unless each category is also visible above the fold on the homepage — buried in a sub-menu, those pages tend to capture less of the demand they could.`;
     recommendation =
       "May not be fully leveraged on two fronts: (1) each category should be surfaced clearly on the homepage so shoppers can confirm specialization in 2 seconds — sub-menu-only placement tends to underperform; (2) each category page should earn its rank with real install photos, brands carried, a starting price, and a review quote. Stub pages tend to underperform meaningfully against more-specialized competitors.";
   } else if (present.length >= 3 && categoryNavLinks.length < 3) {
@@ -419,7 +419,7 @@ export const checkTrustSignals: CheckFn = (ctx) => {
     recommendation:
       missing.length > 0
         ? `Homeowners tend to scan for reasons to trust a local business in the first few seconds. Surfacing the signals that don’t appear prominently shown (${missing.join(", ")}) — above the fold rather than buried on an About page — usually lifts conversions immediately. The signals that exist already may also not be fully leveraged unless they sit in that first-scroll real estate.`
-        : "May not be fully leveraged unless these stay visible above the fold, especially on mobile. The first impression tends to be a credibility scan more than a feature scan, and signals discovered later in the page tend to do less work than signals shown immediately.",
+        : "May be limiting how much traffic or conversion it drives unless these stay visible above the fold, especially on mobile. The first impression tends to be a credibility scan more than a feature scan, and signals discovered later in the page tend to do less work than signals shown immediately.",
     score,
     maxPoints: weight,
   };
@@ -498,7 +498,7 @@ export const checkHttps: CheckFn = (ctx) => {
     title: "Site served over HTTPS",
     detail: passing ? "Site appears to be served over a secure HTTPS connection." : "A secure HTTPS connection may not be implemented on this site, which likely limits performance — Chrome tends to flag insecure sites and Google tends to demote them in search results.",
     recommendation: passing
-      ? "May not be fully leveraged unless the certificate stays current. Most hosts auto-renew, but it’s worth confirming annually that nothing has lapsed."
+      ? "May not be as effective as it could be unless the certificate stays current. Most hosts auto-renew, but it’s worth confirming annually that nothing has lapsed."
       : "An insecure site tends to be flagged by Chrome and demoted by Google, which likely caps how well it can perform in search. This one is table-stakes to address.",
     score: passing ? 3 : 0,
     maxPoints: 3,
@@ -599,7 +599,7 @@ export const checkH1: CheckFn = (ctx) => {
     score = 2;
     severity = "pass";
     detail = `A single H1 appears in place: "${first}".`;
-    recommendation = "May not be fully leveraged unless it mentions your product + city in a way that reads naturally. Headings that name what you do and where tend to lift both ranking and on-page conversion.";
+    recommendation = "May not be influencing decisions early enough unless it mentions your product + city in a way that reads naturally. Headings that name what you do and where tend to lift both ranking and on-page conversion.";
   }
 
   return { id: "h1", category: "technical_seo", severity, title: "Heading structure (H1)", detail, recommendation, score, maxPoints: 2 };
@@ -760,7 +760,7 @@ export const checkOnlineBooking: CheckFn = (ctx) => {
   } else if (hasBookingPath && textHasBooking) {
     score = 3;
     severity = "pass";
-    detail = "A booking or quote pathway appears to be implemented and surfaced in the page copy, giving homeowners a clear next step. May not be fully leveraged if the CTA is high-commitment (“Schedule Appointment,” “Book Consultation”) without a lower-friction alternative beside it.";
+    detail = "A booking or quote pathway appears to be implemented and surfaced in the page copy, giving homeowners a clear next step. Is likely leaving opportunity on the table if the CTA is high-commitment (“Schedule Appointment,” “Book Consultation”) without a lower-friction alternative beside it.";
     recommendation =
       "Booking or quote options may not be optimized for how customers want to engage. Many homeowners prefer a lower-friction first step such as text-for-quote or a quick instant quote — adding those alongside the existing pathway tends to capture ready-to-act traffic that won’t fill out a multi-field request or commit to a calendar slot.";
   } else if (hasBookingPath) {

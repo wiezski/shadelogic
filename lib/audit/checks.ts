@@ -115,6 +115,11 @@ export const checkCityPages: CheckFn = (ctx) => {
   const legacyProductSuffixPattern =
     /\/([a-z][a-z0-9-]*)-(?:blinds|shutters|shades|window-treatments|drapery|draperies)(?:\.(?:php|html?|htm))?(?:\/|$|\?|#)/i;
 
+  // Legacy pattern C — product-in-city:
+  // matches paths like "/blinds-in-logan/" or "/shades-in-orem.html".
+  const legacyProductInCityPattern =
+    /\/(?:blinds|shutters|shades|drapery|draperies|window-treatments)-in-[a-z][a-z0-9-]+(?:\.(?:php|html?|htm))?(?:\/|$|\?|#)/i;
+
   const PRODUCT_SUBTYPE_PREFIXES = new Set([
     "wood", "faux", "faux-wood", "real-wood", "mini", "cellular", "roller",
     "roman", "vertical", "horizontal", "plantation", "motorized", "manual",
@@ -156,6 +161,12 @@ export const checkCityPages: CheckFn = (ctx) => {
 
     // Legacy A — state code suffix.
     if (legacyStateSuffixPattern.test(pathname)) {
+      if (!detected.has(pathname)) detected.set(pathname, "legacy");
+      return;
+    }
+
+    // Legacy C — product-in-city.
+    if (legacyProductInCityPattern.test(pathname)) {
       if (!detected.has(pathname)) detected.set(pathname, "legacy");
       return;
     }

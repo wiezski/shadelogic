@@ -38,6 +38,7 @@ const INTERNAL_DEFAULT = "wiezski@gmail.com";
 const SUPPRESS_FAILURE_ALERT_KINDS = new Set([
   "admin_failure_alert",
   "test_probe",
+  "cron_digest",
 ]);
 
 // Sentinel substring that Resend returns when the account is in
@@ -601,6 +602,78 @@ export async function sendWalkthroughRequestAlertEmail(params: {
     fromName: "ZeroRemake",
     kind: "owner_walkthrough_alert",
     domain: "walkthrough",
+  });
+}
+
+// ── Cron digest email — daily summary of email-retry runs ─────────
+// Quiet by default: only fired by the email-retry cron when at least
+// one email was processed. Days where nothing needs retrying produce
+// no email — your inbox stays quiet unless something happened.
+
+export async function sendCronDigestEmail(params: {
+  processed: number;
+  succeeded: number;
+  failed: number;
+  results: { id: string; domain: string; email: string; ok: boolean; error?: string }[];
+}): Promise<SendResult> {
+  const to = process.env.AUDIT_INTERNAL_ALERT_TO || INTERNAL_DEFAULT;
+  const allOk = params.failed === 0;
+  const subject = allOk
+    ? `Email-retry cron: ${params.succeeded} retried successfully`
+    : `Email-retry cron: ${params.succeeded} ok, ${params.failed} still failing`;
+
+  const headerColor = allOk ? "#30a46c" : "#c44a2a";
+  const headerText = allOk
+    ? "Daily email-retry cron — all retries succeeded"
+    : "Daily email-retry cron — some retries still failing";
+
+  const summary = `<div style="background:#fafaf9;padding:14px 18px;border-radius:10px;margin:0 0 18px 0;">
+    <div style="font-size:13px;color:#6b7280;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;margin-bottom:6px;">Today's run</div>
+    <div style="font-size:15px;color:#1c1c1e;line-height:1.6;">
+      <strong>${params.processed}</strong> failed email${params.processed === 1 ? "" : "s"} found in the last 7 days.<br/>
+      <strong style="color:#30a46c;">${params.succeeded}</strong> retried successfully.<br/>
+      <strong style="color:${params.failed > 0 ? "#c44a2a" : "#6b7280"};">${params.failed}</strong> still failing.
+    </div>
+  </div>`;
+
+  const rowsHtml = params.results
+    .map((r) => {
+      const statusColor = r.ok ? "#30a46c" : "#c44a2a";
+      const statusLabel = r.ok ? "✓ sent" : "✗ failed";
+      const errorBlock = !r.ok && r.error
+        ? `<div style="font-size:12px;color:#c44a2a;margin-top:2px;">${r.error}</div>`
+        : "";
+      return `<tr>
+        <td style="padding:8px 12px 8px 0;border-bottom:1px solid #eee;">
+          <div style="font-size:14px;color:#1c1c1e;font-weight:600;">${r.domain}</div>
+          <div style="font-size:12px;color:#6b7280;">${r.email}</div>
+          ${errorBlock}
+        </td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;color:${statusColor};font-size:13px;font-weight:600;white-space:nowrap;">
+          ${statusLabel}
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;color:#1c1c1e;max-width:640px;">
+    <h2 style="margin:0 0 14px 0;font-size:18px;font-weight:700;color:${headerColor};">${headerText}</h2>
+    ${summary}
+    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:14px;">
+      ${rowsHtml}
+    </table>
+    <div style="margin-top:24px;padding-top:14px;border-top:1px solid #eee;font-size:12px;color:#9ca3af;line-height:1.5;">
+      Sent automatically by /api/cron/email-retry. You only get this email on days when the cron actually retried something — quiet days produce no email.
+    </div>
+  </body></html>`;
+
+  return sendRaw({
+    to,
+    subject,
+    html,
+    fromName: "ZeroRemake Cron",
+    kind: "cron_digest",
+    domain: "cron-digest",
   });
 }
 

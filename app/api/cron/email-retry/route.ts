@@ -23,7 +23,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuditAdminClient } from "@/lib/audit/db";
-import { sendFullReportEmail } from "@/lib/audit/email";
+import { sendFullReportEmail, sendCronDigestEmail } from "@/lib/audit/email";
 import type { AuditReport, Finding } from "@/lib/audit/types";
 
 export const runtime = "nodejs";
@@ -173,6 +173,20 @@ export async function GET(req: NextRequest) {
   console.log(
     `[cron/email-retry] Completed. Processed ${candidates.length}, succeeded ${succeeded}, failed ${failed}.`,
   );
+
+  // Quiet-by-default digest: only email Steve when the cron actually
+  // did something. Days where nothing needed retrying don't generate
+  // inbox noise. Fire-and-forget — don't block the response on it.
+  if (candidates.length > 0) {
+    sendCronDigestEmail({
+      processed: candidates.length,
+      succeeded,
+      failed,
+      results,
+    }).catch((err) => {
+      console.error("[cron/email-retry] digest email failed:", err);
+    });
+  }
 
   return NextResponse.json({
     ok: true,

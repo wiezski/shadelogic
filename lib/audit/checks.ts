@@ -199,8 +199,8 @@ export const checkCityPages: CheckFn = (ctx) => {
   if (count >= 7) {
     score = 12;
     severity = "pass";
-    detail = `City-page coverage appears solid — ${count} city-specific pages identified, giving the site a foundation to rank on “blinds in [town]” searches. May not be fully leveraged if those pages aren’t strongly surfaced or linked from key pages — buried service-area pages tend to underperform their potential.`;
-    recommendation = "May not be fully leveraged on two fronts: (1) each page tends to perform best when it reads locally written rather than templated — Google rewards specificity, and homeowners can tell; (2) the pages should be linked prominently from the homepage and product pages, since deeply-nested service-area pages tend to lose internal link equity and rank below where they could.";
+    detail = `City-page coverage appears solid — ${count} city-specific pages identified, giving the site a foundation to rank on “blinds in [town]” searches. May be limiting how much traffic or conversion it drives if those pages aren’t strongly surfaced or linked from key pages — buried service-area pages tend to underperform their potential.`;
+    recommendation = "Isn’t doing the work it could be doing on two fronts: (1) each page tends to perform best when it reads locally written rather than templated — Google rewards specificity, and homeowners can tell; (2) the pages should be linked prominently from the homepage and product pages, since deeply-nested service-area pages tend to lose internal link equity and rank below where they could.";
   } else if (count >= 3) {
     score = 7;
     severity = "important";
